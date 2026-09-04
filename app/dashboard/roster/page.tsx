@@ -139,12 +139,12 @@ export default function RosterPage() {
             <Shield className="w-8 h-8 text-blue-200" />
           </div>
           <div>
-            <h1 className="text-2xl md:text-3xl font-black tracking-wide">สมาชิกทั้งหมดในกิลด์</h1>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-wide">สมาชิกทั้งหมดในกิลด์</h1>
             <p className="text-blue-200 text-sm md:text-base font-medium mt-1">จำแนกตาม {displayJobs.length} สายอาชีพ</p>
           </div>
         </div>
         <div className="text-right">
-          <div className="text-4xl md:text-5xl font-black">{totalMembers} <span className="text-xl md:text-2xl font-medium">คน</span></div>
+          <div className="text-4xl md:text-5xl font-bold">{totalMembers} <span className="text-xl md:text-2xl font-medium">คน</span></div>
         </div>
       </div>
 
@@ -189,10 +189,10 @@ export default function RosterPage() {
               : "bg-white border-slate-200 hover:border-[#0b3d63] hover:shadow-md"
           }`}
         >
-          <div className="flex items-center space-x-2 font-black text-sm lg:text-base">
+          <div className="flex items-center space-x-2 font-bold text-sm lg:text-base">
             <span>ทั้งหมด</span>
           </div>
-          <div className={`px-3 py-1 rounded-lg text-sm font-black ${selectedJob === "ทั้งหมด" ? "bg-white/20" : "bg-slate-100 text-slate-700"}`}>
+          <div className={`px-3 py-1 rounded-lg text-sm font-bold ${selectedJob === "ทั้งหมด" ? "bg-white/20" : "bg-slate-100 text-slate-700"}`}>
             {totalMembers}
           </div>
         </button>
@@ -214,12 +214,12 @@ export default function RosterPage() {
                 backgroundColor: isSelected ? hexToRgba(color, 0.05) : "white"
               }}
             >
-              <div className="flex items-center space-x-2 font-black text-sm lg:text-base" style={{ color: color }}>
+              <div className="flex items-center space-x-2 font-bold text-sm lg:text-base" style={{ color: color }}>
                 <span className="w-2.5 h-2.5 rounded-full shadow-sm" style={{ backgroundColor: color }}></span>
                 <span>{job}</span>
               </div>
               <div 
-                className="px-3 py-1 rounded-lg text-sm font-black"
+                className="px-3 py-1 rounded-lg text-sm font-bold"
                 style={{ backgroundColor: hexToRgba(color, 0.15), color: color }}
               >
                 {count}
@@ -258,12 +258,12 @@ export default function RosterPage() {
                 className="px-5 py-4 flex items-center justify-between border-b border-slate-100"
                 style={{ backgroundColor: hexToRgba(color, 0.08) }}
               >
-                <div className="flex items-center space-x-2 font-black text-lg" style={{ color: color }}>
+                <div className="flex items-center space-x-2 font-bold text-lg" style={{ color: color }}>
                   <span className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: color }}></span>
                   <span>{job}</span>
                 </div>
                 <div 
-                  className="px-3 py-1.5 rounded-xl text-xs font-black text-white shadow-sm tracking-wide"
+                  className="px-3 py-1.5 rounded-xl text-xs font-bold text-white shadow-sm tracking-wide"
                   style={{ backgroundColor: color }}
                 >
                   {members.length} คน
@@ -287,9 +287,9 @@ export default function RosterPage() {
                 ) : (
                   <ul className="divide-y divide-slate-100/60">
                     {members.map((m: any, idx: number) => (
-                      <li key={m.name || idx} className="grid grid-cols-12 gap-2 px-4 py-3 items-center hover:bg-slate-50 transition-colors text-xs sm:text-[13.5px] font-bold group">
+                      <li key={m.name || idx} className="grid grid-cols-12 gap-2 px-4 py-3 items-center hover:bg-slate-50 transition-colors text-xs sm:text-[14px] font-bold group">
                         <div className="col-span-2 text-slate-400 text-left font-medium tabular-nums text-xs">{idx + 1}</div>
-                        <div className="col-span-5 text-left truncate text-slate-900 font-black">
+                        <div className="col-span-5 text-left truncate text-slate-900 font-bold">
                           {m.name || "Unknown"}
                         </div>
                         <div className="col-span-3 text-right tabular-nums tracking-tight" style={{ color: color }}>
@@ -319,7 +319,7 @@ export default function RosterPage() {
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[420px] overflow-hidden flex flex-col font-prompt animate-in fade-in zoom-in duration-200">
             {/* Header */}
             <div className="px-6 py-4 flex items-center justify-between border-b border-slate-100">
-              <h2 className="text-xl font-black text-[#0b3d63]">
+              <h2 className="text-xl font-bold text-[#0b3d63]">
                 {isAddingNew ? "เพิ่มสมาชิกใหม่" : "แก้ไขข้อมูลสมาชิก"}
               </h2>
               <button 
