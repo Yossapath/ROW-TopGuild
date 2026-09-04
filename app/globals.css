@@ -1,0 +1,51 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700;900&display=swap');
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 207 83% 32%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 207 83% 32%;
+    --radius: 0.75rem;
+    --font-prompt: 'Prompt', sans-serif;
+  }
+}
+
+@layer base {
+  * { @apply border-border; }
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-prompt), sans-serif;
+  }
+}
+
+/* Job class colors */
+.job-lk      { color: #c13829; }
+.job-paladin { color: #e18028; }
+.job-hw      { color: #2c7eb9; }
+.job-sniper  { color: #d4a015; }
+.job-priest  { color: #25ae62; }
+.job-champ   { color: #15a083; }
+.job-sin     { color: #8b46af; }
+.job-merch   { color: #c2185d; }
+.job-gun     { color: #894517; }
+.job-druid   { color: #41b388; }

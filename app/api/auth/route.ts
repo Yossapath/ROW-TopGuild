@@ -1,0 +1,56 @@
+import { NextResponse } from "next/server";
+import { usersRef } from "@/lib/firebase-admin";
+import { signToken, authCookie, clearAuthCookie, hashPassword } from "@/lib/auth";
+import { ok, err } from "@/lib/utils";
+
+export async function POST(req: Request) {
+  try {
+    const body = await req.json();
+    const { action, username, password } = body;
+
+    // ── Logout ──
+    if (action === "logout") {
+      const res = ok({ message: "Logged out" });
+      res.cookies.set(clearAuthCookie());
+      return res;
+    }
+
+    // ── Login ──
+    if (!username || !password) return err("กรุณากรอก Username และ Password");
+
+    // ดึงข้อมูล user จาก Firestore collection: guild_system/users/accounts/{username}
+    // ปรับ path ตามโครงสร้าง Firestore เดิมของ user
+    const doc = await usersRef().collection("accounts").doc(username).get();
+    if (!doc.exists) {
+      return err("ไม่พบผู้ใช้งานนี้ในระบบ", 404);
+    }
+
+    const data = doc.data()!;
+    const hashed = await hashPassword(password);
+    
+    // ตรวจสอบ Password (รองรับทั้งแบบ plain text เดิม และ hashed)
+    if (data.password !== password && data.password !== hashed) {
+      return err("รหัสผ่านไม่ถูกต้อง", 401);
+    }
+
+    // สร้าง JWT Payload
+    const payload = {
+      username,
+      role: data.role || "member",
+      class: data.class || "",
+    };
+
+    // Sign Token & Set Cookie
+    const token = await signToken(payload);
+    const res = ok({ user: payload });
+    res.cookies.set(authCookie(token));
+
+    return res;
+  } catch (e: any) {
+    return err(e.message, 500);
+  }
+}
+
+export async function GET() {
+  return err("Method Not Allowed", 405);
+}
