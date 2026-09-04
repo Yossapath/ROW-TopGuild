@@ -1,5 +1,5 @@
 export const dynamic = "force-dynamic";
-import { rosterRef, getDb } from "@/lib/firebase-admin";
+import { rosterRef, getDb, COLL_USER } from "@/lib/firebase-admin";
 import { getCurrentUser } from "@/lib/auth";
 import { ok, err, unauthorized } from "@/lib/server-utils";
 
@@ -63,7 +63,7 @@ export async function DELETE(req: Request) {
     
     // Remove user doc
     if (discordId) {
-      await db.collection("TopGuild").doc(discordId).delete();
+      await db.collection(COLL_USER).doc(discordId).delete();
     }
 
     return ok({ message: "Deleted" });

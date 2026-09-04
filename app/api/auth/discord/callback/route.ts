@@ -1,6 +1,6 @@
 export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
-import { getDb } from "@/lib/firebase-admin";
+import { getDb, COLL_USER } from "@/lib/firebase-admin";
 import { signToken, authCookie } from "@/lib/auth";
 import type { GuildUser, AuthPayload } from "@/types";
 
@@ -52,7 +52,7 @@ export async function GET(req: Request) {
     const discordUsername = userData.username;
 
     const db = getDb();
-    const userRef = db.collection("TopGuild").doc(discordId);
+    const userRef = db.collection(COLL_USER).doc(discordId);
     const doc = await userRef.get();
 
     let isProfileComplete = false;

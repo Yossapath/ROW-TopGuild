@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getDb } from "@/lib/firebase-admin";
+import { getDb, COLL_USER, rosterRef } from "@/lib/firebase-admin";
 import { getCurrentUser, signToken, authCookie } from "@/lib/auth";
 import { ok, err } from "@/lib/server-utils";
 
@@ -16,7 +16,7 @@ export async function POST(req: Request) {
     }
 
     const db = getDb();
-    const userRef = db.collection("TopGuild").doc(user.discordId);
+    const userRef = db.collection(COLL_USER).doc(user.discordId);
     
     await userRef.update({
       gameUsername,
@@ -25,8 +25,8 @@ export async function POST(req: Request) {
     });
 
     // Add to roster
-    const rosterRef = db.collection("TopGuild").doc("roster");
-    const rosterDoc = await rosterRef.get();
+    const rosterDocRef = rosterRef();
+    const rosterDoc = await rosterDocRef.get();
     let rosterData = rosterDoc.exists ? rosterDoc.data() || {} : {};
     
     if (!rosterData[userClass]) {
@@ -48,7 +48,7 @@ export async function POST(req: Request) {
       rosterData[userClass].push(memberObj);
     }
     
-    await rosterRef.set(rosterData, { merge: true });
+    await rosterDocRef.set(rosterData, { merge: true });
 
     const payload = {
       ...user,

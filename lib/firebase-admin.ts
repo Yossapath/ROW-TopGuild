@@ -66,13 +66,17 @@ export function getDb() {
   return admin.firestore();
 }
 
-export const COLL = "TopGuild";
+export const COLL_USER = "topguild-user";
+export const COLL_SYSTEM = "topguild-system";
+export const COLL_DUN = "topguild-dun";
 
-export const rosterRef    = () => getDb().collection(COLL).doc("roster");
-export const teamsRef     = () => getDb().collection(COLL).doc("teams");
-export const dungeonsRef  = () => getDb().collection(COLL).doc("dungeons");
-export const scheduleRef  = () => getDb().collection(COLL).doc("dungeon_schedule");
-export const usersRef     = () => getDb().collection(COLL).doc("users");
-export const attendanceRef = () => getDb().collection(COLL).doc("attendance");
-export const leaveRef     = () => getDb().collection(COLL).doc("leaves");
-export const logsRef      = () => getDb().collection(COLL).doc("logs");
+// System refs
+export const rosterRef     = () => getDb().collection(COLL_SYSTEM).doc("roster");
+export const teamsRef      = () => getDb().collection(COLL_SYSTEM).doc("teams");
+export const attendanceRef = () => getDb().collection(COLL_SYSTEM).doc("attendance");
+export const leaveRef      = () => getDb().collection(COLL_SYSTEM).doc("leaves");
+export const logsRef       = () => getDb().collection(COLL_SYSTEM).doc("logs");
+
+// Dungeon refs
+export const dungeonsRef   = () => getDb().collection(COLL_DUN).doc("dungeons");
+export const scheduleRef   = () => getDb().collection(COLL_DUN).doc("dungeon_schedule");
