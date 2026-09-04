@@ -1,6 +1,6 @@
 export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
-import { usersRef } from "@/lib/firebase-admin";
+import { usersRef, getDb } from "@/lib/firebase-admin";
 import { signToken, authCookie, clearAuthCookie, hashPassword } from "@/lib/auth";
 import { ok, err } from "@/lib/server-utils";
 
@@ -19,9 +19,16 @@ export async function POST(req: Request) {
     // ── Login ──
     if (!username || !password) return err("กรุณากรอก Username และ Password");
 
-    // ดึงข้อมูล user จาก Firestore collection: guild_system/users/accounts/{username}
-    // ปรับ path ตามโครงสร้าง Firestore เดิมของ user
-    const doc = await usersRef().collection("accounts").doc(username).get();
+    // ดึงข้อมูล user จาก Firestore
+    // ลองหาจาก root collection "users" ก่อน (กรณีที่คนสร้างไม่ได้ซ้อน collection)
+    
+    let doc = await getDb().collection("users").doc(username).get();
+    
+    // ถ้าไม่เจอ ลองหาจาก path เดิม: guild_system/users/accounts/{username}
+    if (!doc.exists) {
+      doc = await usersRef().collection("accounts").doc(username).get();
+    }
+
     if (!doc.exists) {
       return err("ไม่พบผู้ใช้งานนี้ในระบบ", 404);
     }

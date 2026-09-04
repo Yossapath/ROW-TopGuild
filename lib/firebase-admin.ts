@@ -33,7 +33,7 @@ function formatPrivateKey(key: string) {
 }
 
 // Lazy initialize Firebase admin
-function getDb() {
+export function getDb() {
   if (!admin.apps.length) {
     try {
       if (process.env.FIREBASE_PRIVATE_KEY) {
