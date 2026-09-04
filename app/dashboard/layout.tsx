@@ -4,17 +4,16 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/stores/useAuthStore";
 import Sidebar from "@/components/Sidebar";
+import TopHeader from "@/components/TopHeader";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuthStore();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
 
   useEffect(() => {
     setMounted(true);
-    // TODO: In real app, we should verify the server-side cookie via an API call
-    // For simplicity in this demo, if Zustand state says not authenticated, redirect.
-    // Real protection is done in the middleware or layout fetch.
     if (!isAuthenticated) {
       router.push("/login");
     }
@@ -24,11 +23,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!isAuthenticated) return null;
 
   return (
-    <div className="flex min-h-screen bg-[#f0f6fc]">
-      <Sidebar />
-      <main className="flex-1 overflow-auto">
-        {children}
-      </main>
+    <div className="flex h-screen bg-[#f0f6fc] overflow-hidden">
+      <Sidebar isExpanded={isSidebarExpanded} />
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <TopHeader 
+          isSidebarExpanded={isSidebarExpanded} 
+          toggleSidebar={() => setIsSidebarExpanded(!isSidebarExpanded)} 
+        />
+        <main className="flex-1 overflow-auto">
+          {children}
+        </main>
+      </div>
     </div>
   );
 }

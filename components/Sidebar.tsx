@@ -1,10 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { useAuthStore } from "@/stores/useAuthStore";
-import axios from "axios";
-import { useState } from "react";
+import { usePathname } from "next/navigation";
 import { 
   LayoutDashboard, 
   Users, 
@@ -14,62 +11,38 @@ import {
   CalendarOff, 
   ScrollText, 
   UserCog,
-  LogOut,
-  ExternalLink,
-  ChevronLeft,
-  Menu
+  Settings
 } from "lucide-react";
 
 const MENUS = [
-  { name: "ภาพรวม (Dashboard)", path: "/dashboard", icon: LayoutDashboard },
+  { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
   { name: "รายชื่อสมาชิก", path: "/dashboard/roster", icon: Users },
   { name: "จัดทีม GVG", path: "/dashboard/teams", icon: Shield },
   { name: "ดันเจี้ยน", path: "/dashboard/dungeon", icon: Swords },
   { name: "เช็คชื่อวอ", path: "/dashboard/attendance", icon: CheckSquare },
   { name: "แจ้งลา", path: "/dashboard/leave", icon: CalendarOff },
   { name: "จัดการผู้ใช้", path: "/dashboard/users", icon: UserCog },
-  { name: "บันทึกระบบ", path: "/dashboard/log", icon: ScrollText },
+  { name: "ประวัติระบบ", path: "/dashboard/log", icon: ScrollText },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ isExpanded }: { isExpanded: boolean }) {
   const pathname = usePathname();
-  const router = useRouter();
-  const { user, logout } = useAuthStore();
-  const [isExpanded, setIsExpanded] = useState(true);
-
-  const handleLogout = async () => {
-    await axios.post("/api/auth", { action: "logout" });
-    logout();
-    router.push("/login");
-  };
 
   return (
     <aside 
-      className={`flex-shrink-0 bg-guild-900 text-white min-h-screen flex flex-col transition-all duration-300 relative ${
+      className={`flex-shrink-0 bg-[#065bca] text-white h-screen flex flex-col transition-all duration-300 shadow-xl border-r border-[#054bb0] z-30 ${
         isExpanded ? "w-64" : "w-20"
       }`}
     >
-      {/* Toggle Button */}
-      <button 
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="absolute -right-3 top-6 bg-guild-500 text-white rounded-full p-1 shadow-md border border-guild-900 hover:bg-guild-400 z-10"
-      >
-        {isExpanded ? <ChevronLeft size={16} /> : <Menu size={16} />}
-      </button>
-
-      <div className={`p-6 border-b border-guild-700 flex flex-col ${isExpanded ? "items-start" : "items-center"}`}>
-        <h2 className={`font-bold transition-all ${isExpanded ? "text-2xl" : "text-sm text-center"}`}>
-          {isExpanded ? "TOPGUILD" : "TG"}
-        </h2>
-        {user && isExpanded && (
-          <div className="mt-2 text-sm text-guild-300 animate-in fade-in duration-300">
-            <div>User: {user.username}</div>
-            <div>Role: <span className="uppercase text-green-400">{user.role}</span></div>
-          </div>
-        )}
+      <div className={`p-5 flex flex-col justify-center min-h-[64px] border-b border-white/10 ${isExpanded ? "items-start" : "items-center"}`}>
+        <div className="flex items-center space-x-2">
+          <Settings size={22} className="text-white flex-shrink-0" />
+          {isExpanded && <h2 className="font-extrabold text-xl tracking-tight text-white uppercase whitespace-nowrap">TOPGUILD OS</h2>}
+        </div>
+        {isExpanded && <p className="text-blue-200 text-xs mt-1 ml-8 whitespace-nowrap font-medium">Guild Management</p>}
       </div>
 
-      <nav className="flex-1 p-3 space-y-2 overflow-y-auto overflow-x-hidden">
+      <nav className="flex-1 px-3 py-6 space-y-1 overflow-y-auto overflow-x-hidden">
         {MENUS.map((menu) => {
           const isActive = pathname === menu.path;
           const Icon = menu.icon;
@@ -78,50 +51,20 @@ export default function Sidebar() {
               key={menu.path}
               href={menu.path}
               title={menu.name}
-              className={`flex items-center rounded-lg transition-colors ${
-                isExpanded ? "px-4 py-3 space-x-3" : "px-0 py-3 justify-center"
+              className={`flex items-center transition-all ${
+                isExpanded ? "px-4 py-3 space-x-3 rounded-lg" : "px-0 py-3 justify-center rounded-lg"
               } ${
                 isActive
-                  ? "bg-guild-600 text-white font-bold"
-                  : "text-guild-200 hover:bg-guild-800 hover:text-white"
+                  ? "bg-[#eff6ff] text-[#065bca] font-bold shadow-sm"
+                  : "text-blue-100 hover:bg-white/10 hover:text-white font-medium"
               }`}
             >
-              <Icon size={isExpanded ? 20 : 22} className="flex-shrink-0" />
+              <Icon size={isExpanded ? 20 : 22} className="flex-shrink-0" strokeWidth={isActive ? 2.5 : 2} />
               {isExpanded && <span className="whitespace-nowrap">{menu.name}</span>}
             </Link>
           );
         })}
       </nav>
-
-      <div className={`p-4 border-t border-guild-700 flex flex-col gap-2 ${isExpanded ? "" : "items-center"}`}>
-        <Link 
-          href="/booking" 
-          target="_blank" 
-          title="หน้าจองคิวสาธารณะ"
-          className={`flex items-center justify-center rounded border border-guild-500 text-guild-300 hover:bg-guild-800 transition-colors ${
-            isExpanded ? "px-4 py-2 space-x-2" : "p-2"
-          }`}
-        >
-          {isExpanded ? (
-            <>
-              <span className="text-sm">หน้าจองคิวสาธารณะ</span>
-              <ExternalLink size={16} />
-            </>
-          ) : (
-            <ExternalLink size={20} />
-          )}
-        </Link>
-        <button
-          onClick={handleLogout}
-          title="ออกจากระบบ"
-          className={`flex items-center justify-center rounded bg-red-600 text-white hover:bg-red-700 transition-colors ${
-            isExpanded ? "px-4 py-2 space-x-2" : "p-2"
-          }`}
-        >
-          <LogOut size={isExpanded ? 18 : 20} />
-          {isExpanded && <span>ออกจากระบบ</span>}
-        </button>
-      </div>
     </aside>
   );
 }
