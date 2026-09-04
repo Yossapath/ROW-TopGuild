@@ -289,10 +289,10 @@ export default function RosterPage() {
                     {members.map((m: any, idx: number) => (
                       <li key={m.name || idx} className="grid grid-cols-12 gap-2 px-4 py-3.5 items-center hover:bg-slate-50 transition-colors text-[13px] group">
                         <div className="col-span-2 text-slate-500 text-left">{idx + 1}</div>
-                        <div className="col-span-4 text-left truncate text-slate-800 font-medium">
+                        <div className="col-span-4 text-left truncate text-slate-800 font-semibold text-[13.5px]">
                           {m.name || "Unknown"}
                         </div>
-                        <div className="col-span-3 text-center font-bold tracking-tight" style={{ color: color }}>
+                        <div className="col-span-3 text-center font-medium tracking-tight" style={{ color: color }}>
                           {m.power != null ? Number(m.power).toLocaleString('en-US') : '-'}
                         </div>
                         <div className="col-span-3 flex justify-center opacity-90 group-hover:opacity-100 transition-opacity">
