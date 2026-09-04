@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { teamsRef } from "@/lib/firebase-admin";
 import { getCurrentUser } from "@/lib/auth";
 import { ok, err, unauthorized } from "@/lib/utils";
@@ -30,3 +31,4 @@ export async function PUT(req: Request) {
     return err(e.message, 500);
   }
 }
+

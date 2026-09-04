@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { usersRef } from "@/lib/firebase-admin";
 import { signToken, authCookie, clearAuthCookie, hashPassword } from "@/lib/auth";
@@ -54,3 +55,4 @@ export async function POST(req: Request) {
 export async function GET() {
   return err("Method Not Allowed", 405);
 }
+

@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { leaveRef } from "@/lib/firebase-admin";
 import { getCurrentUser } from "@/lib/auth";
 import { ok, err, unauthorized } from "@/lib/utils";
@@ -43,3 +44,4 @@ export async function POST(req: Request) {
     return err(e.message, 500);
   }
 }
+
