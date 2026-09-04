@@ -149,16 +149,16 @@ export default function RosterPage() {
       </div>
 
       {/* Toolbar */}
-      <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
+      <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-theme-panel p-4 rounded-2xl shadow-sm border border-theme-border">
         <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
           <div className="relative w-full sm:w-64">
             <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
-              <Search className="h-4 w-4 text-slate-400" />
+              <Search className="h-4 w-4 text-theme-textMuted" />
             </div>
             <input
               type="text"
               placeholder="ค้นหาชื่อสมาชิก..."
-              className="block w-full rounded-full border border-slate-200 bg-slate-50 py-2.5 pl-11 pr-4 text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#1e76b9] sm:text-sm font-medium transition-colors"
+              className="block w-full rounded-full border border-theme-border bg-theme-bg py-2.5 pl-11 pr-4 text-slate-900 focus:bg-theme-panel focus:ring-2 focus:ring-[#1e76b9] sm:text-sm font-medium transition-colors"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -172,7 +172,7 @@ export default function RosterPage() {
         </div>
         <button 
           onClick={() => alert("ระบบ Import Excel กำลังพัฒนา")}
-          className="w-full md:w-auto rounded-full bg-white border border-[#1e76b9] px-6 py-2.5 text-sm font-bold text-[#1e76b9] hover:bg-blue-50 transition-colors shadow-sm"
+          className="w-full md:w-auto rounded-full bg-theme-panel border border-[#1e76b9] px-6 py-2.5 text-sm font-bold text-[#1e76b9] hover:bg-blue-50 transition-colors shadow-sm"
         >
           เพิ่มกลุ่ม (Excel)
         </button>
@@ -186,13 +186,13 @@ export default function RosterPage() {
           className={`rounded-xl p-3.5 flex items-center justify-between shadow-sm border transition-all ${
             selectedJob === "ทั้งหมด" 
               ? "bg-[#0b3d63] border-[#0b3d63] text-white ring-2 ring-offset-2 ring-[#0b3d63]" 
-              : "bg-white border-slate-200 hover:border-[#0b3d63] hover:shadow-md"
+              : "bg-theme-panel border-theme-border hover:border-[#0b3d63] hover:shadow-md"
           }`}
         >
           <div className="flex items-center space-x-2 font-bold text-sm lg:text-base">
             <span>ทั้งหมด</span>
           </div>
-          <div className={`px-3 py-1 rounded-lg text-sm font-bold ${selectedJob === "ทั้งหมด" ? "bg-white/20" : "bg-slate-100 text-slate-700"}`}>
+          <div className={`px-3 py-1 rounded-lg text-sm font-bold ${selectedJob === "ทั้งหมด" ? "bg-theme-panel/20" : "bg-theme-divider text-theme-text"}`}>
             {totalMembers}
           </div>
         </button>
@@ -207,7 +207,7 @@ export default function RosterPage() {
             <button 
               key={`pill-${job}`} 
               onClick={() => setSelectedJob(isSelected ? "ทั้งหมด" : job)}
-              className="bg-white rounded-xl p-3.5 flex items-center justify-between shadow-sm border-y border-r border-slate-200 transition-all hover:shadow-md cursor-pointer text-left"
+              className="bg-theme-panel rounded-xl p-3.5 flex items-center justify-between shadow-sm border-y border-r border-theme-border transition-all hover:shadow-md cursor-pointer text-left"
               style={{ 
                 borderLeft: `6px solid ${color}`,
                 boxShadow: isSelected ? `0 0 0 2px ${hexToRgba(color, 0.3)}` : undefined,
@@ -250,12 +250,12 @@ export default function RosterPage() {
           return (
             <div 
               key={`col-${job}`} 
-              className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col transition-all hover:shadow-md"
+              className="bg-theme-panel rounded-2xl shadow-sm border border-theme-border overflow-hidden flex flex-col transition-all hover:shadow-md"
               style={{ borderTop: `4px solid ${color}` }}
             >
               {/* Header - Styled like old repo */}
               <div 
-                className="px-5 py-4 flex items-center justify-between border-b border-slate-100"
+                className="px-5 py-4 flex items-center justify-between border-b border-theme-border/50"
                 style={{ backgroundColor: hexToRgba(color, 0.08) }}
               >
                 <div className="flex items-center space-x-2 font-bold text-lg" style={{ color: color }}>
@@ -271,7 +271,7 @@ export default function RosterPage() {
               </div>
 
               {/* Table Column Headers */}
-              <div className="grid grid-cols-12 gap-2 px-4 py-3 bg-white border-b border-slate-100 text-[11px] font-bold text-slate-500 text-center">
+              <div className="grid grid-cols-12 gap-2 px-4 py-3 bg-theme-panel border-b border-theme-border/50 text-[11px] font-bold text-theme-textSecondary text-center">
                 <div className="col-span-2 text-left">#</div>
                 <div className="col-span-4 text-left">ชื่อ</div>
                 <div className="col-span-3">ค่าพลัง</div>
@@ -279,17 +279,17 @@ export default function RosterPage() {
               </div>
 
               {/* List */}
-              <div className="flex-1 p-0 bg-white">
+              <div className="flex-1 p-0 bg-theme-panel">
                 {members.length === 0 ? (
-                  <div className="p-8 text-center text-sm text-slate-400 font-medium bg-slate-50/50">
+                  <div className="p-8 text-center text-sm text-theme-textMuted font-medium bg-theme-bg/50">
                     ไม่มีข้อมูลสมาชิก
                   </div>
                 ) : (
-                  <ul className="divide-y divide-slate-100/60">
+                  <ul className="divide-y divide-theme-divider/60">
                     {members.map((m: any, idx: number) => (
-                      <li key={m.name || idx} className="grid grid-cols-12 gap-2 px-4 py-3.5 items-center hover:bg-slate-50 transition-colors text-[13px] group">
-                        <div className="col-span-2 text-slate-500 text-left">{idx + 1}</div>
-                        <div className="col-span-4 text-left truncate text-slate-800 font-semibold text-[13.5px]">
+                      <li key={m.name || idx} className="grid grid-cols-12 gap-2 px-4 py-3.5 items-center hover:bg-theme-bg transition-colors text-[13px] group">
+                        <div className="col-span-2 text-theme-textSecondary text-left">{idx + 1}</div>
+                        <div className="col-span-4 text-left truncate text-theme-text font-semibold text-[13.5px]">
                           {m.name || "Unknown"}
                         </div>
                         <div className="col-span-3 text-center font-medium tracking-tight" style={{ color: color }}>
@@ -298,7 +298,7 @@ export default function RosterPage() {
                         <div className="col-span-3 flex justify-center opacity-90 group-hover:opacity-100 transition-opacity">
                           <button 
                             onClick={() => openEditModal(m, job)}
-                            className="px-3 py-1.5 bg-white border border-blue-200 rounded-md text-[11px] font-bold text-[#0b3d63] shadow-sm hover:bg-blue-50 transition-colors"
+                            className="px-3 py-1.5 bg-theme-panel border border-blue-200 rounded-md text-[11px] font-bold text-[#0b3d63] shadow-sm hover:bg-blue-50 transition-colors"
                           >
                             แก้ไข
                           </button>
@@ -316,15 +316,15 @@ export default function RosterPage() {
       {/* Edit/Add Modal */}
       {(editingMember || isAddingNew) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[420px] overflow-hidden flex flex-col font-prompt animate-in fade-in zoom-in duration-200">
+          <div className="bg-theme-panel rounded-2xl shadow-2xl w-full max-w-[420px] overflow-hidden flex flex-col font-prompt animate-in fade-in zoom-in duration-200">
             {/* Header */}
-            <div className="px-6 py-4 flex items-center justify-between border-b border-slate-100">
+            <div className="px-6 py-4 flex items-center justify-between border-b border-theme-border/50">
               <h2 className="text-xl font-bold text-[#0b3d63]">
                 {isAddingNew ? "เพิ่มสมาชิกใหม่" : "แก้ไขข้อมูลสมาชิก"}
               </h2>
               <button 
                 onClick={() => { setEditingMember(null); setIsAddingNew(false); }}
-                className="text-slate-400 hover:bg-slate-100 rounded-full p-1.5 transition-colors"
+                className="text-theme-textMuted hover:bg-theme-divider rounded-full p-1.5 transition-colors"
               >
                 <X size={20} />
               </button>
@@ -338,7 +338,7 @@ export default function RosterPage() {
                   type="text" 
                   value={editName}
                   onChange={e => setEditName(e.target.value)}
-                  className="w-full border border-blue-100 rounded-xl px-4 py-3 text-slate-800 font-bold focus:ring-2 focus:ring-[#1e76b9] focus:border-[#1e76b9] bg-blue-50/40 transition-all outline-none"
+                  className="w-full border border-blue-100 rounded-xl px-4 py-3 text-theme-text font-bold focus:ring-2 focus:ring-[#1e76b9] focus:border-[#1e76b9] bg-blue-50/40 transition-all outline-none"
                   placeholder="กรอกชื่อตัวละคร..."
                 />
               </div>
@@ -382,7 +382,7 @@ export default function RosterPage() {
             </div>
 
             {/* Footer */}
-            <div className="px-6 py-4 bg-slate-50 flex items-center justify-between border-t border-slate-100">
+            <div className="px-6 py-4 bg-theme-bg flex items-center justify-between border-t border-theme-border/50">
               {!isAddingNew ? (
                 <button 
                   onClick={handleDelete}
@@ -395,7 +395,7 @@ export default function RosterPage() {
               <div className="flex items-center space-x-3">
                 <button 
                   onClick={() => { setEditingMember(null); setIsAddingNew(false); }}
-                  className="bg-white border border-slate-200 text-[#0b3d63] px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-slate-50 transition-all shadow-sm"
+                  className="bg-theme-panel border border-theme-border text-[#0b3d63] px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-theme-bg transition-all shadow-sm"
                 >
                   ยกเลิก
                 </button>

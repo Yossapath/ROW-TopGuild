@@ -11,6 +11,27 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        theme: {
+          bg: "var(--theme-bg)",
+          sidebar: "var(--theme-sidebar)",
+          sidebarActive: "var(--theme-sidebar-active)",
+          sidebarTextActive: "var(--theme-sidebar-text-active)",
+          sidebarTextInactive: "var(--theme-sidebar-text)",
+          panel: "var(--theme-panel)",
+          input: "var(--theme-input)",
+          border: "var(--theme-border)",
+          borderHover: "var(--theme-border-hover)",
+          divider: "var(--theme-divider)",
+          text: "var(--theme-text)",
+          textSecondary: "var(--theme-text-secondary)",
+          textMuted: "var(--theme-text-muted)",
+          primary: "var(--theme-primary)",
+          primaryHover: "var(--theme-primary-hover)",
+          success: "var(--theme-success)",
+          warning: "var(--theme-warning)",
+          danger: "var(--theme-danger)",
+          purple: "var(--theme-purple)",
+        },
         // Guild Blue theme (สีเดิมของ Topguild)
         guild: {
           50:  "#eff6ff",

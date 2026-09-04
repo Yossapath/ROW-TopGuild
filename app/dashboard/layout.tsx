@@ -23,7 +23,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!isAuthenticated) return null;
 
   return (
-    <div className="flex h-screen bg-[#f0f6fc] overflow-hidden">
+    <div className="flex h-screen bg-theme-bg text-theme-text overflow-hidden transition-colors duration-300">
       <Sidebar isExpanded={isSidebarExpanded} />
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <TopHeader 

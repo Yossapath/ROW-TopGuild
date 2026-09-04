@@ -50,3 +50,48 @@
 .job-merch   { color: #c2185d; }
 .job-gun     { color: #894517; }
 .job-druid   { color: #41b388; }
+
+@layer base {
+  :root {
+    --theme-bg: #f0f6fc;
+    --theme-sidebar: #065bca;
+    --theme-sidebar-active: #eff6ff;
+    --theme-sidebar-text-active: #065bca;
+    --theme-sidebar-text: #cce0ff;
+    --theme-panel: #ffffff;
+    --theme-input: #ffffff;
+    --theme-border: #e2e8f0;
+    --theme-border-hover: #cbd5e1;
+    --theme-divider: #f1f5f9;
+    --theme-text: #1e293b;
+    --theme-text-secondary: #64748b;
+    --theme-text-muted: #94a3b8;
+    --theme-primary: #065bca;
+    --theme-primary-hover: #054bb0;
+    --theme-success: #10b981;
+    --theme-warning: #f59e0b;
+    --theme-danger: #ef4444;
+    --theme-purple: #8b5cf6;
+  }
+  .dark {
+    --theme-bg: #171D28;
+    --theme-sidebar: #181E29;
+    --theme-sidebar-active: #242A37;
+    --theme-sidebar-text-active: #4F8CFF;
+    --theme-sidebar-text: #9AA6B8;
+    --theme-panel: #1C1F27;
+    --theme-input: #242A37;
+    --theme-border: #303746;
+    --theme-border-hover: #414B5E;
+    --theme-divider: #293140;
+    --theme-text: #E8EDF5;
+    --theme-text-secondary: #9AA6B8;
+    --theme-text-muted: #6F7B8D;
+    --theme-primary: #4F8CFF;
+    --theme-primary-hover: #6B9FFF;
+    --theme-success: #35C98A;
+    --theme-warning: #F5B83D;
+    --theme-danger: #F05D6C;
+    --theme-purple: #9B6DFF;
+  }
+}

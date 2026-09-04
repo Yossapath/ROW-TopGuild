@@ -243,7 +243,7 @@ export default function TeamsPage() {
   };
 
   if (!isMounted || isLoading) {
-    return <div className="flex h-screen items-center justify-center font-bold text-slate-500"><Loader2 className="animate-spin mr-2" /> กำลังโหลดข้อมูล...</div>;
+    return <div className="flex h-screen items-center justify-center font-bold text-theme-textSecondary"><Loader2 className="animate-spin mr-2" /> กำลังโหลดข้อมูล...</div>;
   }
 
   if (!data) return null;
@@ -251,21 +251,21 @@ export default function TeamsPage() {
   return (
     <div className="space-y-6 bg-[#f0f6fc] min-h-screen p-4 lg:py-6 lg:px-8 xl:px-12 2xl:px-20 relative" style={{ zoom: 0.85 }}>
       {/* Top Banner */}
-      <div className="bg-white rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between shadow-sm border border-slate-200 sticky top-4 z-10">
+      <div className="bg-theme-panel rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between shadow-sm border border-theme-border sticky top-4 z-10">
         <div className="flex items-center space-x-4 mb-4 md:mb-0">
           <div className="bg-[#065bca] p-3 rounded-xl text-white shadow-md">
             <Shield size={32} />
           </div>
           <div>
             <h1 className="text-2xl md:text-3xl font-bold tracking-wide text-[#0b3d63]">จัดทีม GVG</h1>
-            <p className="text-slate-500 text-sm md:text-base font-medium mt-1">ลากและวางเพื่อจัดทีม หรือใช้ออโต้แมตช์</p>
+            <p className="text-theme-textSecondary text-sm md:text-base font-medium mt-1">ลากและวางเพื่อจัดทีม หรือใช้ออโต้แมตช์</p>
           </div>
         </div>
         
         <div className="flex gap-3">
           <button 
             onClick={handleAutoMatch}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white text-[#065bca] rounded-lg font-bold hover:bg-[#eff6ff] transition-colors shadow-sm border border-[#065bca]"
+            className="flex items-center gap-2 px-4 py-2.5 bg-theme-panel text-[#065bca] rounded-lg font-bold hover:bg-[#eff6ff] transition-colors shadow-sm border border-[#065bca]"
           >
             <Wand2 size={18} />
             <span>ออโต้จัดทีม (Auto-Match)</span>
@@ -286,12 +286,12 @@ export default function TeamsPage() {
           
           {/* Unassigned Pool */}
           <div className="lg:w-1/4 xl:w-1/5 flex-shrink-0">
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 h-[calc(100vh-180px)] flex flex-col">
-              <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50 rounded-t-2xl">
-                <h2 className="font-bold text-slate-700 flex items-center gap-2">
+            <div className="bg-theme-panel rounded-2xl shadow-sm border border-theme-border h-[calc(100vh-180px)] flex flex-col">
+              <div className="p-4 border-b border-theme-border/50 flex items-center justify-between bg-theme-bg rounded-t-2xl">
+                <h2 className="font-bold text-theme-text flex items-center gap-2">
                   <Users size={18} /> ยังไม่ได้จัดทีม
                 </h2>
-                <span className="bg-slate-200 text-slate-700 text-xs font-bold px-2 py-1 rounded-full">
+                <span className="bg-theme-divider text-theme-text text-xs font-bold px-2 py-1 rounded-full">
                   {data.columns["unassigned"].memberIds.length}
                 </span>
               </div>
@@ -301,7 +301,7 @@ export default function TeamsPage() {
                   <div 
                     ref={provided.innerRef} 
                     {...provided.droppableProps}
-                    className={`flex-1 overflow-y-auto p-3 space-y-2 transition-colors ${snapshot.isDraggingOver ? 'bg-slate-50' : 'bg-white'} rounded-b-2xl`}
+                    className={`flex-1 overflow-y-auto p-3 space-y-2 transition-colors ${snapshot.isDraggingOver ? 'bg-theme-bg' : 'bg-theme-panel'} rounded-b-2xl`}
                   >
                     {data.columns["unassigned"].memberIds.map((id, index) => {
                       const m = data.members[id];
@@ -321,8 +321,8 @@ export default function TeamsPage() {
             <div>
               <div className="flex items-center gap-3 mb-4">
                 <h2 className="text-xl font-extrabold text-[#065bca] uppercase tracking-wide">สนามหลัก (Main Field)</h2>
-                <div className="h-px bg-slate-200 flex-1"></div>
-                <span className="text-sm font-bold text-slate-500 bg-white px-3 py-1 rounded-full border border-slate-200 shadow-sm">
+                <div className="h-px bg-theme-divider flex-1"></div>
+                <span className="text-sm font-bold text-theme-textSecondary bg-theme-panel px-3 py-1 rounded-full border border-theme-border shadow-sm">
                   {data.mainOrder.reduce((acc, colId) => acc + data.columns[colId].memberIds.length, 0)} คน / {data.mainOrder.length} ทีม
                 </span>
               </div>
@@ -336,9 +336,9 @@ export default function TeamsPage() {
             {/* Sub Field */}
             <div>
               <div className="flex items-center gap-3 mb-4">
-                <h2 className="text-xl font-extrabold text-orange-600 uppercase tracking-wide">สนามรอง (Sub Field)</h2>
-                <div className="h-px bg-slate-200 flex-1"></div>
-                <span className="text-sm font-bold text-slate-500 bg-white px-3 py-1 rounded-full border border-slate-200 shadow-sm">
+                <h2 className="text-xl font-extrabold text-theme-warning uppercase tracking-wide">สนามรอง (Sub Field)</h2>
+                <div className="h-px bg-theme-divider flex-1"></div>
+                <span className="text-sm font-bold text-theme-textSecondary bg-theme-panel px-3 py-1 rounded-full border border-theme-border shadow-sm">
                   {data.subOrder.reduce((acc, colId) => acc + data.columns[colId].memberIds.length, 0)} คน / {data.subOrder.length} ทีม
                 </span>
               </div>
@@ -363,10 +363,10 @@ function TeamColumn({ column, members, index }: { column: Column; members: Recor
   const isMain = column.type === "main";
 
   return (
-    <div className={`bg-white rounded-xl shadow-sm border ${isMain ? 'border-blue-100' : 'border-orange-100'} flex flex-col overflow-hidden`}>
-      <div className={`p-2.5 flex items-center justify-between border-b ${isMain ? 'bg-blue-50/50 border-blue-100' : 'bg-orange-50/50 border-orange-100'}`}>
-        <h3 className={`font-bold text-sm ${isMain ? 'text-[#065bca]' : 'text-orange-600'}`}>{column.title}</h3>
-        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isFull ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
+    <div className={`bg-theme-panel rounded-xl shadow-sm border ${isMain ? 'border-theme-primary/20' : 'border-theme-warning/20'} flex flex-col overflow-hidden`}>
+      <div className={`p-2.5 flex items-center justify-between border-b ${isMain ? 'bg-theme-primary/5 border-theme-primary/20' : 'bg-theme-warning/5 border-theme-warning/20'}`}>
+        <h3 className={`font-bold text-sm ${isMain ? 'text-[#065bca]' : 'text-theme-warning'}`}>{column.title}</h3>
+        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isFull ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-theme-textSecondary'}`}>
           {column.memberIds.length}/5
         </span>
       </div>
@@ -376,7 +376,7 @@ function TeamColumn({ column, members, index }: { column: Column; members: Recor
           <div 
             ref={provided.innerRef} 
             {...provided.droppableProps}
-            className={`p-2 min-h-[220px] transition-colors space-y-1.5 ${snapshot.isDraggingOver ? (isFull ? 'bg-red-50' : 'bg-slate-50') : 'bg-white'}`}
+            className={`p-2 min-h-[220px] transition-colors space-y-1.5 ${snapshot.isDraggingOver ? (isFull ? 'bg-red-50' : 'bg-theme-bg') : 'bg-theme-panel'}`}
           >
             {column.memberIds.map((id, idx) => {
               const m = members[id];
@@ -386,7 +386,7 @@ function TeamColumn({ column, members, index }: { column: Column; members: Recor
             
             {/* Empty Slots Fillers for visual guide */}
             {column.memberIds.length < 5 && Array.from({ length: 5 - column.memberIds.length }).map((_, i) => (
-              <div key={`empty-${i}`} className="h-10 border border-dashed border-slate-200 rounded-lg flex items-center justify-center bg-slate-50/50">
+              <div key={`empty-${i}`} className="h-10 border border-dashed border-theme-border rounded-lg flex items-center justify-center bg-theme-bg/50">
                 <span className="text-[10px] text-slate-300 font-bold uppercase tracking-widest">Empty Slot</span>
               </div>
             ))}
@@ -414,7 +414,7 @@ function MemberCard({ member, index, inTeam = false }: { member: Member; index: 
           {...provided.draggableProps}
           {...provided.dragHandleProps}
           className={`flex items-center justify-between p-2 rounded-lg border shadow-sm select-none transition-shadow ${
-            snapshot.isDragging ? 'shadow-lg border-blue-300 z-50 ring-2 ring-blue-500/20' : 'border-slate-200 hover:border-slate-300'
+            snapshot.isDragging ? 'shadow-lg border-theme-primary z-50 ring-2 ring-theme-primary/20' : 'border-theme-border hover:border-theme-borderHover'
           }`}
           style={{
             ...provided.draggableProps.style,
@@ -424,7 +424,7 @@ function MemberCard({ member, index, inTeam = false }: { member: Member; index: 
           }}
         >
           <div className="flex flex-col truncate pr-2 min-w-0">
-            <span className="text-[12px] font-bold text-slate-800 truncate">{member.name}</span>
+            <span className="text-[12px] font-bold text-theme-text truncate">{member.name}</span>
             <span className="text-[9px] font-bold truncate opacity-80" style={{ color }}>{member.job}</span>
           </div>
           <div className="text-[11px] font-bold tabular-nums tracking-tight flex-shrink-0" style={{ color }}>

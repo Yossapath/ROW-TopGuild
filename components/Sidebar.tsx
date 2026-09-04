@@ -30,16 +30,16 @@ export default function Sidebar({ isExpanded }: { isExpanded: boolean }) {
 
   return (
     <aside 
-      className={`flex-shrink-0 bg-[#065bca] text-white h-screen flex flex-col transition-all duration-300 shadow-xl border-r border-[#054bb0] z-30 ${
+      className={`flex-shrink-0 bg-theme-sidebar h-screen flex flex-col transition-all duration-300 shadow-xl border-r border-theme-border z-30 ${
         isExpanded ? "w-64" : "w-20"
       }`}
     >
-      <div className={`p-5 flex flex-col justify-center min-h-[64px] border-b border-white/10 ${isExpanded ? "items-start" : "items-center"}`}>
+      <div className={`p-5 flex flex-col justify-center min-h-[64px] border-b border-theme-divider/20 ${isExpanded ? "items-start" : "items-center"}`}>
         <div className="flex items-center space-x-2">
-          <Settings size={22} className="text-white flex-shrink-0" />
-          {isExpanded && <h2 className="font-extrabold text-xl tracking-tight text-white uppercase whitespace-nowrap">TOPGUILD OS</h2>}
+          <Settings size={22} className="text-theme-sidebarTextInactive flex-shrink-0" />
+          {isExpanded && <h2 className="font-extrabold text-xl tracking-tight text-white dark:text-theme-text uppercase whitespace-nowrap">TOPGUILD OS</h2>}
         </div>
-        {isExpanded && <p className="text-blue-200 text-xs mt-1 ml-8 whitespace-nowrap font-medium">Guild Management</p>}
+        {isExpanded && <p className="text-theme-sidebarTextInactive opacity-80 text-xs mt-1 ml-8 whitespace-nowrap font-medium">Guild Management</p>}
       </div>
 
       <nav className="flex-1 px-3 py-6 space-y-1 overflow-y-auto overflow-x-hidden">
@@ -55,8 +55,8 @@ export default function Sidebar({ isExpanded }: { isExpanded: boolean }) {
                 isExpanded ? "px-4 py-3 space-x-3 rounded-lg" : "px-0 py-3 justify-center rounded-lg"
               } ${
                 isActive
-                  ? "bg-[#eff6ff] text-[#065bca] font-bold shadow-sm"
-                  : "text-blue-100 hover:bg-white/10 hover:text-white font-medium"
+                  ? "bg-theme-sidebarActive text-theme-sidebarTextActive font-bold shadow-sm"
+                  : "text-theme-sidebarTextInactive hover:bg-theme-sidebarActive/20 hover:text-white dark:hover:text-theme-text font-medium"
               }`}
             >
               <Icon size={isExpanded ? 20 : 22} className="flex-shrink-0" strokeWidth={isActive ? 2.5 : 2} />
