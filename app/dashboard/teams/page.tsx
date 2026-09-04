@@ -27,6 +27,8 @@ export default function TeamsPage() {
   const [activeTab, setActiveTab] = useState<"main" | "sub">("main");
   const [unassignedFilterJob, setUnassignedFilterJob] = useState<string>("All");
   const [isUnassignedCollapsed, setIsUnassignedCollapsed] = useState(false);
+  const [isAutoModalOpen, setIsAutoModalOpen] = useState(false);
+  const [autoModalText, setAutoModalText] = useState("");
 
   useEffect(() => {
     setIsMounted(true);
@@ -96,23 +98,38 @@ export default function TeamsPage() {
     }
   };
 
-  const handleAutoMatch = () => {
+  const handlePullTop60 = () => {
     if (!data) return;
-    if (!confirm("การจัดทีมอัตโนมัติจะลบการจัดทีมปัจจุบันที่ไม่ได้ล็อกไว้ และจัดใหม่ตามค่าพลัง (เรียงจากมากไปน้อย)")) return;
+    const allMembers = Object.values(data.members).sort((a, b) => b.power - a.power);
+    
+    // Rule: We need 12 Priests.
+    const priests = allMembers.filter(m => m.job === "Priest");
+    const nonPriests = allMembers.filter(m => m.job !== "Priest");
+    
+    // Take top 12 priests, top 48 non-priests
+    const selectedPriests = priests.slice(0, 12);
+    const selectedNonPriests = nonPriests.slice(0, 48);
+    
+    const combined = [...selectedPriests, ...selectedNonPriests].sort((a, b) => b.power - a.power);
+    
+    setAutoModalText(combined.map(m => m.name).join('\n'));
+  };
+
+  const handleProcessAutoMatch = () => {
+    if (!data) return;
+    const names = autoModalText.split('\n').map(n => n.trim()).filter(n => n);
+    
+    if (names.length !== 60) {
+      if (!confirm(`คุณระบุรายชื่อมา ${names.length} คน (ต้องการ 60 คน) ต้องการดำเนินการต่อหรือไม่? ระบบจะพยายามจัดให้ดีที่สุด`)) return;
+    }
 
     const newData = { ...data };
-    
-    // Find locked teams and their members so we don't reassign them
     const lockedMemberIds = new Set<string>();
     Object.values(newData.columns).forEach(col => {
       if (col.locked && col.type !== "unassigned") {
         col.memberIds.forEach(id => lockedMemberIds.add(id));
       }
     });
-
-    const availableMembers = Object.values(newData.members)
-      .filter(m => !lockedMemberIds.has(m.id))
-      .sort((a, b) => b.power - a.power);
 
     // Clear unlocked columns
     Object.keys(newData.columns).forEach(colId => {
@@ -121,31 +138,67 @@ export default function TeamsPage() {
       }
     });
 
-    let currentMemberIndex = 0;
+    // Main Field Priority List
+    const mainFieldMembers = names
+      .map(name => newData.members[name])
+      .filter(m => m && !lockedMemberIds.has(m.id))
+      .sort((a, b) => b.power - a.power);
 
-    const fillColumn = (colId: string) => {
-      if (newData.columns[colId].locked) return; // Skip locked
-      while (newData.columns[colId].memberIds.length < 5 && currentMemberIndex < availableMembers.length) {
-        newData.columns[colId].memberIds.push(availableMembers[currentMemberIndex].id);
-        currentMemberIndex++;
+    // Get remaining for Sub Field
+    const mainFieldIdsSet = new Set(mainFieldMembers.map(m => m.id));
+    const subFieldMembers = Object.values(newData.members)
+      .filter(m => !mainFieldIdsSet.has(m.id) && !lockedMemberIds.has(m.id))
+      .sort((a, b) => b.power - a.power);
+
+    // Distribute Main Field: 1 Priest per team if possible, then distribute others
+    const mainPriests = mainFieldMembers.filter(m => m.job === "Priest");
+    const mainOthers = mainFieldMembers.filter(m => m.job !== "Priest");
+    
+    const mainCols = [...newData.mainZone1Order, ...newData.mainZone2Order];
+    
+    // Place 1 priest in each unlocked team
+    let pIdx = 0;
+    mainCols.forEach(colId => {
+      if (newData.columns[colId].locked) return;
+      if (pIdx < mainPriests.length && newData.columns[colId].memberIds.length < 5) {
+        newData.columns[colId].memberIds.push(mainPriests[pIdx].id);
+        pIdx++;
+      }
+    });
+    
+    // If leftover priests, add them to others pool
+    const remainingToPlace = [...mainPriests.slice(pIdx), ...mainOthers].sort((a, b) => b.power - a.power);
+    
+    let mIdx = 0;
+    mainCols.forEach(colId => {
+      if (newData.columns[colId].locked) return;
+      while (newData.columns[colId].memberIds.length < 5 && mIdx < remainingToPlace.length) {
+        newData.columns[colId].memberIds.push(remainingToPlace[mIdx].id);
+        mIdx++;
+      }
+    });
+
+    // Distribute Sub Field
+    let subTeamCount = 1;
+    newData.subOrder = [];
+    let sIdx = 0;
+    
+    const fillSubColumn = (colId: string) => {
+      if (newData.columns[colId].locked) return;
+      while (newData.columns[colId].memberIds.length < 5 && sIdx < subFieldMembers.length) {
+        newData.columns[colId].memberIds.push(subFieldMembers[sIdx].id);
+        sIdx++;
       }
     };
 
-    // Fill Main teams (1-12)
-    [...newData.mainZone1Order, ...newData.mainZone2Order].forEach(colId => fillColumn(colId));
-
-    // Fill Sub Teams dynamically
-    let subTeamCount = 1;
-    newData.subOrder = [];
-    while (currentMemberIndex < availableMembers.length) {
+    while (sIdx < subFieldMembers.length) {
       const colId = `sub-${subTeamCount}`;
       if (!newData.columns[colId]) newData.columns[colId] = { id: colId, title: `ทีม ${subTeamCount}`, memberIds: [], type: "sub", locked: false };
       newData.subOrder.push(colId);
-      fillColumn(colId);
+      fillSubColumn(colId);
       subTeamCount++;
     }
 
-    // Ensure at least 5 empty sub teams for UI padding if we ran out of members
     while (newData.subOrder.length < 5) {
       const colId = `sub-${subTeamCount}`;
       if (!newData.columns[colId]) newData.columns[colId] = { id: colId, title: `ทีม ${subTeamCount}`, memberIds: [], type: "sub", locked: false };
@@ -153,9 +206,21 @@ export default function TeamsPage() {
       subTeamCount++;
     }
 
-    // Any leftovers
-    newData.columns["unassigned"].memberIds = []; 
+    newData.columns["unassigned"].memberIds = [];
+    setData(newData);
+    setIsAutoModalOpen(false);
+  };
 
+  const handleClearAll = () => {
+    if (!data) return;
+    if (!confirm('ลบทุกคนออกจากทุกทีม (ยกเว้นทีมที่ล็อกไว้) ไปยังยังไม่ได้จัดทีม แน่ใจหรือไม่?')) return;
+    const newData = { ...data };
+    Object.keys(newData.columns).forEach(colId => {
+      if (!newData.columns[colId].locked && colId !== 'unassigned') {
+        newData.columns['unassigned'].memberIds.push(...newData.columns[colId].memberIds);
+        newData.columns[colId].memberIds = [];
+      }
+    });
     setData(newData);
   };
 
@@ -273,8 +338,51 @@ export default function TeamsPage() {
     return data.members[id]?.job === unassignedFilterJob;
   });
 
+  // Modal for Auto Match
+  const AutoMatchModal = () => {
+    if (!isAutoModalOpen) return null;
+    const names = autoModalText.split('\n').map(n => n.trim()).filter(n => n);
+    return (
+      <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
+        <div className="bg-theme-panel rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col border border-theme-border animate-in zoom-in-95 duration-200">
+          <div className="p-4 border-b border-theme-border flex items-center justify-between">
+            <h3 className="font-bold text-lg text-theme-text">กำหนดรายชื่อสนามหลัก (60 คน) เพื่อจัดทีม</h3>
+            <button onClick={() => setIsAutoModalOpen(false)} className="text-theme-textSecondary hover:text-theme-text"><X size={20}/></button>
+          </div>
+          <div className="p-4 flex-1 flex flex-col gap-4">
+            <p className="text-sm text-theme-textSecondary">
+              ระบุหรือวางรายชื่อสมาชิก 60 คนสำหรับสนามหลัก (บรรทัดละ 1 ชื่อ) ระบบจะจัดสนามหลักตามรายชื่อนี้ และนำสมาชิกคนที่เหลือทั้งหมดไปจัดลงสนามรองตามกฏกิลด์ให้อัตโนมัติ
+            </p>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-[#065bca] flex items-start gap-2">
+              <span className="font-bold">✨ คำแนะนำ:</span> จำนวนที่ดึงอัตโนมัติ จะคัดเลือกมี Priest 12 คนสำหรับสนามหลักให้อัตโนมัติ
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-sm text-theme-text">ตรวจพบรายชื่อ: {names.length} / 60 คน</span>
+              <button onClick={handlePullTop60} className="text-[#065bca] font-bold text-sm bg-[#065bca]/10 px-4 py-1.5 rounded-lg hover:bg-[#065bca]/20 transition-colors border border-[#065bca]/20 flex items-center gap-1">
+                ✨ ดึง 60 พลังสูงสุดมาวางให้ก่อน
+              </button>
+            </div>
+            <textarea 
+              className="w-full h-[250px] bg-theme-bg border border-theme-border rounded-lg p-3 text-sm text-theme-text font-mono resize-none focus:ring-2 focus:ring-[#065bca] outline-none"
+              value={autoModalText}
+              onChange={e => setAutoModalText(e.target.value)}
+              placeholder="วางรายชื่อที่นี่ (1 บรรทัดต่อ 1 ชื่อ)"
+            />
+          </div>
+          <div className="p-4 border-t border-theme-border flex items-center justify-end gap-3 bg-theme-bg/50">
+            <button onClick={() => setIsAutoModalOpen(false)} className="px-5 py-2 rounded-lg font-bold text-theme-textSecondary hover:bg-theme-border/50 transition-colors border border-theme-border bg-theme-panel">ยกเลิก</button>
+            <button onClick={handleProcessAutoMatch} className="px-5 py-2 rounded-lg font-bold text-white bg-[#10b981] hover:bg-[#059669] transition-colors shadow-sm flex items-center gap-2">
+              🚀 ประมวลผลและจัดทีมทันที
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-4 bg-theme-bg min-h-screen p-4 xl:p-6 pb-20">
+      <AutoMatchModal />
       
       {/* Header */}
       <div className="bg-theme-panel rounded-xl p-4 md:p-6 flex flex-col lg:flex-row items-center justify-between shadow-sm border border-theme-border sticky top-4 z-20">
@@ -287,7 +395,10 @@ export default function TeamsPage() {
         </div>
         
         <div className="flex items-center gap-3">
-          <button onClick={handleAutoMatch} className="flex items-center gap-2 px-4 py-2 bg-theme-panel text-[#065bca] border border-[#065bca] rounded-lg font-bold hover:bg-[#065bca]/5 transition-colors text-sm shadow-sm">
+          <button onClick={handleClearAll} className="flex items-center gap-2 px-4 py-2 bg-theme-panel text-theme-danger border border-theme-danger rounded-lg font-bold hover:bg-theme-danger/5 transition-colors text-sm shadow-sm">
+            <span>ล้างทั้งหมด</span>
+          </button>
+          <button onClick={() => setIsAutoModalOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-theme-panel text-[#065bca] border border-[#065bca] rounded-lg font-bold hover:bg-[#065bca]/5 transition-colors text-sm shadow-sm">
             <span>ออโต้จัดทีม (Auto)</span>
           </button>
           <button onClick={handleSave} disabled={isSaving} className="flex items-center gap-2 px-5 py-2 bg-[#065bca] text-white rounded-lg font-bold hover:bg-[#054bb0] transition-colors shadow-sm disabled:opacity-50 text-sm">
@@ -457,40 +568,44 @@ function TeamCard({ column, members, index, toggleLock, clearTeam, removeMember 
           </div>
 
           {/* Body (Droppable) */}
-          <Droppable droppableId={column.id} type="MEMBER" isDropDisabled={column.locked}>
-            {(provided, snapshot) => (
-              <div ref={provided.innerRef} {...provided.droppableProps} className={`p-2 min-h-[220px] transition-colors flex flex-col gap-1.5 ${snapshot.isDraggingOver ? 'bg-[#065bca]/5' : 'bg-theme-panel'}`}>
-                {column.memberIds.map((id, idx) => {
-                  const m = members[id];
-                  if (!m) return null;
-                  return (
-                    <Draggable key={id} draggableId={id} index={idx} isDragDisabled={column.locked}>
-                      {(prov, snap) => {
-                         const color = JOB_COLORS[m.job] || "#475569";
-                         return (
-                          <div ref={prov.innerRef} {...prov.draggableProps} className={`grid grid-cols-[30px_1fr_120px_70px_30px] gap-2 items-center px-1 py-1.5 rounded border border-transparent hover:bg-theme-bg/50 group ${snap.isDragging ? 'bg-theme-panel shadow-lg border-theme-border ring-1 ring-[#065bca]/20 z-50' : ''}`} style={prov.draggableProps.style}>
-                            <div className="flex items-center justify-center text-theme-textMuted cursor-grab" {...prov.dragHandleProps}><GripVertical size={14}/></div>
-                            <div className="text-xs font-bold text-theme-text truncate flex items-center gap-2"><span className="text-[#065bca] opacity-70 w-3 text-right">{idx+1}</span>{m.name}</div>
-                            <div className="text-[10px] font-bold text-white px-2 py-0.5 rounded-full text-center truncate" style={{backgroundColor: color}}>{m.job}</div>
-                            <div className="text-[11px] font-bold text-theme-textSecondary text-right tabular-nums">{m.power.toLocaleString()}</div>
-                            <button onClick={() => removeMember(column.id, m.id)} disabled={column.locked} className="text-theme-textMuted hover:text-theme-danger opacity-0 group-hover:opacity-100 transition-opacity flex justify-center disabled:hidden"><X size={14}/></button>
-                          </div>
-                         )
-                      }}
-                    </Draggable>
-                  );
-                })}
-                {provided.placeholder}
-                
-                {/* Empty slots visual */}
-                {column.memberIds.length < 5 && Array.from({ length: 5 - column.memberIds.length }).map((_, i) => (
-                  <div key={`empty-${i}`} className="h-8 border border-dashed border-theme-border/50 rounded flex items-center justify-center bg-theme-bg/30">
-                    <span className="text-[10px] text-theme-textMuted font-bold uppercase tracking-widest">Empty Slot</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Droppable>
+          <div className="relative">
+            {/* Background Empty Slots */}
+            <div className="absolute inset-0 p-2 flex flex-col gap-1.5 pointer-events-none">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="h-[34px] border border-dashed border-theme-border/50 rounded flex items-center justify-center bg-theme-bg/30">
+                  <span className="text-[10px] text-theme-textMuted font-bold uppercase tracking-widest">Empty Slot</span>
+                </div>
+              ))}
+            </div>
+
+            <Droppable droppableId={column.id} type="MEMBER" isDropDisabled={column.locked || column.memberIds.length >= 5}>
+              {(provided, snapshot) => (
+                <div ref={provided.innerRef} {...provided.droppableProps} className={`p-2 min-h-[220px] transition-colors flex flex-col gap-1.5 relative z-10 ${snapshot.isDraggingOver ? 'bg-[#065bca]/5' : ''}`}>
+                  {column.memberIds.map((id, idx) => {
+                    const m = members[id];
+                    if (!m) return null;
+                    return (
+                      <Draggable key={id} draggableId={id} index={idx} isDragDisabled={column.locked}>
+                        {(prov, snap) => {
+                           const color = JOB_COLORS[m.job] || "#475569";
+                           return (
+                            <div ref={prov.innerRef} {...prov.draggableProps} className={`grid grid-cols-[30px_1fr_120px_70px_30px] gap-2 items-center px-1 py-1 h-[34px] rounded border border-transparent bg-theme-panel hover:bg-theme-bg/90 group ${snap.isDragging ? 'shadow-lg border-theme-border ring-1 ring-[#065bca]/20 z-50' : 'shadow-sm'}`} style={prov.draggableProps.style}>
+                              <div className="flex items-center justify-center text-theme-textMuted cursor-grab" {...prov.dragHandleProps}><GripVertical size={14}/></div>
+                              <div className="text-xs font-bold text-theme-text truncate flex items-center gap-2"><span className="text-[#065bca] opacity-70 w-3 text-right">{idx+1}</span>{m.name}</div>
+                              <div className="text-[10px] font-bold text-white px-2 py-0.5 rounded-full text-center truncate" style={{backgroundColor: color}}>{m.job}</div>
+                              <div className="text-[11px] font-bold text-theme-textSecondary text-right tabular-nums">{m.power.toLocaleString()}</div>
+                              <button onClick={() => removeMember(column.id, m.id)} disabled={column.locked} className="text-theme-textMuted hover:text-theme-danger opacity-0 group-hover:opacity-100 transition-opacity flex justify-center disabled:hidden"><X size={14}/></button>
+                            </div>
+                           )
+                        }}
+                      </Draggable>
+                    );
+                  })}
+                  {provided.placeholder}
+                </div>
+              )}
+            </Droppable>
+          </div>
         </div>
       )}
     </Draggable>

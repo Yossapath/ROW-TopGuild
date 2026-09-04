@@ -4,7 +4,7 @@ import { doc, getDoc, setDoc } from "firebase/firestore";
 
 export async function GET() {
   try {
-    const docRef = doc(db, "guild_system", "teams");
+    const docRef = doc(db, "guild_system", "team");
     const snapshot = await getDoc(docRef);
     if (!snapshot.exists()) {
       return NextResponse.json({ main: [], sub: [], unassigned: [] });
@@ -18,7 +18,7 @@ export async function GET() {
 export async function PUT(request: Request) {
   try {
     const data = await request.json();
-    const docRef = doc(db, "guild_system", "teams");
+    const docRef = doc(db, "guild_system", "team");
     // We overwrite completely since team arrangement is an exact snapshot
     await setDoc(docRef, data);
     return NextResponse.json({ success: true });
