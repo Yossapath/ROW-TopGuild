@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Shield, Users, Save, Loader2, GripVertical, Lock, Unlock, X, ChevronLeft, ChevronRight, LayoutGrid, RefreshCw, Wand2 } from "lucide-react";
 import axios from "axios";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
