@@ -5,19 +5,28 @@ function getDb() {
   if (!admin.apps.length) {
     try {
       if (process.env.FIREBASE_PRIVATE_KEY) {
+        // Clean up the private key (remove quotes if user copied them by mistake, and fix newlines)
+        let formattedKey = process.env.FIREBASE_PRIVATE_KEY;
+        formattedKey = formattedKey.replace(/^"|"$/g, "");
+        formattedKey = formattedKey.replace(/\\n/g, "\n");
+
         admin.initializeApp({
           credential: admin.credential.cert({
             projectId: process.env.FIREBASE_PROJECT_ID,
             clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-            privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"),
+            privateKey: formattedKey,
           }),
         });
       } else {
-        // Fallback for Next.js build phase (prevents crashing when env vars are missing)
+        // Fallback for Next.js build phase
         admin.initializeApp({ projectId: "topguild-build-demo" });
       }
     } catch (error) {
-      console.warn("Firebase admin initialization error", error);
+      console.warn("Firebase admin initialization error:", error);
+      // Fallback so it doesn't crash the entire app, but API calls will fail
+      if (!admin.apps.length) {
+        admin.initializeApp({ projectId: "topguild-build-demo" });
+      }
     }
   }
   return admin.firestore();
