@@ -271,15 +271,15 @@ export default function RosterPage() {
               </div>
 
               {/* Table Column Headers */}
-              <div className="grid grid-cols-12 gap-2 px-4 py-2.5 bg-slate-50/50 border-b border-slate-100 text-[10.5px] font-bold text-slate-500 uppercase tracking-widest text-left">
-                <div className="col-span-2">#</div>
-                <div className="col-span-5">ชื่อ</div>
-                <div className="col-span-3 text-right">ค่าพลัง</div>
-                <div className="col-span-2 text-center">จัดการ</div>
+              <div className="grid grid-cols-12 gap-2 px-4 py-3 bg-white border-b border-slate-100 text-[11px] font-bold text-slate-500 text-center">
+                <div className="col-span-2 text-left">#</div>
+                <div className="col-span-4 text-left">ชื่อ</div>
+                <div className="col-span-3">ค่าพลัง</div>
+                <div className="col-span-3">การจัดการ</div>
               </div>
 
               {/* List */}
-              <div className="flex-1 p-0">
+              <div className="flex-1 p-0 bg-white">
                 {members.length === 0 ? (
                   <div className="p-8 text-center text-sm text-slate-400 font-medium bg-slate-50/50">
                     ไม่มีข้อมูลสมาชิก
@@ -287,18 +287,18 @@ export default function RosterPage() {
                 ) : (
                   <ul className="divide-y divide-slate-100/60">
                     {members.map((m: any, idx: number) => (
-                      <li key={m.name || idx} className="grid grid-cols-12 gap-2 px-4 py-3 items-center hover:bg-slate-50 transition-colors text-xs sm:text-[14px] font-bold group">
-                        <div className="col-span-2 text-slate-400 text-left font-medium tabular-nums text-xs">{idx + 1}</div>
-                        <div className="col-span-5 text-left truncate text-slate-900 font-bold">
+                      <li key={m.name || idx} className="grid grid-cols-12 gap-2 px-4 py-3.5 items-center hover:bg-slate-50 transition-colors text-[13px] group">
+                        <div className="col-span-2 text-slate-500 text-left">{idx + 1}</div>
+                        <div className="col-span-4 text-left truncate text-slate-800 font-medium">
                           {m.name || "Unknown"}
                         </div>
-                        <div className="col-span-3 text-right tabular-nums tracking-tight" style={{ color: color }}>
+                        <div className="col-span-3 text-center font-bold tracking-tight" style={{ color: color }}>
                           {m.power != null ? Number(m.power).toLocaleString('en-US') : '-'}
                         </div>
-                        <div className="col-span-2 flex justify-center opacity-70 group-hover:opacity-100 transition-opacity">
+                        <div className="col-span-3 flex justify-center opacity-90 group-hover:opacity-100 transition-opacity">
                           <button 
                             onClick={() => openEditModal(m, job)}
-                            className="px-2 py-1 rounded text-[11px] text-slate-500 hover:bg-slate-100 hover:text-blue-600 transition-colors font-bold"
+                            className="px-3 py-1.5 bg-white border border-blue-200 rounded-md text-[11px] font-bold text-[#0b3d63] shadow-sm hover:bg-blue-50 transition-colors"
                           >
                             แก้ไข
                           </button>
