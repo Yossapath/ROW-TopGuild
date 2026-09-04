@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/stores/useAuthStore";
 import axios from "axios";
+import Link from "next/link";
 import { User, Lock, ArrowRight, Layers } from "lucide-react";
 
 export default function LoginPage() {
@@ -111,9 +112,9 @@ export default function LoginPage() {
               </div>
 
               <div className="flex items-center justify-between pt-2">
-                <a href="#" className="text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors">
+                <Link href="/register" className="text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors">
                   สมัครสมาชิกใหม่
-                </a>
+                </Link>
               </div>
 
               <button
