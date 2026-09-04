@@ -33,10 +33,22 @@ export default function TeamsPage() {
   const [isAutoModalOpen, setIsAutoModalOpen] = useState(false);
   const [autoModalText, setAutoModalText] = useState("");
   const [leaveRecords, setLeaveRecords] = useState<any[]>([]);
+  
+  const [offlineSearch, setOfflineSearch] = useState("");
+  const [isOfflineDropdownOpen, setIsOfflineDropdownOpen] = useState(false);
+  const offlineDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setIsMounted(true);
     fetchData();
+
+    function handleClickOutside(event: MouseEvent) {
+      if (offlineDropdownRef.current && !offlineDropdownRef.current.contains(event.target as Node)) {
+        setIsOfflineDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   const fetchData = async () => {
@@ -532,7 +544,7 @@ export default function TeamsPage() {
         <DragDropContext onDragEnd={onDragEnd}>
           <div className="flex gap-4 items-start">
             {isAdmin && !isUnassignedCollapsed && (
-              <div className="w-[300px] flex-shrink-0 bg-theme-panel rounded-xl shadow-sm border border-theme-border h-[calc(100vh-140px)] flex flex-col sticky top-28 z-10 transition-all">
+              <div className="w-[300px] flex-shrink-0 bg-theme-panel rounded-xl shadow-sm border border-theme-border h-[calc(100vh-2rem)] flex flex-col sticky top-4 z-10 transition-all">
                 <div className="p-3 border-b border-theme-divider bg-theme-bg/50 rounded-t-xl">
                   <div className="flex items-center justify-between mb-3">
                     <h2 className="font-bold text-theme-text flex items-center gap-2 text-sm"><Users size={16} /> ยังไม่ได้จัด ({data.columns["unassigned"].memberIds.length})</h2>
@@ -562,11 +574,10 @@ export default function TeamsPage() {
             )}
             
             {isAdmin && isUnassignedCollapsed && (
-              <div className="flex-shrink-0 bg-theme-panel rounded-xl shadow-sm border border-theme-border h-[calc(100vh-140px)] flex flex-col items-center py-4 sticky top-28 z-10 w-12 cursor-pointer hover:bg-theme-bg transition-colors" onClick={() => setIsUnassignedCollapsed(false)}>
+              <div className="flex-shrink-0 bg-theme-panel rounded-xl shadow-sm border border-theme-border h-[calc(100vh-2rem)] flex flex-col items-center py-4 sticky top-4 z-10 w-12 cursor-pointer hover:bg-theme-bg transition-colors" onClick={() => setIsUnassignedCollapsed(false)}>
                 <ChevronRight size={20} className="text-theme-textSecondary mb-4"/>
-                <div className="writing-vertical-rl transform rotate-180 text-theme-text font-bold tracking-widest flex items-center gap-2">
-                  ยังไม่ได้จัด <span className="bg-[#065bca] text-white text-xs px-2 py-0.5 rounded-full">{data.columns["unassigned"].memberIds.length}</span>
-                </div>
+                <Users size={18} className="text-theme-textSecondary mb-2"/>
+                <span className="bg-[#065bca] text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">{data.columns["unassigned"].memberIds.length}</span>
               </div>
             )}
 
@@ -648,24 +659,51 @@ export default function TeamsPage() {
                       </h2>
                       <div className="bg-theme-panel rounded-xl border border-theme-border p-6 shadow-sm">
                         <div className="flex flex-col md:flex-row gap-4 mb-6">
-                          <select
-                            className="bg-theme-bg border border-theme-border rounded-lg px-4 py-2 flex-1 focus:ring-2 focus:ring-[#065bca] outline-none text-sm font-bold text-theme-text cursor-pointer"
-                            onChange={(e) => {
-                              if (e.target.value) {
-                                markAsOffline(e.target.value);
-                                e.target.value = "";
-                              }
-                            }}
-                            defaultValue=""
-                          >
-                            <option value="" disabled>+ เลือกรายชื่อเพื่อทำให้ออฟไลน์ (นำออกจากทีม)</option>
-                            {Object.values(data.members)
-                              .sort((a, b) => a.name.localeCompare(b.name))
-                              .filter(m => !data.offlineIds.includes(m.id))
-                              .map(m => (
-                                <option key={m.id} value={m.id}>{m.name} ({m.job})</option>
-                              ))}
-                          </select>
+                          <div className="relative flex-1" ref={offlineDropdownRef}>
+                            <div 
+                              className="bg-theme-bg border border-theme-border rounded-lg px-4 py-2 flex items-center justify-between cursor-pointer focus-within:ring-2 focus-within:ring-[#065bca]"
+                              onClick={() => setIsOfflineDropdownOpen(true)}
+                            >
+                              <input
+                                type="text"
+                                placeholder="+ ค้นหารายชื่อผู้เล่นเพื่อทำให้ออฟไลน์ (นำออกจากทีม)..."
+                                className="bg-transparent border-none outline-none text-sm font-bold text-theme-text w-full"
+                                value={offlineSearch}
+                                onChange={e => {
+                                  setOfflineSearch(e.target.value);
+                                  setIsOfflineDropdownOpen(true);
+                                }}
+                                onFocus={() => setIsOfflineDropdownOpen(true)}
+                              />
+                            </div>
+
+                            {isOfflineDropdownOpen && (
+                              <div className="absolute z-50 w-full mt-2 bg-theme-panel border border-theme-border rounded-lg shadow-xl max-h-60 overflow-y-auto">
+                                {Object.values(data.members)
+                                  .filter(m => !data.offlineIds.includes(m.id))
+                                  .filter(m => m.name.toLowerCase().includes(offlineSearch.toLowerCase()) || m.job.toLowerCase().includes(offlineSearch.toLowerCase()))
+                                  .sort((a, b) => a.name.localeCompare(b.name))
+                                  .map(m => (
+                                    <div 
+                                      key={m.id} 
+                                      className="px-4 py-2.5 hover:bg-theme-bg cursor-pointer text-sm font-bold text-theme-text flex justify-between items-center border-b border-theme-divider last:border-0"
+                                      onClick={() => {
+                                        markAsOffline(m.id);
+                                        setOfflineSearch("");
+                                        setIsOfflineDropdownOpen(false);
+                                      }}
+                                    >
+                                      <span>{m.name}</span>
+                                      <span className="text-[10px] text-white px-2 py-0.5 rounded-full" style={{ backgroundColor: JOB_COLORS[m.job] || "#475569" }}>{m.job}</span>
+                                    </div>
+                                  ))}
+                                  
+                                {Object.values(data.members).filter(m => !data.offlineIds.includes(m.id) && (m.name.toLowerCase().includes(offlineSearch.toLowerCase()) || m.job.toLowerCase().includes(offlineSearch.toLowerCase()))).length === 0 && (
+                                  <div className="px-4 py-4 text-sm font-bold text-theme-textMuted text-center bg-theme-bg/50">ไม่พบรายชื่อ</div>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </div>
 
                         {data.offlineIds.length === 0 ? (
