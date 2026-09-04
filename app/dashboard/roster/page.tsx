@@ -248,15 +248,22 @@ export default function RosterPage() {
           const color = JOB_COLORS[job] || "#000";
           
           return (
-            <div key={`col-${job}`} className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col transition-all hover:shadow-md">
-              {/* Header - Made Bigger as requested */}
-              <div className="px-5 py-4 flex items-center justify-between border-b border-slate-100 bg-white">
+            <div 
+              key={`col-${job}`} 
+              className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col transition-all hover:shadow-md"
+              style={{ borderTop: `4px solid ${color}` }}
+            >
+              {/* Header - Styled like old repo */}
+              <div 
+                className="px-5 py-4 flex items-center justify-between border-b border-slate-100"
+                style={{ backgroundColor: hexToRgba(color, 0.08) }}
+              >
                 <div className="flex items-center space-x-2 font-black text-lg" style={{ color: color }}>
                   <span className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: color }}></span>
                   <span>{job}</span>
                 </div>
                 <div 
-                  className="px-3 py-1.5 rounded-lg text-sm font-black text-white shadow-sm"
+                  className="px-3 py-1.5 rounded-xl text-xs font-black text-white shadow-sm tracking-wide"
                   style={{ backgroundColor: color }}
                 >
                   {members.length} คน
@@ -264,11 +271,11 @@ export default function RosterPage() {
               </div>
 
               {/* Table Column Headers */}
-              <div className="grid grid-cols-12 gap-2 px-4 py-2.5 bg-slate-50 border-b border-slate-100 text-xs font-bold text-slate-500 text-center uppercase tracking-wider">
-                <div className="col-span-1 text-left">#</div>
-                <div className="col-span-5 text-left">ชื่อ</div>
-                <div className="col-span-3">ค่าพลัง</div>
-                <div className="col-span-3">จัดการ</div>
+              <div className="grid grid-cols-12 gap-2 px-4 py-2.5 bg-slate-50/50 border-b border-slate-100 text-[10.5px] font-bold text-slate-500 uppercase tracking-widest text-left">
+                <div className="col-span-2">#</div>
+                <div className="col-span-5">ชื่อ</div>
+                <div className="col-span-3 text-right">ค่าพลัง</div>
+                <div className="col-span-2 text-center">จัดการ</div>
               </div>
 
               {/* List */}
@@ -278,20 +285,20 @@ export default function RosterPage() {
                     ไม่มีข้อมูลสมาชิก
                   </div>
                 ) : (
-                  <ul className="divide-y divide-slate-50">
+                  <ul className="divide-y divide-slate-100/60">
                     {members.map((m: any, idx: number) => (
-                      <li key={m.name || idx} className="grid grid-cols-12 gap-2 px-4 py-3 items-center hover:bg-slate-50 transition-colors text-xs sm:text-sm font-bold group">
-                        <div className="col-span-1 text-slate-400 text-left font-medium">{idx + 1}</div>
-                        <div className="col-span-5 text-left truncate text-black font-black text-sm">
+                      <li key={m.name || idx} className="grid grid-cols-12 gap-2 px-4 py-3 items-center hover:bg-slate-50 transition-colors text-xs sm:text-[13.5px] font-bold group">
+                        <div className="col-span-2 text-slate-400 text-left font-medium tabular-nums text-xs">{idx + 1}</div>
+                        <div className="col-span-5 text-left truncate text-slate-900 font-black">
                           {m.name || "Unknown"}
                         </div>
-                        <div className="col-span-3 text-center" style={{ color: color }}>
-                          {Number(m.power || 0).toLocaleString()}
+                        <div className="col-span-3 text-right tabular-nums tracking-tight" style={{ color: color }}>
+                          {m.power != null ? Number(m.power).toLocaleString('en-US') : '-'}
                         </div>
-                        <div className="col-span-3 text-center opacity-70 group-hover:opacity-100 transition-opacity">
+                        <div className="col-span-2 flex justify-center opacity-70 group-hover:opacity-100 transition-opacity">
                           <button 
                             onClick={() => openEditModal(m, job)}
-                            className="px-2.5 py-1.5 border border-slate-200 rounded-lg text-[11px] text-slate-600 hover:bg-[#1e76b9] hover:text-white hover:border-[#1e76b9] transition-all bg-white shadow-sm font-bold w-full"
+                            className="px-2 py-1 rounded text-[11px] text-slate-500 hover:bg-slate-100 hover:text-blue-600 transition-colors font-bold"
                           >
                             แก้ไข
                           </button>
