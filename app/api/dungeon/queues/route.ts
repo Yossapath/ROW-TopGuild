@@ -1,7 +1,8 @@
 export const dynamic = "force-dynamic";
 import { dungeonsRef, scheduleRef } from "@/lib/firebase-admin";
 import { getCurrentUser } from "@/lib/auth";
-import { ok, err, isBookingOpen } from "@/lib/server-utils";
+import { ok, err } from "@/lib/server-utils";
+import { isBookingOpen } from "@/lib/utils";
 
 export async function GET() {
   try {
