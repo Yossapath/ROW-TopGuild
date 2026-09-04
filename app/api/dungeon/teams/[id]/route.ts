@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { dungeonsRef } from "@/lib/firebase-admin";
 import { getCurrentUser } from "@/lib/auth";
 import { ok, err, unauthorized } from "@/lib/utils";
@@ -61,3 +62,4 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
     return err(e.message, 500);
   }
 }
+
