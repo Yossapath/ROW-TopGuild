@@ -55,7 +55,7 @@ export default function TopHeader({
   };
 
   return (
-    <header className="h-16 bg-theme-panel border-b border-theme-border flex items-center justify-between px-4 lg:px-6 shadow-sm sticky top-0 z-20 transition-colors duration-300">
+    <header className="h-16 bg-theme-panel border-b border-theme-border flex items-center justify-between px-4 lg:px-6 shadow-sm sticky top-0 z-50 transition-colors duration-300">
       
       {/* Left section: Hamburger + Title */}
       <div className="flex items-center space-x-4">
@@ -116,15 +116,15 @@ export default function TopHeader({
                 <p className="text-sm font-bold text-theme-text truncate">{user?.gameUsername || user?.discordUsername}</p>
               </div>
               
-              <button className="w-full text-left px-4 py-2.5 text-sm font-medium text-theme-text hover:bg-theme-bg hover:text-theme-primary transition-colors flex items-center gap-3">
+              <div className="px-4 py-2.5 text-sm font-medium text-theme-text flex items-center gap-3">
                 <UserIcon size={16} className="text-theme-textMuted" />
-                Account Settings
-              </button>
+                <span className="truncate">{user?.discordUsername || "No Discord Name"}</span>
+              </div>
               
-              <button className="w-full text-left px-4 py-2.5 text-sm font-medium text-theme-text hover:bg-theme-bg hover:text-theme-primary transition-colors flex items-center gap-3">
+              <div className="px-4 py-2.5 text-sm font-medium text-theme-text flex items-center gap-3">
                 <LifeBuoy size={16} className="text-theme-success" />
-                Help & Support (Line)
-              </button>
+                <span className="truncate">{user?.class || "No Class"} / {user?.power?.toLocaleString('en-US') || "0"}</span>
+              </div>
               
               <div className="border-t border-theme-divider my-1"></div>
               
