@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { 
-  LayoutDashboard, 
   Users, 
   Shield, 
   Swords, 
@@ -15,7 +14,6 @@ import {
 } from "lucide-react";
 
 const MENUS = [
-  { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
   { name: "รายชื่อสมาชิก", path: "/dashboard/roster", icon: Users },
   { name: "จัดทีม GVG", path: "/dashboard/teams", icon: Shield },
   { name: "ดันเจี้ยน", path: "/dashboard/dungeon", icon: Swords },

@@ -33,7 +33,7 @@ export async function POST(req: Request) {
       date: date || "",
       day: day || "",
       reason: reason || "",
-      submittedBy: user.username,
+      submittedBy: user.gameUsername,
       timestamp: Date.now()
     };
 

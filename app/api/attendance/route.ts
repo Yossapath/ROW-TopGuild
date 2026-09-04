@@ -43,7 +43,7 @@ export async function POST(req: Request) {
         present: rec.present,
         note: rec.note || "",
         timestamp: Date.now(),
-        recordedBy: user.username
+        recordedBy: user.gameUsername
       });
     });
 

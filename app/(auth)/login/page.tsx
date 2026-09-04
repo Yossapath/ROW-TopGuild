@@ -1,42 +1,43 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { useAuthStore } from "@/stores/useAuthStore";
-import axios from "axios";
-import Link from "next/link";
-import { User, Lock, ArrowRight, Layers } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { Layers } from "lucide-react";
+import { Suspense } from "react";
+
+function LoginForm() {
+  const searchParams = useSearchParams();
+  const error = searchParams.get("error");
+
+  return (
+    <div className="relative rounded-2xl bg-white p-8 shadow-2xl overflow-hidden border border-slate-100 text-center">
+      {/* Top blue border effect */}
+      <div className="absolute top-0 left-0 w-full h-1.5 bg-blue-600"></div>
+
+      <div className="mb-8 mt-2 flex flex-col items-center">
+        <h2 className="text-2xl font-black italic text-slate-800 tracking-wider uppercase mb-2">LOGIN</h2>
+        <p className="text-gray-500 text-sm">เข้าสู่ระบบด้วยบัญชี Discord ของคุณ</p>
+      </div>
+
+      {error && (
+        <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-600">
+          เกิดข้อผิดพลาดในการเข้าสู่ระบบด้วย Discord: {error}
+        </div>
+      )}
+
+      <a
+        href="/api/auth/discord"
+        className="flex w-full items-center justify-center rounded-xl bg-[#5865F2] py-4 text-sm font-bold tracking-wider text-white hover:bg-[#4752C4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5865F2] transition-all shadow-md hover:shadow-lg uppercase"
+      >
+        <svg className="w-6 h-6 mr-3" fill="currentColor" viewBox="0 0 127.14 96.36">
+          <path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.31,60,73.31,53s5-12.74,11.43-12.74S96.2,46,96.12,53,91.08,65.69,84.69,65.69Z"/>
+        </svg>
+        LOGIN WITH DISCORD
+      </a>
+    </div>
+  );
+}
 
 export default function LoginPage() {
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-  const router = useRouter();
-  const setUser = useAuthStore((state) => state.setUser);
-
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
-
-    try {
-      const res = await axios.post("/api/auth", { action: "login", username, password });
-      if (res.data.ok) {
-        setUser(res.data.data.user);
-        router.push("/dashboard");
-      }
-    } catch (err: any) {
-      let errorMsg = err.response?.data?.error || "เกิดข้อผิดพลาดในการเข้าสู่ระบบ";
-      if (errorMsg.includes("Could not load the default credentials")) {
-        errorMsg = "ระบบยังไม่ได้เชื่อมต่อฐานข้อมูล (กรุณาตั้งค่า Firebase ใน Vercel)";
-      }
-      setError(errorMsg);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <div className="flex min-h-screen bg-slate-50">
       <div className="flex w-full max-w-5xl mx-auto items-center justify-center p-4 lg:p-8">
@@ -58,78 +59,9 @@ export default function LoginPage() {
 
         {/* Right Side (Login Form) */}
         <div className="w-full max-w-md lg:w-1/2">
-          <div className="relative rounded-2xl bg-white p-8 shadow-2xl overflow-hidden border border-slate-100">
-            {/* Top blue border effect */}
-            <div className="absolute top-0 left-0 w-full h-1.5 bg-blue-600"></div>
-
-            <div className="mb-8 mt-2">
-              <h2 className="text-2xl font-black italic text-slate-800 tracking-wider uppercase">LOGIN</h2>
-            </div>
-
-            {error && (
-              <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-600">
-                {error}
-              </div>
-            )}
-
-            <form onSubmit={handleLogin} className="space-y-6">
-              <div>
-                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
-                  User
-                </label>
-                <div className="relative">
-                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
-                    <User className="h-5 w-5 text-slate-400" />
-                  </div>
-                  <input
-                    type="text"
-                    required
-                    placeholder="username"
-                    className="block w-full rounded-xl border-0 bg-slate-100 py-3.5 pl-11 pr-4 text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-600 sm:text-sm sm:leading-6 transition-colors"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Password
-                </label>
-                <div className="relative">
-                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
-                    <Lock className="h-5 w-5 text-slate-400" />
-                  </div>
-                  <input
-                    type="password"
-                    required
-                    placeholder="••••••••"
-                    className="block w-full rounded-xl border-0 bg-slate-100 py-3.5 pl-11 pr-4 text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-600 sm:text-sm sm:leading-6 transition-colors"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between pt-2">
-                <Link href="/register" className="text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors">
-                  สมัครสมาชิกใหม่
-                </Link>
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="flex w-full items-center justify-center rounded-xl bg-blue-600 py-4 text-sm font-bold tracking-wider text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:opacity-70 transition-all shadow-md hover:shadow-lg uppercase"
-              >
-                {loading ? "กำลังเข้าสู่ระบบ..." : (
-                  <>
-                    LOGIN <ArrowRight className="ml-2 h-4 w-4" />
-                  </>
-                )}
-              </button>
-            </form>
-          </div>
+          <Suspense fallback={<div>Loading...</div>}>
+            <LoginForm />
+          </Suspense>
         </div>
 
       </div>

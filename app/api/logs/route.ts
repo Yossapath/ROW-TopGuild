@@ -29,7 +29,7 @@ export async function POST(req: Request) {
     const newLog = {
       module,
       action,
-      actor: actor || (user ? user.username : "System"),
+      actor: actor || (user ? user.gameUsername : "System"),
       target,
       detail,
       extra: extra || {},

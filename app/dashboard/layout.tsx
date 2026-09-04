@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/stores/useAuthStore";
 import Sidebar from "@/components/Sidebar";
 import TopHeader from "@/components/TopHeader";
+import CompleteProfilePopup from "@/components/CompleteProfilePopup";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuthStore();
@@ -34,6 +35,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {children}
         </main>
       </div>
+      <CompleteProfilePopup />
     </div>
   );
 }

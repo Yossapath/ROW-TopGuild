@@ -97,10 +97,10 @@ export default function TopHeader({
             className="flex items-center space-x-2 p-1 pr-2 rounded-full border border-theme-border hover:border-theme-borderHover transition-colors shadow-sm bg-theme-panel"
           >
             <div className="bg-theme-primary text-white w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shadow-sm">
-              {user?.username ? user.username.charAt(0).toUpperCase() : "U"}
+              {user?.discordUsername ? user.discordUsername.charAt(0).toUpperCase() : "U"}
             </div>
             <div className="hidden md:flex flex-col items-start leading-none mr-2">
-              <span className="text-sm font-bold text-theme-text">{user?.username || "Guest"}</span>
+              <span className="text-sm font-bold text-theme-text">{user?.gameUsername || user?.discordUsername || "Guest"}</span>
               <span className="text-[10px] font-bold text-theme-primary uppercase bg-theme-primary/10 px-1 rounded mt-0.5">{user?.role || "MEMBER"}</span>
             </div>
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-theme-textMuted">
@@ -113,7 +113,7 @@ export default function TopHeader({
             <div className="absolute right-0 mt-2 w-56 bg-theme-panel rounded-xl shadow-lg border border-theme-border py-2 z-50 animate-in fade-in slide-in-from-top-2">
               <div className="px-4 py-2 border-b border-theme-divider mb-1">
                 <p className="text-[10px] font-bold text-theme-textSecondary tracking-wider">SIGNED IN AS</p>
-                <p className="text-sm font-bold text-theme-text truncate">{user?.username}</p>
+                <p className="text-sm font-bold text-theme-text truncate">{user?.gameUsername || user?.discordUsername}</p>
               </div>
               
               <button className="w-full text-left px-4 py-2.5 text-sm font-medium text-theme-text hover:bg-theme-bg hover:text-theme-primary transition-colors flex items-center gap-3">

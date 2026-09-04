@@ -7,17 +7,23 @@
 export type UserRole = "admin" | "owner" | "member";
 
 export interface GuildUser {
-  username: string;
-  password: string; // hashed
+  discordId: string;
+  discordUsername: string;
+  gameUsername?: string;
   role: UserRole;
   class?: string;
+  power?: number;
   createdAt?: number;
 }
 
 export interface AuthPayload {
-  username: string;
+  discordId: string;
+  discordUsername: string;
+  gameUsername?: string;
   role: UserRole;
   class?: string;
+  power?: number;
+  isProfileComplete: boolean;
 }
 
 // ── Roster ───────────────────────────────────────────────────
