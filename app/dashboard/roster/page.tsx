@@ -25,11 +25,16 @@ export default function RosterPage() {
   // If we want to show exactly 10, or just all jobs, let's use all jobs sorted.
   const displayJobs = sortedJobs.length > 0 ? sortedJobs : JOB_LIST;
 
-  // Helper to convert hex to rgba for light backgrounds
   const hexToRgba = (hex: string, alpha: number) => {
-    const r = parseInt(hex.slice(1, 3), 16);
-    const g = parseInt(hex.slice(3, 5), 16);
-    const b = parseInt(hex.slice(5, 7), 16);
+    let cleanHex = hex.replace("#", "");
+    if (cleanHex.length === 3) {
+      cleanHex = cleanHex.split("").map(c => c + c).join("");
+    }
+    if (cleanHex.length !== 6) return `rgba(0, 0, 0, ${alpha})`;
+    
+    const r = parseInt(cleanHex.slice(0, 2), 16);
+    const g = parseInt(cleanHex.slice(2, 4), 16);
+    const b = parseInt(cleanHex.slice(4, 6), 16);
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
   };
 
@@ -114,13 +119,13 @@ export default function RosterPage() {
                 ) : (
                   <ul className="divide-y divide-slate-50">
                     {members.map((m: any, idx: number) => (
-                      <li key={m.name} className="grid grid-cols-12 gap-2 px-4 py-2.5 items-center hover:bg-slate-50 transition-colors text-xs font-bold">
+                      <li key={m.name || idx} className="grid grid-cols-12 gap-2 px-4 py-2.5 items-center hover:bg-slate-50 transition-colors text-xs font-bold">
                         <div className="col-span-1 text-slate-400 text-left font-medium">{idx + 1}</div>
                         <div className="col-span-5 text-left truncate" style={{ color: color }}>
-                          {m.name}
+                          {m.name || "Unknown"}
                         </div>
                         <div className="col-span-3 text-center" style={{ color: color }}>
-                          {m.power.toLocaleString()}
+                          {Number(m.power || 0).toLocaleString()}
                         </div>
                         <div className="col-span-3 text-center">
                           <button className="px-2 py-1 border border-slate-200 rounded text-[10px] text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors bg-white shadow-sm">
