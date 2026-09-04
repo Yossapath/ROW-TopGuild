@@ -85,7 +85,9 @@ export default function RosterPage() {
       {/* Tables Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
         {displayJobs.map(job => {
-          const members = roster?.[job] || [];
+          const rawMembers = roster?.[job] || [];
+          // Sort members by power descending
+          const members = [...rawMembers].sort((a, b) => (Number(b.power) || 0) - (Number(a.power) || 0));
           const color = JOB_COLORS[job] || "#000";
           
           return (

@@ -5,30 +5,11 @@ import { ok, err, unauthorized } from "@/lib/server-utils";
 
 export async function GET() {
   try {
-    const snapshot = await getDb().collection("users").get();
-    
-    // Group users by class for the frontend
-    const grouped: Record<string, any[]> = {};
-    
-    snapshot.forEach((doc: any) => {
-      const data = doc.data();
-      const job = data.class;
-      if (!job) return;
-      
-      if (!grouped[job]) grouped[job] = [];
-      grouped[job].push({
-        name: data.username,
-        power: data.power,
-        role: data.role
-      });
-    });
-    
-    // Sort each group by power descending
-    for (const job in grouped) {
-      grouped[job].sort((a, b) => b.power - a.power);
+    const doc = await rosterRef().get();
+    if (!doc.exists) {
+      return ok({});
     }
-    
-    return ok(grouped);
+    return ok(doc.data());
   } catch (e: any) {
     return err(e.message, 500);
   }
