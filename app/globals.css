@@ -35,6 +35,7 @@
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-prompt), sans-serif;
+    /* Force cache invalidation */
   }
 }
 
