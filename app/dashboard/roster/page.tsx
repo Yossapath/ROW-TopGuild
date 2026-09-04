@@ -5,9 +5,11 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { JOB_COLORS, JOB_LIST } from "@/lib/utils";
 import { Search, X, Shield } from "lucide-react";
+import { useAuthStore } from "@/stores/useAuthStore";
 
 export default function RosterPage() {
   const queryClient = useQueryClient();
+  const { user } = useAuthStore();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedJob, setSelectedJob] = useState("ทั้งหมด");
   const [editingMember, setEditingMember] = useState<any>(null);
@@ -85,36 +87,38 @@ export default function RosterPage() {
     setIsAddingNew(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!editName || !editJob || !editPower) return alert("กรุณากรอกข้อมูลให้ครบถ้วน");
     
-    // Deep copy roster
-    const newRoster = JSON.parse(JSON.stringify(roster || {}));
-    
     if (isAddingNew) {
+      // Add new is still handled by full roster mutation (admin only)
+      const newRoster = JSON.parse(JSON.stringify(roster || {}));
       if (!newRoster[editJob]) newRoster[editJob] = [];
-      newRoster[editJob].push({ name: editName, power: Number(editPower), role: editRole });
+      newRoster[editJob].push({ 
+        name: editName, 
+        power: Number(editPower), 
+        role: editRole,
+        discordId: `manual_${Date.now()}` // Mock ID for manual adds
+      });
+      mutation.mutate(newRoster);
     } else {
-      // Find and update or move
-      if (editingMember.originalJob === editJob) {
-        // Just update in place
-        const arr = newRoster[editJob] || [];
-        const idx = arr.findIndex((m: any) => m.name === editingMember.name);
-        if (idx !== -1) {
-          arr[idx] = { name: editName, power: Number(editPower), role: editRole };
-        }
-      } else {
-        // Remove from old job
-        if (newRoster[editingMember.originalJob]) {
-          newRoster[editingMember.originalJob] = newRoster[editingMember.originalJob].filter((m: any) => m.name !== editingMember.name);
-        }
-        // Add to new job
-        if (!newRoster[editJob]) newRoster[editJob] = [];
-        newRoster[editJob].push({ name: editName, power: Number(editPower), role: editRole });
+      // Edit existing user via targeted API
+      try {
+        await axios.put("/api/roster/member", {
+          targetDiscordId: editingMember.discordId || editingMember.name, // fallback
+          originalName: editingMember.name,
+          originalJob: editingMember.originalJob,
+          name: editName,
+          job: editJob,
+          power: editPower,
+          warRole: editRole
+        });
+        queryClient.invalidateQueries({ queryKey: ["roster"] });
+        setEditingMember(null);
+      } catch (err: any) {
+        alert(err.response?.data?.error || "เกิดข้อผิดพลาดในการบันทึก");
       }
     }
-    
-    mutation.mutate(newRoster);
   };
 
   const handleDelete = async () => {
@@ -306,12 +310,14 @@ export default function RosterPage() {
                           {m.power != null ? Number(m.power).toLocaleString('en-US') : '-'}
                         </div>
                         <div className="col-span-3 flex justify-center opacity-90 group-hover:opacity-100 transition-opacity">
-                          <button 
-                            onClick={() => openEditModal(m, job)}
-                            className="px-3 py-1.5 bg-theme-panel border border-blue-200 rounded-md text-[11px] font-bold text-[#0b3d63] shadow-sm hover:bg-blue-50 transition-colors"
-                          >
-                            แก้ไข
-                          </button>
+                          {(user?.role === 'admin' || user?.discordId === m.discordId) && (
+                            <button 
+                              onClick={() => openEditModal(m, job)}
+                              className="px-3 py-1.5 bg-theme-panel border border-blue-200 rounded-md text-[11px] font-bold text-[#0b3d63] shadow-sm hover:bg-blue-50 transition-colors"
+                            >
+                              แก้ไข
+                            </button>
+                          )}
                         </div>
                       </li>
                     ))}
@@ -389,11 +395,14 @@ export default function RosterPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-[#0b3d63] mb-1.5">ตำแหน่งวอ (สนามหลัก/สนามรอง)</label>
+                <label className="block text-sm font-bold text-[#0b3d63] mb-1.5">
+                  ตำแหน่งวอ (สนามหลัก/สนามรอง) {user?.role !== "admin" && <span className="text-red-500 text-xs ml-2">(แอดมินเท่านั้น)</span>}
+                </label>
                 <select 
                   value={editRole}
                   onChange={e => setEditRole(e.target.value)}
-                  className="w-full border border-blue-100 rounded-xl px-4 py-3 text-[#0b3d63] font-bold focus:ring-2 focus:ring-[#1e76b9] focus:border-[#1e76b9] bg-blue-50/40 transition-all outline-none appearance-none cursor-pointer"
+                  disabled={user?.role !== "admin"}
+                  className={`w-full border rounded-xl px-4 py-3 font-bold transition-all outline-none appearance-none ${user?.role === "admin" ? "border-blue-100 text-[#0b3d63] focus:ring-2 focus:ring-[#1e76b9] focus:border-[#1e76b9] bg-blue-50/40 cursor-pointer" : "bg-gray-100 text-gray-500 cursor-not-allowed border-gray-200"}`}
                 >
                   <option value="อิสระ (ให้ระบบจัดให้)">อิสระ (ให้ระบบจัดให้)</option>
                   <option value="สนามหลัก">สนามหลัก</option>

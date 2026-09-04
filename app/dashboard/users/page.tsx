@@ -58,8 +58,17 @@ export default function UsersPage() {
     );
   }
 
-  // Sort users: admins first, then by gameUsername
-  const sortedUsers = [...users].sort((a, b) => {
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Sort and filter users: admins first, then by gameUsername
+  const filteredUsers = users.filter((u) => {
+    const search = searchQuery.toLowerCase();
+    const discordName = u.discordUsername?.toLowerCase() || "";
+    const gameName = u.gameUsername?.toLowerCase() || "";
+    return discordName.includes(search) || gameName.includes(search);
+  });
+
+  const sortedUsers = [...filteredUsers].sort((a, b) => {
     if (a.role === "admin" && b.role !== "admin") return -1;
     if (a.role !== "admin" && b.role === "admin") return 1;
     const nameA = a.gameUsername || a.discordUsername || "";
@@ -69,13 +78,29 @@ export default function UsersPage() {
 
   return (
     <div className="space-y-6 bg-theme-bg min-h-screen p-4 lg:py-8 lg:px-12 xl:px-24 2xl:px-32 relative" style={{ zoom: 0.85 }}>
-      <div className="bg-theme-panel rounded-2xl p-6 flex items-center space-x-4 shadow-sm border border-theme-border">
-        <div className="bg-theme-primary p-3 rounded-xl text-white shadow-md">
-          <UserCog size={32} />
+      <div className="bg-theme-panel rounded-2xl p-6 flex items-center space-x-4 shadow-sm border border-theme-border justify-between flex-wrap gap-4">
+        <div className="flex items-center space-x-4">
+          <div className="bg-theme-primary p-3 rounded-xl text-white shadow-md">
+            <UserCog size={32} />
+          </div>
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-wide text-theme-text">จัดการผู้ใช้ (User Management)</h1>
+            <p className="text-theme-textSecondary text-sm md:text-base font-medium mt-1">ตั้งค่าและจัดการสิทธิ์สมาชิกในกิลด์</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-wide text-theme-text">จัดการผู้ใช้ (User Management)</h1>
-          <p className="text-theme-textSecondary text-sm md:text-base font-medium mt-1">ตั้งค่าและจัดการสิทธิ์สมาชิกในกิลด์</p>
+        
+        {/* Search Bar */}
+        <div className="relative w-full max-w-sm">
+          <input
+            type="text"
+            placeholder="ค้นหาชื่อในเกม หรือ Discord..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-4 pr-10 py-2.5 rounded-xl border border-theme-border bg-theme-bg text-theme-text font-medium focus:outline-none focus:ring-2 focus:ring-theme-primary transition-all"
+          />
+          <svg className="w-5 h-5 absolute right-3 top-3 text-theme-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+          </svg>
         </div>
       </div>
 
