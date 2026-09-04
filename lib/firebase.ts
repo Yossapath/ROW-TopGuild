@@ -2,12 +2,13 @@ import { initializeApp, getApps, getApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBXPfxhSLBt9dQqf5glFrXvx6KLxqPmEE8",
-  authDomain: "topguild-eeb40.firebaseapp.com",
-  projectId: "topguild-eeb40",
-  storageBucket: "topguild-eeb40.firebasestorage.app",
-  messagingSenderId: "879954426796",
-  appId: "1:879954426796:web:48e305dc9f78bda6a51809"
+  apiKey: "AIzaSyBEpQzYxHHqiOVTigbioV-XLwmF94C7fSw",
+  authDomain: "row-topguild.firebaseapp.com",
+  projectId: "row-topguild",
+  storageBucket: "row-topguild.firebasestorage.app",
+  messagingSenderId: "798557058434",
+  appId: "1:798557058434:web:99dc6732e2c9da936d4b9b",
+  measurementId: "G-KMCXGR454E"
 };
 
 // Initialize Firebase (prevent double initialization in Next.js)
