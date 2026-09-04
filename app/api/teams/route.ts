@@ -1,12 +1,11 @@
+﻿export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
-import { db } from "@/lib/firebase";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { teamsRef } from "@/lib/firebase-admin";
 
 export async function GET() {
   try {
-    const docRef = doc(db, "guild_system", "team");
-    const snapshot = await getDoc(docRef);
-    if (!snapshot.exists()) {
+    const snapshot = await teamsRef().get();
+    if (!snapshot.exists) {
       return NextResponse.json({ main: [], sub: [], unassigned: [] });
     }
     return NextResponse.json(snapshot.data());
@@ -18,9 +17,7 @@ export async function GET() {
 export async function PUT(request: Request) {
   try {
     const data = await request.json();
-    const docRef = doc(db, "guild_system", "team");
-    // We overwrite completely since team arrangement is an exact snapshot
-    await setDoc(docRef, data);
+    await teamsRef().set(data);
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json({ error: "Failed to save teams" }, { status: 500 });

@@ -1,12 +1,16 @@
+﻿export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
-import { db } from "@/lib/firebase";
-import { collection, getDocs } from "firebase/firestore";
+import { getDb, COLL } from "@/lib/firebase-admin";
 
 export async function GET() {
-  const snapshot = await getDocs(collection(db, "guild_system"));
-  const data: any = {};
-  snapshot.forEach(doc => {
-    data[doc.id] = doc.data();
-  });
-  return NextResponse.json(data);
+  try {
+    const snapshot = await getDb().collection(COLL).get();
+    const data: any = {};
+    snapshot.forEach(doc => {
+      data[doc.id] = doc.data();
+    });
+    return NextResponse.json(data);
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
 }
