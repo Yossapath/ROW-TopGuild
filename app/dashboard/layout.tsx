@@ -8,19 +8,30 @@ import TopHeader from "@/components/TopHeader";
 import CompleteProfilePopup from "@/components/CompleteProfilePopup";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, setUser } = useAuthStore();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
+  const [loadingAuth, setLoadingAuth] = useState(true);
 
   useEffect(() => {
     setMounted(true);
-    if (!isAuthenticated) {
-      router.push("/login");
-    }
-  }, [isAuthenticated, router]);
+    fetch("/api/auth/me")
+      .then(res => res.json())
+      .then(data => {
+        if (data.ok && data.data) {
+          setUser(data.data);
+        } else {
+          if (!isAuthenticated) router.push("/login");
+        }
+      })
+      .catch(() => {
+        if (!isAuthenticated) router.push("/login");
+      })
+      .finally(() => setLoadingAuth(false));
+  }, []);
 
-  if (!mounted) return null;
+  if (!mounted || loadingAuth) return <div className="flex h-screen items-center justify-center">Loading...</div>;
   if (!isAuthenticated) return null;
 
   return (
