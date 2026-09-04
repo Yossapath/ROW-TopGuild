@@ -83,7 +83,7 @@ export default function LoginPage() {
                   <input
                     type="text"
                     required
-                    placeholder="iwannatell"
+                    placeholder="username"
                     className="block w-full rounded-xl border-0 bg-slate-100 py-3.5 pl-11 pr-4 text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-600 sm:text-sm sm:leading-6 transition-colors"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
