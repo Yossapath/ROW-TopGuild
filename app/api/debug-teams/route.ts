@@ -1,10 +1,10 @@
-﻿export const dynamic = "force-dynamic";
+export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
-import { getDb, COLL } from "@/lib/firebase-admin";
+import { getDb, COLL_SYSTEM } from "@/lib/firebase-admin";
 
 export async function GET() {
   try {
-    const snapshot = await getDb().collection(COLL).get();
+    const snapshot = await getDb().collection(COLL_SYSTEM).get();
     const data: any = {};
     snapshot.forEach(doc => {
       data[doc.id] = doc.data();
