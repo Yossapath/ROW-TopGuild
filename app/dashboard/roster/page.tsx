@@ -4,7 +4,7 @@ import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { JOB_COLORS, JOB_LIST } from "@/lib/utils";
-import { Search, X } from "lucide-react";
+import { Search, X, Shield } from "lucide-react";
 
 export default function RosterPage() {
   const queryClient = useQueryClient();
@@ -35,24 +35,25 @@ export default function RosterPage() {
     },
   });
 
-  const allMembers = useMemo(() => {
-    if (!roster) return [];
-    const list: any[] = [];
-    for (const job of JOB_LIST) {
-      const mems = roster[job] || [];
-      mems.forEach((m: any) => list.push({ ...m, job, originalJob: job }));
-    }
-    // Sort by power descending
-    return list.sort((a, b) => Number(b.power || 0) - Number(a.power || 0));
+  const totalMembers = useMemo(() => {
+    return JOB_LIST.reduce((acc, job) => acc + (roster?.[job]?.length || 0), 0);
   }, [roster]);
 
-  const filteredMembers = useMemo(() => {
-    return allMembers.filter(m => {
-      if (selectedJob !== "ทั้งหมด" && m.job !== selectedJob) return false;
-      if (searchQuery && !m.name?.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-      return true;
+  const sortedJobs = useMemo(() => {
+    return [...JOB_LIST].sort((a, b) => {
+      const aCount = roster?.[a]?.length || 0;
+      const bCount = roster?.[b]?.length || 0;
+      return bCount - aCount;
     });
-  }, [allMembers, selectedJob, searchQuery]);
+  }, [roster]);
+
+  const displayJobs = useMemo(() => {
+    const jobs = sortedJobs.length > 0 ? sortedJobs : JOB_LIST;
+    if (selectedJob !== "ทั้งหมด") {
+      return jobs.filter(job => job === selectedJob);
+    }
+    return jobs;
+  }, [sortedJobs, selectedJob]);
 
   const hexToRgba = (hex: string, alpha: number) => {
     let cleanHex = hex.replace("#", "");
@@ -64,10 +65,10 @@ export default function RosterPage() {
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
   };
 
-  const openEditModal = (member: any) => {
-    setEditingMember(member);
+  const openEditModal = (member: any, job: string) => {
+    setEditingMember({ ...member, originalJob: job });
     setEditName(member.name);
-    setEditJob(member.job);
+    setEditJob(job);
     setEditPower(member.power?.toString() || "");
     setEditRole(member.role || "อิสระ (ให้ระบบจัดให้)");
     setIsAddingNew(false);
@@ -131,150 +132,207 @@ export default function RosterPage() {
   return (
     <div className="space-y-6 bg-[#f0f6fc] min-h-screen p-4 lg:p-8 relative">
       
-      {/* Top Toolbar */}
+      {/* Top Banner */}
+      <div className="bg-[#0f4b7a] rounded-2xl p-6 text-white flex items-center justify-between shadow-md">
+        <div className="flex items-center space-x-4">
+          <div className="bg-[#1b5d92] p-3 rounded-xl hidden sm:block">
+            <Shield className="w-8 h-8 text-blue-200" />
+          </div>
+          <div>
+            <h1 className="text-2xl md:text-3xl font-black tracking-wide">สมาชิกทั้งหมดในกิลด์</h1>
+            <p className="text-blue-200 text-sm md:text-base font-medium mt-1">จำแนกตาม {displayJobs.length} สายอาชีพ</p>
+          </div>
+        </div>
+        <div className="text-right">
+          <div className="text-4xl md:text-5xl font-black">{totalMembers} <span className="text-xl md:text-2xl font-medium">คน</span></div>
+        </div>
+      </div>
+
+      {/* Toolbar */}
       <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
-        <div className="flex items-center space-x-3 w-full md:w-auto">
-          <div className="relative w-full md:w-64">
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+          <div className="relative w-full sm:w-64">
             <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
               <Search className="h-4 w-4 text-slate-400" />
             </div>
             <input
               type="text"
               placeholder="ค้นหาชื่อสมาชิก..."
-              className="block w-full rounded-full border border-slate-200 bg-slate-50 py-2 pl-11 pr-4 text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-600 sm:text-sm transition-colors"
+              className="block w-full rounded-full border border-slate-200 bg-slate-50 py-2.5 pl-11 pr-4 text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#1e76b9] sm:text-sm font-medium transition-colors"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
           <button 
             onClick={openAddModal}
-            className="flex-shrink-0 rounded-full bg-[#1e76b9] px-6 py-2 text-sm font-bold text-white hover:bg-[#165a8e] transition-colors shadow-sm"
+            className="w-full sm:w-auto flex-shrink-0 rounded-full bg-[#1e76b9] px-6 py-2.5 text-sm font-bold text-white hover:bg-[#165a8e] transition-colors shadow-sm"
           >
             เพิ่มสมาชิกใหม่
           </button>
         </div>
         <button 
           onClick={() => alert("ระบบ Import Excel กำลังพัฒนา")}
-          className="w-full md:w-auto rounded-full bg-white border border-[#1e76b9] px-6 py-2 text-sm font-bold text-[#1e76b9] hover:bg-blue-50 transition-colors"
+          className="w-full md:w-auto rounded-full bg-white border border-[#1e76b9] px-6 py-2.5 text-sm font-bold text-[#1e76b9] hover:bg-blue-50 transition-colors shadow-sm"
         >
           เพิ่มกลุ่ม (Excel)
         </button>
       </div>
 
-      {/* Class Filters */}
-      <div className="flex flex-wrap gap-2">
-        <button
+      {/* Summary Pills (Click to Filter) */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        {/* All jobs button */}
+        <button 
           onClick={() => setSelectedJob("ทั้งหมด")}
-          className={`px-4 py-2 rounded-full text-sm font-bold border transition-colors shadow-sm ${
+          className={`rounded-xl p-3.5 flex items-center justify-between shadow-sm border transition-all ${
             selectedJob === "ทั้งหมด" 
-              ? "bg-[#0b3d63] text-white border-[#0b3d63]" 
-              : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+              ? "bg-[#0b3d63] border-[#0b3d63] text-white ring-2 ring-offset-2 ring-[#0b3d63]" 
+              : "bg-white border-slate-200 hover:border-[#0b3d63] hover:shadow-md"
           }`}
         >
-          ทั้งหมด ({allMembers.length})
+          <div className="flex items-center space-x-2 font-black text-sm lg:text-base">
+            <span>ทั้งหมด</span>
+          </div>
+          <div className={`px-3 py-1 rounded-lg text-sm font-black ${selectedJob === "ทั้งหมด" ? "bg-white/20" : "bg-slate-100 text-slate-700"}`}>
+            {totalMembers}
+          </div>
         </button>
-        {JOB_LIST.map(job => {
-          const color = JOB_COLORS[job];
+
+        {sortedJobs.map(job => {
           const count = roster?.[job]?.length || 0;
-          if (count === 0) return null; // hide empty jobs in filter
+          if (count === 0 && searchQuery) return null; // Hide if empty during search
+          const color = JOB_COLORS[job] || "#000";
           const isSelected = selectedJob === job;
+
           return (
-            <button
-              key={job}
-              onClick={() => setSelectedJob(job)}
-              className="px-4 py-2 rounded-full text-sm font-bold border transition-colors shadow-sm flex items-center space-x-2"
+            <button 
+              key={`pill-${job}`} 
+              onClick={() => setSelectedJob(isSelected ? "ทั้งหมด" : job)}
+              className="bg-white rounded-xl p-3.5 flex items-center justify-between shadow-sm border-y border-r border-slate-200 transition-all hover:shadow-md cursor-pointer text-left"
               style={{ 
-                backgroundColor: isSelected ? color : "white",
-                color: isSelected ? "white" : color,
-                borderColor: isSelected ? color : "var(--slate-200)"
+                borderLeft: `6px solid ${color}`,
+                boxShadow: isSelected ? `0 0 0 2px ${hexToRgba(color, 0.3)}` : undefined,
+                backgroundColor: isSelected ? hexToRgba(color, 0.05) : "white"
               }}
             >
-              {!isSelected && <span className="w-2 h-2 rounded-full" style={{ backgroundColor: color }}></span>}
-              <span>{job} ({count})</span>
+              <div className="flex items-center space-x-2 font-black text-sm lg:text-base" style={{ color: color }}>
+                <span className="w-2.5 h-2.5 rounded-full shadow-sm" style={{ backgroundColor: color }}></span>
+                <span>{job}</span>
+              </div>
+              <div 
+                className="px-3 py-1 rounded-lg text-sm font-black"
+                style={{ backgroundColor: hexToRgba(color, 0.15), color: color }}
+              >
+                {count}
+              </div>
             </button>
           );
         })}
       </div>
 
-      {/* Main Table */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead className="bg-[#0b3d63] text-white text-xs uppercase font-bold tracking-wider">
-              <tr>
-                <th className="px-6 py-4 text-center rounded-tl-2xl">#</th>
-                <th className="px-6 py-4">รายชื่อ / Guild</th>
-                <th className="px-6 py-4 text-center">อาชีพ / Class</th>
-                <th className="px-6 py-4 text-center">ค่าพลัง / Power</th>
-                <th className="px-6 py-4 text-center rounded-tr-2xl">การจัดการ</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filteredMembers.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-slate-400 font-medium">ไม่มีข้อมูลสมาชิก</td>
-                </tr>
-              ) : (
-                filteredMembers.map((m, idx) => {
-                  const color = JOB_COLORS[m.job];
-                  return (
-                    <tr key={m.name} className="hover:bg-slate-50 transition-colors group font-bold">
-                      <td className="px-6 py-3.5 text-center text-slate-400">{idx + 1}</td>
-                      <td className="px-6 py-3.5 text-slate-800 text-base">{m.name}</td>
-                      <td className="px-6 py-3.5 text-center">
-                        <span 
-                          className="px-3 py-1 rounded-full text-xs"
-                          style={{ backgroundColor: hexToRgba(color, 0.1), color: color, border: `1px solid ${hexToRgba(color, 0.2)}` }}
-                        >
-                          {m.job}
-                        </span>
-                      </td>
-                      <td className="px-6 py-3.5 text-center text-[15px]" style={{ color: color }}>
-                        {Number(m.power || 0).toLocaleString()}
-                      </td>
-                      <td className="px-6 py-3.5 text-center">
-                        <button 
-                          onClick={() => openEditModal(m)}
-                          className="px-4 py-1.5 border border-slate-200 rounded-lg text-xs text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors bg-white shadow-sm font-bold"
-                        >
-                          แก้ไข
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+      {/* Tables Grid (Separated by Class) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
+        {displayJobs.map(job => {
+          const rawMembers = roster?.[job] || [];
+          
+          // Filter by search query
+          const filteredMembers = rawMembers.filter((m: any) => {
+            if (searchQuery && !m.name?.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+            return true;
+          });
+
+          // Sort by power descending
+          const members = [...filteredMembers].sort((a, b) => (Number(b.power) || 0) - (Number(a.power) || 0));
+          
+          if (members.length === 0 && searchQuery) return null; // Hide column if search gives no results
+
+          const color = JOB_COLORS[job] || "#000";
+          
+          return (
+            <div key={`col-${job}`} className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col transition-all hover:shadow-md">
+              {/* Header - Made Bigger as requested */}
+              <div className="px-5 py-4 flex items-center justify-between border-b border-slate-100 bg-white">
+                <div className="flex items-center space-x-2 font-black text-lg" style={{ color: color }}>
+                  <span className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: color }}></span>
+                  <span>{job}</span>
+                </div>
+                <div 
+                  className="px-3 py-1.5 rounded-lg text-sm font-black text-white shadow-sm"
+                  style={{ backgroundColor: color }}
+                >
+                  {members.length} คน
+                </div>
+              </div>
+
+              {/* Table Column Headers */}
+              <div className="grid grid-cols-12 gap-2 px-4 py-2.5 bg-slate-50 border-b border-slate-100 text-xs font-bold text-slate-500 text-center uppercase tracking-wider">
+                <div className="col-span-1 text-left">#</div>
+                <div className="col-span-5 text-left">ชื่อ</div>
+                <div className="col-span-3">ค่าพลัง</div>
+                <div className="col-span-3">จัดการ</div>
+              </div>
+
+              {/* List */}
+              <div className="flex-1 overflow-y-auto max-h-[600px] p-0">
+                {members.length === 0 ? (
+                  <div className="p-8 text-center text-sm text-slate-400 font-medium bg-slate-50/50">
+                    ไม่มีข้อมูลสมาชิก
+                  </div>
+                ) : (
+                  <ul className="divide-y divide-slate-50">
+                    {members.map((m: any, idx: number) => (
+                      <li key={m.name || idx} className="grid grid-cols-12 gap-2 px-4 py-3 items-center hover:bg-slate-50 transition-colors text-xs sm:text-sm font-bold group">
+                        <div className="col-span-1 text-slate-400 text-left font-medium">{idx + 1}</div>
+                        <div className="col-span-5 text-left truncate" style={{ color: color }}>
+                          {m.name || "Unknown"}
+                        </div>
+                        <div className="col-span-3 text-center" style={{ color: color }}>
+                          {Number(m.power || 0).toLocaleString()}
+                        </div>
+                        <div className="col-span-3 text-center opacity-70 group-hover:opacity-100 transition-opacity">
+                          <button 
+                            onClick={() => openEditModal(m, job)}
+                            className="px-2.5 py-1.5 border border-slate-200 rounded-lg text-[11px] text-slate-600 hover:bg-[#1e76b9] hover:text-white hover:border-[#1e76b9] transition-all bg-white shadow-sm font-bold w-full"
+                          >
+                            แก้ไข
+                          </button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* Edit/Add Modal */}
       {(editingMember || isAddingNew) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[400px] overflow-hidden flex flex-col font-prompt animate-in fade-in zoom-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[420px] overflow-hidden flex flex-col font-prompt animate-in fade-in zoom-in duration-200">
             {/* Header */}
             <div className="px-6 py-4 flex items-center justify-between border-b border-slate-100">
-              <h2 className="text-lg font-black text-[#0b3d63]">
+              <h2 className="text-xl font-black text-[#0b3d63]">
                 {isAddingNew ? "เพิ่มสมาชิกใหม่" : "แก้ไขข้อมูลสมาชิก"}
               </h2>
               <button 
                 onClick={() => { setEditingMember(null); setIsAddingNew(false); }}
-                className="text-slate-400 hover:text-slate-600 transition-colors"
+                className="text-slate-400 hover:bg-slate-100 rounded-full p-1.5 transition-colors"
               >
                 <X size={20} />
               </button>
             </div>
 
             {/* Body */}
-            <div className="p-6 space-y-4">
+            <div className="p-6 space-y-5">
               <div>
                 <label className="block text-sm font-bold text-[#0b3d63] mb-1.5">ชื่อสมาชิก</label>
                 <input 
                   type="text" 
                   value={editName}
                   onChange={e => setEditName(e.target.value)}
-                  className="w-full border border-blue-100 rounded-lg px-4 py-2.5 text-slate-800 font-bold focus:ring-2 focus:ring-[#1e76b9] focus:border-[#1e76b9] bg-blue-50/30"
+                  className="w-full border border-blue-100 rounded-xl px-4 py-3 text-slate-800 font-bold focus:ring-2 focus:ring-[#1e76b9] focus:border-[#1e76b9] bg-blue-50/40 transition-all outline-none"
+                  placeholder="กรอกชื่อตัวละคร..."
                 />
               </div>
               
@@ -283,7 +341,7 @@ export default function RosterPage() {
                 <select 
                   value={editJob}
                   onChange={e => setEditJob(e.target.value)}
-                  className="w-full border border-blue-100 rounded-lg px-4 py-2.5 text-[#0b3d63] font-bold focus:ring-2 focus:ring-[#1e76b9] focus:border-[#1e76b9] bg-blue-50/30 appearance-none"
+                  className="w-full border border-blue-100 rounded-xl px-4 py-3 text-[#0b3d63] font-bold focus:ring-2 focus:ring-[#1e76b9] focus:border-[#1e76b9] bg-blue-50/40 transition-all outline-none appearance-none cursor-pointer"
                 >
                   {JOB_LIST.map(job => (
                     <option key={job} value={job}>{job}</option>
@@ -297,7 +355,8 @@ export default function RosterPage() {
                   type="number" 
                   value={editPower}
                   onChange={e => setEditPower(e.target.value)}
-                  className="w-full border border-blue-100 rounded-lg px-4 py-2.5 text-[#0b3d63] font-bold focus:ring-2 focus:ring-[#1e76b9] focus:border-[#1e76b9] bg-blue-50/30"
+                  className="w-full border border-blue-100 rounded-xl px-4 py-3 text-[#0b3d63] font-bold focus:ring-2 focus:ring-[#1e76b9] focus:border-[#1e76b9] bg-blue-50/40 transition-all outline-none"
+                  placeholder="เช่น 150000"
                 />
               </div>
 
@@ -306,7 +365,7 @@ export default function RosterPage() {
                 <select 
                   value={editRole}
                   onChange={e => setEditRole(e.target.value)}
-                  className="w-full border border-blue-100 rounded-lg px-4 py-2.5 text-[#0b3d63] font-bold focus:ring-2 focus:ring-[#1e76b9] focus:border-[#1e76b9] bg-blue-50/30 appearance-none"
+                  className="w-full border border-blue-100 rounded-xl px-4 py-3 text-[#0b3d63] font-bold focus:ring-2 focus:ring-[#1e76b9] focus:border-[#1e76b9] bg-blue-50/40 transition-all outline-none appearance-none cursor-pointer"
                 >
                   <option value="อิสระ (ให้ระบบจัดให้)">อิสระ (ให้ระบบจัดให้)</option>
                   <option value="สนามหลัก">สนามหลัก</option>
@@ -320,7 +379,7 @@ export default function RosterPage() {
               {!isAddingNew ? (
                 <button 
                   onClick={handleDelete}
-                  className="bg-[#e74c3c] text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-[#c0392b] transition-colors"
+                  className="bg-[#e74c3c] text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-[#c0392b] transition-all shadow-sm hover:shadow"
                 >
                   ลบสมาชิกนี้
                 </button>
@@ -329,14 +388,14 @@ export default function RosterPage() {
               <div className="flex items-center space-x-3">
                 <button 
                   onClick={() => { setEditingMember(null); setIsAddingNew(false); }}
-                  className="bg-white border border-slate-200 text-[#0b3d63] px-4 py-2 rounded-lg text-sm font-bold hover:bg-slate-50 transition-colors"
+                  className="bg-white border border-slate-200 text-[#0b3d63] px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-slate-50 transition-all shadow-sm"
                 >
                   ยกเลิก
                 </button>
                 <button 
                   onClick={handleSave}
                   disabled={mutation.isPending}
-                  className="bg-[#1e76b9] text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-[#165a8e] transition-colors"
+                  className="bg-[#1e76b9] text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-[#165a8e] transition-all shadow-sm hover:shadow disabled:opacity-70"
                 >
                   {mutation.isPending ? "กำลังบันทึก..." : "บันทึกสมาชิก"}
                 </button>
