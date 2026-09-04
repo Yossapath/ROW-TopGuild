@@ -53,29 +53,61 @@ export default function TeamsPage() {
 
       let initialData: DataState = { members: membersMap, columns: {}, mainZone1Order: [], mainZone2Order: [], subOrder: [] };
 
-      if (savedTeams && savedTeams.main && savedTeams.main.length > 0) {
-        let unassignedMembers = new Set(Object.keys(membersMap));
+      let hasData = false;
+      let unassignedMembers = new Set(Object.keys(membersMap));
+      
+      const processLegacyFormat = (groupsObj: any, prefix: string, type: "main"|"sub") => {
+         const order: string[] = [];
+         let num = 1;
+         Object.keys(groupsObj).sort((a,b) => {
+           const numA = parseInt(a.replace(/\D/g, '')) || 0;
+           const numB = parseInt(b.replace(/\D/g, '')) || 0;
+           return numA - numB;
+         }).forEach(teamKey => {
+           const group = groupsObj[teamKey];
+           const colId = `${prefix}-${num}`;
+           order.push(colId);
+           const validIds = group.filter((m: any) => m && m.name).map((m: any) => m.name).filter((name: string) => membersMap[name]);
+           validIds.forEach((id: string) => unassignedMembers.delete(id));
+           initialData.columns[colId] = { id: colId, title: `ทีม ${num}`, memberIds: validIds, type, locked: false };
+           num++;
+         });
+         return order;
+      };
 
+      if (savedTeams && savedTeams.data && Array.isArray(savedTeams.data)) {
+        // Legacy format
+        hasData = true;
+        const mainObj = savedTeams.data[0]?.teams || {};
+        const subObj = savedTeams.data[1]?.teams || {};
+        const allMainOrder = processLegacyFormat(mainObj, "main", "main");
+        initialData.mainZone1Order = allMainOrder.slice(0, 6);
+        initialData.mainZone2Order = allMainOrder.slice(6, 12);
+        initialData.subOrder = processLegacyFormat(subObj, "sub", "sub");
+        initialData.columns["unassigned"] = { id: "unassigned", title: "ยังไม่ได้จัดทีม", memberIds: Array.from(unassignedMembers), type: "unassigned", locked: false };
+      } else if (savedTeams && savedTeams.main && savedTeams.main.length > 0) {
+        // New format
+        hasData = true;
         const createColumns = (groups: any[][], prefix: string, type: "main"|"sub", startIdx = 1) => {
           const order: string[] = [];
           groups.forEach((group, idx) => {
             const num = startIdx + idx;
             const colId = `${prefix}-${num}`;
             order.push(colId);
-            const validIds = group.map((m: any) => m.name).filter((name: string) => membersMap[name]);
+            const validIds = group.filter(m => m && m.name).map((m: any) => m.name).filter((name: string) => membersMap[name]);
             validIds.forEach((id: string) => unassignedMembers.delete(id));
             initialData.columns[colId] = { id: colId, title: `ทีม ${num}`, memberIds: validIds, type, locked: false };
           });
           return order;
         };
-
         const allMainOrder = createColumns(savedTeams.main || [], "main", "main", 1);
         initialData.mainZone1Order = allMainOrder.slice(0, 6);
         initialData.mainZone2Order = allMainOrder.slice(6, 12);
         initialData.subOrder = createColumns(savedTeams.sub || [], "sub", "sub", 1);
-
         initialData.columns["unassigned"] = { id: "unassigned", title: "ยังไม่ได้จัดทีม", memberIds: Array.from(unassignedMembers), type: "unassigned", locked: false };
-      } else {
+      }
+
+      if (!hasData) {
         initialData.columns["unassigned"] = { id: "unassigned", title: "รายชื่อทั้งหมด (ยังไม่ได้จัด)", memberIds: Object.keys(membersMap), type: "unassigned", locked: false };
         // Empty 12 main teams
         for (let i = 1; i <= 12; i++) {
@@ -573,7 +605,7 @@ function TeamCard({ column, members, index, toggleLock, clearTeam, removeMember 
             <div className="absolute inset-0 p-2 flex flex-col gap-1.5 pointer-events-none">
               {Array.from({ length: 5 }).map((_, i) => (
                 <div key={i} className="h-[34px] border border-dashed border-theme-border/50 rounded flex items-center justify-center bg-theme-bg/30">
-                  <span className="text-[10px] text-theme-textMuted font-bold uppercase tracking-widest">Empty Slot</span>
+                  <span className="text-[10px] text-theme-textMuted font-bold tracking-widest">ว่าง {i + 1}</span>
                 </div>
               ))}
             </div>
