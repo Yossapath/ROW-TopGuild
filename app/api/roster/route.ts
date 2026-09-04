@@ -9,7 +9,10 @@ export async function GET() {
     if (!doc.exists) {
       return ok({});
     }
-    return ok(doc.data());
+    const docData = doc.data() as any;
+    // The HTML app wraps the roster in a "data" property: { data: { "Lord Knight": [...] } }
+    const actualRoster = docData.data ? docData.data : docData;
+    return ok(actualRoster);
   } catch (e: any) {
     return err(e.message, 500);
   }
