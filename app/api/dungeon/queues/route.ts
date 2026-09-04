@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 import { dungeonsRef, scheduleRef } from "@/lib/firebase-admin";
 import { getCurrentUser } from "@/lib/auth";
-import { ok, err, isBookingOpen } from "@/lib/utils";
+import { ok, err, isBookingOpen } from "@/lib/server-utils";
 
 export async function GET() {
   try {
@@ -63,4 +63,5 @@ export async function POST(req: Request) {
     return err(e.message, 500);
   }
 }
+
 

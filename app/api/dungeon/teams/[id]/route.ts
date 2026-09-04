@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 import { dungeonsRef } from "@/lib/firebase-admin";
 import { getCurrentUser } from "@/lib/auth";
-import { ok, err, unauthorized } from "@/lib/utils";
+import { ok, err, unauthorized } from "@/lib/server-utils";
 
 // สร้างทีมจัดดันเจี้ยน
 export async function POST(req: Request) {
