@@ -48,14 +48,26 @@ export default function TeamsPage() {
         axios.get("/api/teams")
       ]);
 
-      const membersList: Member[] = rosterRes.data;
+      const rosterPayload = rosterRes.data;
       const savedTeams = teamsRes.data;
 
       const membersMap: Record<string, Member> = {};
-      membersList.forEach(m => {
-        // Use name as ID
-        membersMap[m.name] = { id: m.name, name: m.name, job: m.job, power: Number(m.power || 0) };
-      });
+      
+      // Parse roster response: { ok: true, data: { "JobName": [ {name, power}, ... ] } }
+      if (rosterPayload.ok && rosterPayload.data) {
+        Object.entries(rosterPayload.data).forEach(([jobName, members]: [string, any]) => {
+          if (Array.isArray(members)) {
+            members.forEach(m => {
+              membersMap[m.name] = { 
+                id: m.name, 
+                name: m.name, 
+                job: jobName, 
+                power: Number(m.power || 0) 
+              };
+            });
+          }
+        });
+      }
 
       let initialData: DataState = {
         members: membersMap,
