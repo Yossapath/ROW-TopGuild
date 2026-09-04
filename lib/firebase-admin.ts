@@ -1,13 +1,17 @@
 import * as admin from "firebase-admin";
 
+let initError = "";
+
 // Lazy initialize Firebase admin
 function getDb() {
   if (!admin.apps.length) {
     try {
       if (process.env.FIREBASE_PRIVATE_KEY) {
-        // Clean up the private key (remove quotes if user copied them by mistake, and fix newlines)
+        // Clean up the private key
         let formattedKey = process.env.FIREBASE_PRIVATE_KEY;
-        formattedKey = formattedKey.replace(/^"|"$/g, "");
+        // Remove surrounding quotes if they exist (single or double)
+        formattedKey = formattedKey.replace(/^["']|["']$/g, "");
+        // Replace escaped newlines with actual newlines
         formattedKey = formattedKey.replace(/\\n/g, "\n");
 
         admin.initializeApp({
@@ -18,17 +22,23 @@ function getDb() {
           }),
         });
       } else {
-        // Fallback for Next.js build phase
+        initError = "Missing FIREBASE_PRIVATE_KEY in Environment Variables";
         admin.initializeApp({ projectId: "topguild-build-demo" });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.warn("Firebase admin initialization error:", error);
-      // Fallback so it doesn't crash the entire app, but API calls will fail
+      initError = error.message || "Unknown Initialization Error";
+      // Fallback so it doesn't crash the entire app
       if (!admin.apps.length) {
         admin.initializeApp({ projectId: "topguild-build-demo" });
       }
     }
   }
+  
+  if (initError) {
+    throw new Error("FIREBASE_INIT_ERROR: " + initError);
+  }
+  
   return admin.firestore();
 }
 
