@@ -130,7 +130,7 @@ export default function RosterPage() {
   if (isLoading) return <div className="flex h-screen items-center justify-center font-bold text-gray-500">กำลังโหลดรายชื่อ...</div>;
 
   return (
-    <div className="space-y-6 bg-[#f0f6fc] min-h-screen p-4 lg:p-8 relative" style={{ zoom: 0.75 }}>
+    <div className="space-y-6 bg-[#f0f6fc] min-h-screen p-4 lg:py-8 lg:px-12 xl:px-24 2xl:px-32 relative" style={{ zoom: 0.85 }}>
       
       {/* Top Banner */}
       <div className="bg-[#0f4b7a] rounded-2xl p-6 text-white flex items-center justify-between shadow-md">
