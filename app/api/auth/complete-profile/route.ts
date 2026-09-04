@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { getDb } from "@/lib/firebase-admin";
 import { getCurrentUser, signToken, authCookie } from "@/lib/auth";
 import { ok, err } from "@/lib/server-utils";
@@ -16,13 +16,39 @@ export async function POST(req: Request) {
     }
 
     const db = getDb();
-    const userRef = db.collection("users").doc(user.discordId);
+    const userRef = db.collection("TopGuild").doc(user.discordId);
     
     await userRef.update({
       gameUsername,
       class: userClass,
       power: Number(power),
     });
+
+    // Add to roster
+    const rosterRef = db.collection("TopGuild").doc("roster");
+    const rosterDoc = await rosterRef.get();
+    let rosterData = rosterDoc.exists ? rosterDoc.data() || {} : {};
+    
+    if (!rosterData[userClass]) {
+      rosterData[userClass] = [];
+    }
+    
+    // Check if user is already in roster, if so update, else add
+    const existingIndex = rosterData[userClass].findIndex((m: any) => m.discordId === user.discordId || m.name === gameUsername);
+    const memberObj = { 
+      discordId: user.discordId, 
+      discordUsername: user.discordUsername,
+      name: gameUsername, 
+      power: Number(power) 
+    };
+    
+    if (existingIndex >= 0) {
+      rosterData[userClass][existingIndex] = memberObj;
+    } else {
+      rosterData[userClass].push(memberObj);
+    }
+    
+    await rosterRef.set(rosterData, { merge: true });
 
     const payload = {
       ...user,

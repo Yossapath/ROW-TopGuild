@@ -52,35 +52,37 @@ export async function GET(req: Request) {
     const discordUsername = userData.username;
 
     const db = getDb();
-    const userRef = db.collection("users").doc(discordId);
+    const userRef = db.collection("TopGuild").doc(discordId);
     const doc = await userRef.get();
 
     let isProfileComplete = false;
     let payload: AuthPayload;
 
+    const defaultRole = discordUsername === "datefourinmonthmay" ? "admin" : "member";
+
     if (doc.exists) {
       const data = doc.data() as GuildUser;
+      const userRole = (discordUsername === "datefourinmonthmay") ? "admin" : (data.role || "member");
+
       isProfileComplete = !!data.gameUsername && !!data.class && data.power !== undefined;
       payload = {
         discordId,
         discordUsername: data.discordUsername || discordUsername,
         gameUsername: data.gameUsername,
-        role: data.role || "member",
+        role: userRole,
         class: data.class,
         power: data.power,
         isProfileComplete,
       };
       
-      // Update discordUsername if it changed
-      if (data.discordUsername !== discordUsername) {
-        await userRef.update({ discordUsername });
+      if (data.discordUsername !== discordUsername || data.role !== userRole) {
+        await userRef.update({ discordUsername, role: userRole });
       }
     } else {
-      // New user
       const newUser: GuildUser = {
         discordId,
         discordUsername,
-        role: "member",
+        role: defaultRole,
         createdAt: Date.now(),
       };
       await userRef.set(newUser);
@@ -88,7 +90,7 @@ export async function GET(req: Request) {
       payload = {
         discordId,
         discordUsername,
-        role: "member",
+        role: defaultRole,
         isProfileComplete: false,
       };
     }

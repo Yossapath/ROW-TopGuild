@@ -17,6 +17,7 @@ export default function RosterPage() {
   const [editJob, setEditJob] = useState("");
   const [editPower, setEditPower] = useState("");
   const [editRole, setEditRole] = useState("อิสระ (ให้ระบบจัดให้)");
+  const [editDiscordUsername, setEditDiscordUsername] = useState("");
   const [isAddingNew, setIsAddingNew] = useState(false);
 
   const { data: roster, isLoading } = useQuery({
@@ -71,6 +72,7 @@ export default function RosterPage() {
     setEditJob(job);
     setEditPower(member.power?.toString() || "");
     setEditRole(member.role || "อิสระ (ให้ระบบจัดให้)");
+    setEditDiscordUsername(member.discordUsername || "");
     setIsAddingNew(false);
   };
 
@@ -115,16 +117,24 @@ export default function RosterPage() {
     mutation.mutate(newRoster);
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!editingMember) return;
-    if (!confirm("ยืนยันการลบสมาชิกนี้?")) return;
+    if (!confirm("ยืนยันการลบสมาชิกนี้? การลบนี้จะลบข้อมูลของ User คนนี้ออกจากระบบทั้งหมด")) return;
     
-    const newRoster = JSON.parse(JSON.stringify(roster || {}));
-    if (newRoster[editingMember.originalJob]) {
-      newRoster[editingMember.originalJob] = newRoster[editingMember.originalJob].filter((m: any) => m.name !== editingMember.name);
+    try {
+      await axios.delete("/api/roster", {
+        data: {
+          discordId: editingMember.discordId,
+          name: editingMember.name,
+          job: editingMember.originalJob
+        }
+      });
+      queryClient.invalidateQueries({ queryKey: ["roster"] });
+      setEditingMember(null);
+    } catch (err) {
+      console.error(err);
+      alert("เกิดข้อผิดพลาดในการลบสมาชิก");
     }
-    
-    mutation.mutate(newRoster);
   };
 
   if (isLoading) return <div className="flex h-screen items-center justify-center font-bold text-gray-500">กำลังโหลดรายชื่อ...</div>;
@@ -332,8 +342,19 @@ export default function RosterPage() {
 
             {/* Body */}
             <div className="p-6 space-y-5">
+              {!isAddingNew && editDiscordUsername && (
+                <div>
+                  <label className="block text-sm font-bold text-[#0b3d63] mb-1.5">Discord Username</label>
+                  <input 
+                    type="text" 
+                    value={editDiscordUsername}
+                    disabled
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-gray-500 font-medium bg-gray-100 cursor-not-allowed outline-none"
+                  />
+                </div>
+              )}
               <div>
-                <label className="block text-sm font-bold text-[#0b3d63] mb-1.5">ชื่อสมาชิก</label>
+                <label className="block text-sm font-bold text-[#0b3d63] mb-1.5">ชื่อสมาชิก (ในเกม)</label>
                 <input 
                   type="text" 
                   value={editName}

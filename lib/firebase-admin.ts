@@ -66,7 +66,7 @@ export function getDb() {
   return admin.firestore();
 }
 
-export const COLL = "guild_system";
+export const COLL = "TopGuild";
 
 export const rosterRef    = () => getDb().collection(COLL).doc("roster");
 export const teamsRef     = () => getDb().collection(COLL).doc("teams");

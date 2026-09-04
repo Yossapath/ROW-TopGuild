@@ -27,10 +27,46 @@ export async function PUT(req: Request) {
     }
 
     const body = await req.json();
-    // In a real app we'd validate the structure against our Roster type
     await rosterRef().set(body, { merge: true });
     
     return ok({ message: "Roster updated successfully" });
+  } catch (e: any) {
+    return err(e.message, 500);
+  }
+}
+
+export async function DELETE(req: Request) {
+  try {
+    const user = await getCurrentUser();
+    if (!user || (user.role !== "admin" && user.role !== "owner")) {
+      return unauthorized();
+    }
+
+    const body = await req.json();
+    const { discordId, job, name } = body;
+    
+    const db = getDb();
+    
+    // Remove from roster
+    if (job) {
+      const doc = await rosterRef().get();
+      if (doc.exists) {
+        let rosterData = doc.data() as any;
+        if (rosterData.data) rosterData = rosterData.data;
+        
+        if (rosterData[job]) {
+          rosterData[job] = rosterData[job].filter((m: any) => m.discordId !== discordId && m.name !== name);
+          await rosterRef().set(rosterData);
+        }
+      }
+    }
+    
+    // Remove user doc
+    if (discordId) {
+      await db.collection("TopGuild").doc(discordId).delete();
+    }
+
+    return ok({ message: "Deleted" });
   } catch (e: any) {
     return err(e.message, 500);
   }
