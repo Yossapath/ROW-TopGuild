@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Shield, Users, Save, Loader2, GripVertical, Lock, Unlock, X, ChevronLeft, ChevronRight, LayoutGrid } from "lucide-react";
+import { Shield, Users, Save, Loader2, GripVertical, Lock, Unlock, X, ChevronLeft, ChevronRight, LayoutGrid, RefreshCw, Wand2 } from "lucide-react";
 import axios from "axios";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { JOB_COLORS, JOB_LIST } from "@/lib/utils";
+import { useAuthStore } from "@/stores/useAuthStore";
 
 type Member = { id: string; name: string; job: string; power: number; };
 type Column = { id: string; title: string; memberIds: (string | null)[]; type: "main" | "sub" | "unassigned"; locked: boolean; };
@@ -17,16 +18,20 @@ type DataState = {
 };
 
 export default function TeamsPage() {
+  const { user } = useAuthStore();
+  const isAdmin = user?.role === "admin";
+
   const [data, setData] = useState<DataState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
 
-  const [activeTab, setActiveTab] = useState<"main" | "sub">("main");
+  const [activeTab, setActiveTab] = useState<"main" | "sub" | "leave">("main");
   const [unassignedFilterJob, setUnassignedFilterJob] = useState<string>("All");
   const [isUnassignedCollapsed, setIsUnassignedCollapsed] = useState(false);
   const [isAutoModalOpen, setIsAutoModalOpen] = useState(false);
   const [autoModalText, setAutoModalText] = useState("");
+  const [leaveRecords, setLeaveRecords] = useState<any[]>([]);
 
   useEffect(() => {
     setIsMounted(true);
@@ -36,10 +41,19 @@ export default function TeamsPage() {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const [rosterRes, teamsRes] = await Promise.all([ axios.get("/api/roster"), axios.get("/api/teams") ]);
+      const [rosterRes, teamsRes, leaveRes] = await Promise.all([ 
+        axios.get("/api/roster"), 
+        axios.get("/api/teams"),
+        axios.get("/api/leave").catch(() => ({ data: [] }))
+      ]);
       const rosterPayload = rosterRes.data;
       const savedTeams = teamsRes.data;
       const membersMap: Record<string, Member> = {};
+      
+      if (leaveRes.data) {
+        // data.data is an array if ok, or just the array directly depending on api format
+        setLeaveRecords(leaveRes.data.data || leaveRes.data || []);
+      }
       
       if (rosterPayload.ok && rosterPayload.data) {
         Object.entries(rosterPayload.data).forEach(([jobName, members]: [string, any]) => {
@@ -448,47 +462,46 @@ export default function TeamsPage() {
         </div>
       </div>
 
-      <DragDropContext onDragEnd={onDragEnd}>
-        <div className="flex gap-4 items-start">
-          {!isUnassignedCollapsed && (
-            <div className="w-[300px] flex-shrink-0 bg-theme-panel rounded-xl shadow-sm border border-theme-border h-[calc(100vh-140px)] flex flex-col sticky top-28 z-10 transition-all">
-              <div className="p-3 border-b border-theme-divider bg-theme-bg/50 rounded-t-xl">
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="font-bold text-theme-text flex items-center gap-2 text-sm"><Users size={16} /> ยังไม่ได้จัด ({data.columns["unassigned"].memberIds.length})</h2>
-                  <button onClick={() => setIsUnassignedCollapsed(true)} className="text-theme-textSecondary hover:text-theme-text bg-theme-panel border border-theme-border rounded p-1"><ChevronLeft size={14}/></button>
-                </div>
-                <select 
-                  value={unassignedFilterJob} 
-                  onChange={e => setUnassignedFilterJob(e.target.value)}
-                  className="w-full bg-theme-input text-theme-text text-sm rounded border border-theme-border p-1.5 outline-none"
-                >
-                  <option value="All">ทุกอาชีพ</option>
-                  {JOB_LIST.map(job => <option key={job} value={job}>{job}</option>)}
-                </select>
-              </div>
-              
-              <Droppable droppableId="unassigned" type="MEMBER">
-                {(provided, snapshot) => (
-                  <div ref={provided.innerRef} {...provided.droppableProps} className={`flex-1 overflow-y-auto p-2 space-y-1.5 transition-colors ${snapshot.isDraggingOver ? 'bg-theme-bg/80' : ''}`}>
-                    {filteredUnassignedIds.map((id, index) => {
-                      const m = data.members[id];
-                      return <MemberCard key={id} member={m} index={index} />;
-                    })}
-                    {provided.placeholder}
+        <DragDropContext onDragEnd={onDragEnd}>
+          <div className="flex gap-4 items-start">
+            {isAdmin && !isUnassignedCollapsed && (
+              <div className="w-[300px] flex-shrink-0 bg-theme-panel rounded-xl shadow-sm border border-theme-border h-[calc(100vh-140px)] flex flex-col sticky top-28 z-10 transition-all">
+                <div className="p-3 border-b border-theme-divider bg-theme-bg/50 rounded-t-xl">
+                  <div className="flex items-center justify-between mb-3">
+                    <h2 className="font-bold text-theme-text flex items-center gap-2 text-sm"><Users size={16} /> ยังไม่ได้จัด ({data.columns["unassigned"].memberIds.length})</h2>
+                    <button onClick={() => setIsUnassignedCollapsed(true)} className="text-theme-textSecondary hover:text-theme-text bg-theme-panel border border-theme-border rounded p-1"><ChevronLeft size={14}/></button>
                   </div>
-                )}
-              </Droppable>
-            </div>
-          )}
-          
-          {isUnassignedCollapsed && (
-            <div className="flex-shrink-0 bg-theme-panel rounded-xl shadow-sm border border-theme-border h-[calc(100vh-140px)] flex flex-col items-center py-4 sticky top-28 z-10 w-12 cursor-pointer hover:bg-theme-bg transition-colors" onClick={() => setIsUnassignedCollapsed(false)}>
-              <ChevronRight size={20} className="text-theme-textSecondary mb-4"/>
-              <div className="writing-vertical-rl transform rotate-180 text-theme-text font-bold tracking-widest flex items-center gap-2">
-                ยังไม่ได้จัด <span className="bg-[#065bca] text-white text-xs px-2 py-0.5 rounded-full">{data.columns["unassigned"].memberIds.length}</span>
+                  <select 
+                    value={unassignedFilterJob} 
+                    onChange={e => setUnassignedFilterJob(e.target.value)}
+                    className="w-full bg-theme-bg border border-theme-border rounded-md px-2 py-1.5 text-xs font-bold text-theme-text outline-none"
+                  >
+                    <option value="All">ทุกอาชีพ</option>
+                    {JOB_LIST.map(j => <option key={j} value={j}>{j}</option>)}
+                  </select>
+                </div>
+                
+                <Droppable droppableId="unassigned" type="MEMBER">
+                  {(provided, snapshot) => (
+                    <div ref={provided.innerRef} {...provided.droppableProps} className={`flex-1 overflow-y-auto p-2 space-y-1.5 transition-colors ${snapshot.isDraggingOver ? 'bg-theme-bg/80' : ''}`}>
+                      {filteredUnassignedIds.map((id, index) => {
+                        return <MemberCard key={id} member={data.members[id]} index={index} />;
+                      })}
+                      {provided.placeholder}
+                    </div>
+                  )}
+                </Droppable>
               </div>
-            </div>
-          )}
+            )}
+            
+            {isAdmin && isUnassignedCollapsed && (
+              <div className="flex-shrink-0 bg-theme-panel rounded-xl shadow-sm border border-theme-border h-[calc(100vh-140px)] flex flex-col items-center py-4 sticky top-28 z-10 w-12 cursor-pointer hover:bg-theme-bg transition-colors" onClick={() => setIsUnassignedCollapsed(false)}>
+                <ChevronRight size={20} className="text-theme-textSecondary mb-4"/>
+                <div className="writing-vertical-rl transform rotate-180 text-theme-text font-bold tracking-widest flex items-center gap-2">
+                  ยังไม่ได้จัด <span className="bg-[#065bca] text-white text-xs px-2 py-0.5 rounded-full">{data.columns["unassigned"].memberIds.length}</span>
+                </div>
+              </div>
+            )}
 
           <div className="flex-1 min-w-0 flex flex-col h-[calc(100vh-140px)]">
             <div className="flex gap-2 mb-4 bg-theme-panel p-1.5 rounded-lg border border-theme-border self-start">
@@ -504,6 +517,14 @@ export default function TeamsPage() {
               >
                 สนามรอง ({Object.keys(data.members).length - 60 > 0 ? Object.keys(data.members).length - 60 : 0} คน)
               </button>
+              {isAdmin && (
+                <button 
+                  onClick={() => setActiveTab("leave")}
+                  className={`px-6 py-2 rounded-md font-bold text-sm transition-all ${activeTab === 'leave' ? 'bg-[#e74c3c] text-white shadow-sm' : 'text-theme-textSecondary hover:text-theme-text hover:bg-theme-bg'}`}
+                >
+                  ลา/ออฟไลน์
+                </button>
+              )}
             </div>
 
             <div className="flex-1 overflow-y-auto">
@@ -536,7 +557,7 @@ export default function TeamsPage() {
                     </Droppable>
                   </div>
                 </div>
-              ) : (
+              ) : activeTab === "sub" ? (
                 <div className="pb-12">
                    <h2 className="text-lg font-bold text-theme-text flex items-center gap-2 mb-4"><LayoutGrid size={18} className="text-theme-warning"/> ทีมสนามรอง</h2>
                    <Droppable droppableId="subZone" direction="horizontal" type="TEAM">
@@ -549,6 +570,57 @@ export default function TeamsPage() {
                         </div>
                       )}
                     </Droppable>
+                </div>
+              ) : (
+                <div className="pb-12 space-y-6">
+                  <h2 className="text-lg font-bold text-theme-danger flex items-center gap-2 mb-4">
+                    บันทึกการลา / ข้อมูลผู้เล่นออฟไลน์
+                  </h2>
+                  {leaveRecords.length === 0 ? (
+                    <div className="text-center p-12 bg-theme-panel rounded-xl text-theme-textMuted border border-theme-border font-bold">
+                      ไม่มีข้อมูลการลาในช่วงนี้
+                    </div>
+                  ) : (
+                    <div className="bg-theme-panel rounded-xl border border-theme-border overflow-hidden">
+                      <table className="w-full text-left">
+                        <thead className="bg-theme-bg/50 border-b border-theme-divider text-xs uppercase tracking-wider text-theme-textMuted">
+                          <tr>
+                            <th className="p-4 font-bold">ชื่อในเกม</th>
+                            <th className="p-4 font-bold">วันที่ลา</th>
+                            <th className="p-4 font-bold">เหตุผล</th>
+                            <th className="p-4 font-bold w-20 text-center">จัดการ</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-theme-divider">
+                          {leaveRecords.map((r: any, i) => (
+                            <tr key={r.id || i} className="hover:bg-theme-bg/30">
+                              <td className="p-4 font-bold text-theme-text">{r.name}</td>
+                              <td className="p-4 font-bold text-theme-textSecondary">{r.date || r.day}</td>
+                              <td className="p-4 text-sm text-theme-textMuted">{r.reason || "-"}</td>
+                              <td className="p-4 text-center">
+                                <button
+                                  onClick={async () => {
+                                    if (confirm(`ต้องการลบรายการลาของ ${r.name} ใช่หรือไม่?`)) {
+                                      try {
+                                        await axios.delete('/api/leave', { data: { id: r.id } });
+                                        setLeaveRecords(prev => prev.filter(rec => rec.id !== r.id));
+                                      } catch (err) {
+                                        alert("ลบไม่สำเร็จ");
+                                      }
+                                    }
+                                  }}
+                                  className="text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 p-2 rounded-lg transition-colors"
+                                  title="ลบรายการ"
+                                >
+                                  <X size={16} />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

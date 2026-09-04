@@ -74,4 +74,19 @@ export async function POST(req: Request) {
   }
 }
 
+export async function DELETE(req: Request) {
+  try {
+    const user = await getCurrentUser();
+    if (!user || user.role !== "admin") return unauthorized();
+
+    const { id } = await req.json();
+    if (!id) return err("Missing id");
+
+    await leaveRef().collection("records").doc(id).delete();
+    return ok({ success: true });
+  } catch (e: any) {
+    return err(e.message, 500);
+  }
+}
+
 
