@@ -282,7 +282,7 @@ export default function RosterPage() {
                     {members.map((m: any, idx: number) => (
                       <li key={m.name || idx} className="grid grid-cols-12 gap-2 px-4 py-3 items-center hover:bg-slate-50 transition-colors text-xs sm:text-sm font-bold group">
                         <div className="col-span-1 text-slate-400 text-left font-medium">{idx + 1}</div>
-                        <div className="col-span-5 text-left truncate" style={{ color: color }}>
+                        <div className="col-span-5 text-left truncate text-black font-black text-sm">
                           {m.name || "Unknown"}
                         </div>
                         <div className="col-span-3 text-center" style={{ color: color }}>
