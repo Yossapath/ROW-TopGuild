@@ -310,7 +310,7 @@ export default function RosterPage() {
                           {m.power != null ? Number(m.power).toLocaleString('en-US') : '-'}
                         </div>
                         <div className="col-span-3 flex justify-center opacity-90 group-hover:opacity-100 transition-opacity">
-                          {(user?.role === 'admin' || user?.discordId === m.discordId) && (
+                          {user?.role === 'admin' && (
                             <button 
                               onClick={() => openEditModal(m, job)}
                               className="px-3 py-1.5 bg-theme-panel border border-blue-200 rounded-md text-[11px] font-bold text-[#0b3d63] shadow-sm hover:bg-blue-50 transition-colors"

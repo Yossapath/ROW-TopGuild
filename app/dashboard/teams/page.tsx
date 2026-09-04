@@ -503,7 +503,7 @@ export default function TeamsPage() {
               </div>
             )}
 
-          <div className="flex-1 min-w-0 flex flex-col h-[calc(100vh-140px)]">
+          <div className="flex-1 min-w-0 flex flex-col">
             <div className="flex gap-2 mb-4 bg-theme-panel p-1.5 rounded-lg border border-theme-border self-start">
               <button 
                 onClick={() => setActiveTab("main")}
@@ -527,7 +527,7 @@ export default function TeamsPage() {
               )}
             </div>
 
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1">
               {activeTab === "main" ? (
                 <div className="space-y-8 pb-12">
                   <div>

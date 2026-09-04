@@ -37,12 +37,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="flex h-screen bg-theme-bg text-theme-text overflow-hidden transition-colors duration-300">
       <Sidebar isExpanded={isSidebarExpanded} />
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
         <TopHeader 
           isSidebarExpanded={isSidebarExpanded} 
           toggleSidebar={() => setIsSidebarExpanded(!isSidebarExpanded)} 
         />
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1">
           {children}
         </main>
       </div>
