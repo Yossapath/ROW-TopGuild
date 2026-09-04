@@ -1,30 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Shield, Users, ArrowRightLeft, Wand2, Save, Loader2 } from "lucide-react";
+import { useEffect, useState, useMemo } from "react";
+import { Shield, Users, Save, Loader2, GripVertical, Lock, Unlock, X, ChevronLeft, ChevronRight, LayoutGrid } from "lucide-react";
 import axios from "axios";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
-import { JOB_COLORS } from "@/lib/utils";
+import { JOB_COLORS, JOB_LIST } from "@/lib/utils";
 
 // --- Types ---
-type Member = {
-  id: string; // name
-  name: string;
-  job: string;
-  power: number;
-};
-
-type Column = {
-  id: string;
-  title: string;
-  memberIds: string[];
-  type: "main" | "sub" | "unassigned";
-};
-
+type Member = { id: string; name: string; job: string; power: number; };
+type Column = { id: string; title: string; memberIds: string[]; type: "main" | "sub" | "unassigned"; locked: boolean; };
 type DataState = {
   members: Record<string, Member>;
   columns: Record<string, Column>;
-  mainOrder: string[];
+  mainZone1Order: string[];
+  mainZone2Order: string[];
   subOrder: string[];
 };
 
@@ -34,7 +23,11 @@ export default function TeamsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
 
-  // Load data on mount
+  // UI States
+  const [activeTab, setActiveTab] = useState<"main" | "sub">("main");
+  const [unassignedFilterJob, setUnassignedFilterJob] = useState<string>("All");
+  const [isUnassignedCollapsed, setIsUnassignedCollapsed] = useState(false);
+
   useEffect(() => {
     setIsMounted(true);
     fetchData();
@@ -43,100 +36,60 @@ export default function TeamsPage() {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const [rosterRes, teamsRes] = await Promise.all([
-        axios.get("/api/roster"),
-        axios.get("/api/teams")
-      ]);
-
+      const [rosterRes, teamsRes] = await Promise.all([ axios.get("/api/roster"), axios.get("/api/teams") ]);
       const rosterPayload = rosterRes.data;
       const savedTeams = teamsRes.data;
-
       const membersMap: Record<string, Member> = {};
       
-      // Parse roster response: { ok: true, data: { "JobName": [ {name, power}, ... ] } }
       if (rosterPayload.ok && rosterPayload.data) {
         Object.entries(rosterPayload.data).forEach(([jobName, members]: [string, any]) => {
           if (Array.isArray(members)) {
-            members.forEach(m => {
-              membersMap[m.name] = { 
-                id: m.name, 
-                name: m.name, 
-                job: jobName, 
-                power: Number(m.power || 0) 
-              };
-            });
+            members.forEach(m => { membersMap[m.name] = { id: m.name, name: m.name, job: jobName, power: Number(m.power || 0) }; });
           }
         });
       }
 
-      let initialData: DataState = {
-        members: membersMap,
-        columns: {},
-        mainOrder: [],
-        subOrder: []
-      };
+      let initialData: DataState = { members: membersMap, columns: {}, mainZone1Order: [], mainZone2Order: [], subOrder: [] };
 
-      // Check if we have saved team layouts and they match current members roughly
-      // (If a member left the guild, they won't be in membersMap, we'll filter them out)
       if (savedTeams && savedTeams.main && savedTeams.main.length > 0) {
-        // Reconstruct from DB
         let unassignedMembers = new Set(Object.keys(membersMap));
 
-        const createColumns = (groups: any[][], prefix: string, type: "main"|"sub") => {
+        const createColumns = (groups: any[][], prefix: string, type: "main"|"sub", startIdx = 1) => {
           const order: string[] = [];
           groups.forEach((group, idx) => {
-            const colId = `${prefix}-${idx + 1}`;
+            const num = startIdx + idx;
+            const colId = `${prefix}-${num}`;
             order.push(colId);
-            const validIds = group
-              .map((m: any) => m.name)
-              .filter((name: string) => membersMap[name]); // only keep existing members
-            
+            const validIds = group.map((m: any) => m.name).filter((name: string) => membersMap[name]);
             validIds.forEach((id: string) => unassignedMembers.delete(id));
-
-            initialData.columns[colId] = {
-              id: colId,
-              title: `ทีม ${idx + 1}`,
-              memberIds: validIds,
-              type
-            };
+            initialData.columns[colId] = { id: colId, title: `ทีม ${num}`, memberIds: validIds, type, locked: false };
           });
           return order;
         };
 
-        initialData.mainOrder = createColumns(savedTeams.main || [], "main", "main");
-        initialData.subOrder = createColumns(savedTeams.sub || [], "sub", "sub");
+        const allMainOrder = createColumns(savedTeams.main || [], "main", "main", 1);
+        initialData.mainZone1Order = allMainOrder.slice(0, 6);
+        initialData.mainZone2Order = allMainOrder.slice(6, 12);
+        initialData.subOrder = createColumns(savedTeams.sub || [], "sub", "sub", 1);
 
-        initialData.columns["unassigned"] = {
-          id: "unassigned",
-          title: "ยังไม่ได้จัดทีม",
-          memberIds: Array.from(unassignedMembers),
-          type: "unassigned"
-        };
+        initialData.columns["unassigned"] = { id: "unassigned", title: "ยังไม่ได้จัดทีม", memberIds: Array.from(unassignedMembers), type: "unassigned", locked: false };
       } else {
-        // First time load: put everyone in unassigned
-        initialData.columns["unassigned"] = {
-          id: "unassigned",
-          title: "รายชื่อทั้งหมด (ยังไม่ได้จัด)",
-          memberIds: Object.keys(membersMap),
-          type: "unassigned"
-        };
-        // Create empty main teams (15 teams)
-        for (let i = 1; i <= 15; i++) {
+        initialData.columns["unassigned"] = { id: "unassigned", title: "รายชื่อทั้งหมด (ยังไม่ได้จัด)", memberIds: Object.keys(membersMap), type: "unassigned", locked: false };
+        // Empty 12 main teams
+        for (let i = 1; i <= 12; i++) {
           const id = `main-${i}`;
-          initialData.columns[id] = { id, title: `ทีม ${i}`, memberIds: [], type: "main" };
-          initialData.mainOrder.push(id);
+          initialData.columns[id] = { id, title: `ทีม ${i}`, memberIds: [], type: "main", locked: false };
+          if (i <= 6) initialData.mainZone1Order.push(id); else initialData.mainZone2Order.push(id);
         }
-        // Create empty sub teams (5 teams)
+        // Empty 5 sub teams
         for (let i = 1; i <= 5; i++) {
           const id = `sub-${i}`;
-          initialData.columns[id] = { id, title: `ทีม ${i}`, memberIds: [], type: "sub" };
+          initialData.columns[id] = { id, title: `ทีม ${i}`, memberIds: [], type: "sub", locked: false };
           initialData.subOrder.push(id);
         }
       }
-
       setData(initialData);
     } catch (error) {
-      console.error("Failed to load teams", error);
       alert("โหลดข้อมูลไม่สำเร็จ");
     } finally {
       setIsLoading(false);
@@ -145,54 +98,63 @@ export default function TeamsPage() {
 
   const handleAutoMatch = () => {
     if (!data) return;
-    if (!confirm("การจัดทีมอัตโนมัติจะลบการจัดทีมปัจจุบันทั้งหมด และจัดใหม่ตามค่าพลัง (เรียงจากมากไปน้อย) ต้องการดำเนินการต่อหรือไม่?")) return;
+    if (!confirm("การจัดทีมอัตโนมัติจะลบการจัดทีมปัจจุบันที่ไม่ได้ล็อกไว้ และจัดใหม่ตามค่าพลัง (เรียงจากมากไปน้อย)")) return;
 
-    // Sort ALL members by power desc
-    const allMembers = Object.values(data.members).sort((a, b) => b.power - a.power);
-    
     const newData = { ...data };
-    // Clear all columns
+    
+    // Find locked teams and their members so we don't reassign them
+    const lockedMemberIds = new Set<string>();
+    Object.values(newData.columns).forEach(col => {
+      if (col.locked && col.type !== "unassigned") {
+        col.memberIds.forEach(id => lockedMemberIds.add(id));
+      }
+    });
+
+    const availableMembers = Object.values(newData.members)
+      .filter(m => !lockedMemberIds.has(m.id))
+      .sort((a, b) => b.power - a.power);
+
+    // Clear unlocked columns
     Object.keys(newData.columns).forEach(colId => {
-      newData.columns[colId].memberIds = [];
+      if (!newData.columns[colId].locked && colId !== "unassigned") {
+        newData.columns[colId].memberIds = [];
+      }
     });
 
     let currentMemberIndex = 0;
 
-    // Fill Main Field (up to 15 teams)
-    for (const colId of newData.mainOrder) {
-      for (let i = 0; i < 5; i++) {
-        if (currentMemberIndex < allMembers.length) {
-          newData.columns[colId].memberIds.push(allMembers[currentMemberIndex].id);
-          currentMemberIndex++;
-        }
+    const fillColumn = (colId: string) => {
+      if (newData.columns[colId].locked) return; // Skip locked
+      while (newData.columns[colId].memberIds.length < 5 && currentMemberIndex < availableMembers.length) {
+        newData.columns[colId].memberIds.push(availableMembers[currentMemberIndex].id);
+        currentMemberIndex++;
       }
-    }
+    };
 
-    // Fill Sub Field (up to 15 teams or however many needed)
-    // Let's dynamically add sub teams if we have more members
-    newData.subOrder = [];
+    // Fill Main teams (1-12)
+    [...newData.mainZone1Order, ...newData.mainZone2Order].forEach(colId => fillColumn(colId));
+
+    // Fill Sub Teams dynamically
     let subTeamCount = 1;
-    while (currentMemberIndex < allMembers.length) {
+    newData.subOrder = [];
+    while (currentMemberIndex < availableMembers.length) {
       const colId = `sub-${subTeamCount}`;
-      newData.columns[colId] = { id: colId, title: `ทีม ${subTeamCount}`, memberIds: [], type: "sub" };
+      if (!newData.columns[colId]) newData.columns[colId] = { id: colId, title: `ทีม ${subTeamCount}`, memberIds: [], type: "sub", locked: false };
       newData.subOrder.push(colId);
-
-      for (let i = 0; i < 5; i++) {
-        if (currentMemberIndex < allMembers.length) {
-          newData.columns[colId].memberIds.push(allMembers[currentMemberIndex].id);
-          currentMemberIndex++;
-        }
-      }
+      fillColumn(colId);
       subTeamCount++;
     }
 
-    // Any completely empty sub teams? Keep at least 5 empty ones for UI flexibility
+    // Ensure at least 5 empty sub teams for UI padding if we ran out of members
     while (newData.subOrder.length < 5) {
       const colId = `sub-${subTeamCount}`;
-      newData.columns[colId] = { id: colId, title: `ทีม ${subTeamCount}`, memberIds: [], type: "sub" };
-      newData.subOrder.push(colId);
+      if (!newData.columns[colId]) newData.columns[colId] = { id: colId, title: `ทีม ${subTeamCount}`, memberIds: [], type: "sub", locked: false };
+      if (!newData.subOrder.includes(colId)) newData.subOrder.push(colId);
       subTeamCount++;
     }
+
+    // Any leftovers
+    newData.columns["unassigned"].memberIds = []; 
 
     setData(newData);
   };
@@ -201,52 +163,100 @@ export default function TeamsPage() {
     if (!data) return;
     setIsSaving(true);
     try {
-      // Reconstruct payload
       const payload = {
-        main: data.mainOrder.map(colId => data.columns[colId].memberIds.map(id => data.members[id])),
+        main: [...data.mainZone1Order, ...data.mainZone2Order].map(colId => data.columns[colId].memberIds.map(id => data.members[id])),
         sub: data.subOrder.map(colId => data.columns[colId].memberIds.map(id => data.members[id]))
       };
       await axios.put("/api/teams", payload);
       alert("บันทึกการจัดทีมเรียบร้อย!");
     } catch (error) {
-      console.error(error);
       alert("บันทึกไม่สำเร็จ");
     } finally {
       setIsSaving(false);
     }
   };
 
+  const toggleLock = (colId: string) => {
+    if (!data) return;
+    setData({
+      ...data,
+      columns: {
+        ...data.columns,
+        [colId]: { ...data.columns[colId], locked: !data.columns[colId].locked }
+      }
+    });
+  };
+
+  const clearTeam = (colId: string) => {
+    if (!data || data.columns[colId].locked) return;
+    const newData = { ...data };
+    const memberIds = [...newData.columns[colId].memberIds];
+    newData.columns[colId].memberIds = [];
+    newData.columns["unassigned"].memberIds = [...newData.columns["unassigned"].memberIds, ...memberIds];
+    setData(newData);
+  };
+
+  const removeMember = (colId: string, memberId: string) => {
+    if (!data || data.columns[colId].locked) return;
+    const newData = { ...data };
+    newData.columns[colId].memberIds = newData.columns[colId].memberIds.filter(id => id !== memberId);
+    newData.columns["unassigned"].memberIds.unshift(memberId);
+    setData(newData);
+  };
+
   const onDragEnd = (result: DropResult) => {
     if (!data) return;
-    const { destination, source, draggableId } = result;
+    const { destination, source, draggableId, type } = result;
 
     if (!destination) return;
     if (destination.droppableId === source.droppableId && destination.index === source.index) return;
 
+    const newData = { ...data };
+
+    // Handle Team drag
+    if (type === "TEAM") {
+      const destListId = destination.droppableId;
+      const sourceListId = source.droppableId;
+      
+      let sourceList = sourceListId === "mainZone1" ? newData.mainZone1Order : 
+                       sourceListId === "mainZone2" ? newData.mainZone2Order : newData.subOrder;
+      let destList = destListId === "mainZone1" ? newData.mainZone1Order : 
+                     destListId === "mainZone2" ? newData.mainZone2Order : newData.subOrder;
+
+      // Moving in the same zone
+      if (sourceListId === destListId) {
+        sourceList.splice(source.index, 1);
+        sourceList.splice(destination.index, 0, draggableId);
+      } else {
+        // Moving across zones
+        sourceList.splice(source.index, 1);
+        destList.splice(destination.index, 0, draggableId);
+      }
+      setData(newData);
+      return;
+    }
+
+    // Handle Member drag
     const startCol = data.columns[source.droppableId];
     const finishCol = data.columns[destination.droppableId];
 
-    // Limit teams to 5 members (except unassigned)
+    if (startCol.locked || finishCol.locked) return; // Prevent drag if locked
+
     if (startCol !== finishCol && finishCol.type !== "unassigned" && finishCol.memberIds.length >= 5) {
       alert("หนึ่งทีมสามารถมีสมาชิกได้สูงสุด 5 คน");
       return;
     }
 
-    const newData = { ...data };
-
     if (startCol === finishCol) {
       const newMemberIds = Array.from(startCol.memberIds);
       newMemberIds.splice(source.index, 1);
       newMemberIds.splice(destination.index, 0, draggableId);
-
       newData.columns[startCol.id] = { ...startCol, memberIds: newMemberIds };
     } else {
       const startMemberIds = Array.from(startCol.memberIds);
       startMemberIds.splice(source.index, 1);
-      
       const finishMemberIds = Array.from(finishCol.memberIds);
       finishMemberIds.splice(destination.index, 0, draggableId);
-
       newData.columns[startCol.id] = { ...startCol, memberIds: startMemberIds };
       newData.columns[finishCol.id] = { ...finishCol, memberIds: finishMemberIds };
     }
@@ -254,68 +264,63 @@ export default function TeamsPage() {
     setData(newData);
   };
 
-  if (!isMounted || isLoading) {
-    return <div className="flex h-screen items-center justify-center font-bold text-theme-textSecondary"><Loader2 className="animate-spin mr-2" /> กำลังโหลดข้อมูล...</div>;
-  }
-
+  if (!isMounted || isLoading) return <div className="flex h-screen items-center justify-center text-slate-500"><Loader2 className="animate-spin mr-2" /> โหลดข้อมูล...</div>;
   if (!data) return null;
 
+  // Filter unassigned
+  const filteredUnassignedIds = data.columns["unassigned"].memberIds.filter(id => {
+    if (unassignedFilterJob === "All") return true;
+    return data.members[id]?.job === unassignedFilterJob;
+  });
+
   return (
-    <div className="space-y-6 bg-[#f0f6fc] min-h-screen p-4 lg:py-6 lg:px-8 xl:px-12 2xl:px-20 relative" style={{ zoom: 0.85 }}>
-      {/* Top Banner */}
-      <div className="bg-theme-panel rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between shadow-sm border border-theme-border sticky top-4 z-10">
-        <div className="flex items-center space-x-4 mb-4 md:mb-0">
-          <div className="bg-[#065bca] p-3 rounded-xl text-white shadow-md">
-            <Shield size={32} />
-          </div>
+    <div className="space-y-4 bg-theme-bg min-h-screen p-4 xl:p-6 pb-20">
+      
+      {/* Header */}
+      <div className="bg-theme-panel rounded-xl p-4 md:p-6 flex flex-col lg:flex-row items-center justify-between shadow-sm border border-theme-border sticky top-4 z-20">
+        <div className="flex items-center space-x-4 mb-4 lg:mb-0">
+          <div className="bg-[#065bca] p-2.5 rounded-lg text-white shadow-sm"><Shield size={28} /></div>
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold tracking-wide text-[#0b3d63]">จัดทีม GVG</h1>
-            <p className="text-theme-textSecondary text-sm md:text-base font-medium mt-1">ลากและวางเพื่อจัดทีม หรือใช้ออโต้แมตช์</p>
+            <h1 className="text-xl md:text-2xl font-bold tracking-wide text-theme-text">จัดทีม GVG</h1>
+            <p className="text-theme-textSecondary text-xs md:text-sm font-medium mt-0.5">ลากและวางเพื่อจัดทีม หรือใช้ออโต้แมตช์</p>
           </div>
         </div>
         
-        <div className="flex gap-3">
-          <button 
-            onClick={handleAutoMatch}
-            className="flex items-center gap-2 px-4 py-2.5 bg-theme-panel text-[#065bca] rounded-lg font-bold hover:bg-[#eff6ff] transition-colors shadow-sm border border-[#065bca]"
-          >
-            <Wand2 size={18} />
-            <span>ออโต้จัดทีม (Auto-Match)</span>
+        <div className="flex items-center gap-3">
+          <button onClick={handleAutoMatch} className="flex items-center gap-2 px-4 py-2 bg-theme-panel text-[#065bca] border border-[#065bca] rounded-lg font-bold hover:bg-[#065bca]/5 transition-colors text-sm shadow-sm">
+            <span>ออโต้จัดทีม (Auto)</span>
           </button>
-          <button 
-            onClick={handleSave}
-            disabled={isSaving}
-            className="flex items-center gap-2 px-6 py-2.5 bg-[#065bca] text-white rounded-lg font-bold hover:bg-[#054bb0] transition-colors shadow-sm disabled:opacity-50"
-          >
-            {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-            <span>บันทึกการจัดทีม</span>
+          <button onClick={handleSave} disabled={isSaving} className="flex items-center gap-2 px-5 py-2 bg-[#065bca] text-white rounded-lg font-bold hover:bg-[#054bb0] transition-colors shadow-sm disabled:opacity-50 text-sm">
+            {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} <span>บันทึกการจัดทีม</span>
           </button>
         </div>
       </div>
 
       <DragDropContext onDragEnd={onDragEnd}>
-        <div className="flex flex-col lg:flex-row gap-6">
+        <div className="flex gap-4 items-start">
           
-          {/* Unassigned Pool */}
-          <div className="lg:w-1/4 xl:w-1/5 flex-shrink-0">
-            <div className="bg-theme-panel rounded-2xl shadow-sm border border-theme-border h-[calc(100vh-180px)] flex flex-col">
-              <div className="p-4 border-b border-theme-border/50 flex items-center justify-between bg-theme-bg rounded-t-2xl">
-                <h2 className="font-bold text-theme-text flex items-center gap-2">
-                  <Users size={18} /> ยังไม่ได้จัดทีม
-                </h2>
-                <span className="bg-theme-divider text-theme-text text-xs font-bold px-2 py-1 rounded-full">
-                  {data.columns["unassigned"].memberIds.length}
-                </span>
+          {/* Unassigned Sidebar (Collapsible) */}
+          {!isUnassignedCollapsed && (
+            <div className="w-[300px] flex-shrink-0 bg-theme-panel rounded-xl shadow-sm border border-theme-border h-[calc(100vh-140px)] flex flex-col sticky top-28 z-10 transition-all">
+              <div className="p-3 border-b border-theme-divider bg-theme-bg/50 rounded-t-xl">
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="font-bold text-theme-text flex items-center gap-2 text-sm"><Users size={16} /> ยังไม่ได้จัด ({data.columns["unassigned"].memberIds.length})</h2>
+                  <button onClick={() => setIsUnassignedCollapsed(true)} className="text-theme-textSecondary hover:text-theme-text bg-theme-panel border border-theme-border rounded p-1"><ChevronLeft size={14}/></button>
+                </div>
+                <select 
+                  value={unassignedFilterJob} 
+                  onChange={e => setUnassignedFilterJob(e.target.value)}
+                  className="w-full bg-theme-input text-theme-text text-sm rounded border border-theme-border p-1.5 outline-none"
+                >
+                  <option value="All">ทุกอาชีพ</option>
+                  {JOB_LIST.map(job => <option key={job} value={job}>{job}</option>)}
+                </select>
               </div>
               
-              <Droppable droppableId="unassigned">
+              <Droppable droppableId="unassigned" type="MEMBER">
                 {(provided, snapshot) => (
-                  <div 
-                    ref={provided.innerRef} 
-                    {...provided.droppableProps}
-                    className={`flex-1 overflow-y-auto p-3 space-y-2 transition-colors ${snapshot.isDraggingOver ? 'bg-theme-bg' : 'bg-theme-panel'} rounded-b-2xl`}
-                  >
-                    {data.columns["unassigned"].memberIds.map((id, index) => {
+                  <div ref={provided.innerRef} {...provided.droppableProps} className={`flex-1 overflow-y-auto p-2 space-y-1.5 transition-colors ${snapshot.isDraggingOver ? 'bg-theme-bg/80' : ''}`}>
+                    {filteredUnassignedIds.map((id, index) => {
                       const m = data.members[id];
                       return <MemberCard key={id} member={m} index={index} />;
                     })}
@@ -324,41 +329,85 @@ export default function TeamsPage() {
                 )}
               </Droppable>
             </div>
-          </div>
-
-          {/* Teams Grid */}
-          <div className="flex-1 overflow-y-auto h-[calc(100vh-180px)] space-y-8 pr-2">
-            
-            {/* Main Field */}
-            <div>
-              <div className="flex items-center gap-3 mb-4">
-                <h2 className="text-xl font-extrabold text-[#065bca] uppercase tracking-wide">สนามหลัก (Main Field)</h2>
-                <div className="h-px bg-theme-divider flex-1"></div>
-                <span className="text-sm font-bold text-theme-textSecondary bg-theme-panel px-3 py-1 rounded-full border border-theme-border shadow-sm">
-                  {data.mainOrder.reduce((acc, colId) => acc + data.columns[colId].memberIds.length, 0)} คน / {data.mainOrder.length} ทีม
-                </span>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
-                {data.mainOrder.map((colId, index) => (
-                  <TeamColumn key={colId} column={data.columns[colId]} members={data.members} index={index} />
-                ))}
+          )}
+          
+          {/* Collapsed Sidebar Handle */}
+          {isUnassignedCollapsed && (
+            <div className="flex-shrink-0 bg-theme-panel rounded-xl shadow-sm border border-theme-border h-[calc(100vh-140px)] flex flex-col items-center py-4 sticky top-28 z-10 w-12 cursor-pointer hover:bg-theme-bg transition-colors" onClick={() => setIsUnassignedCollapsed(false)}>
+              <ChevronRight size={20} className="text-theme-textSecondary mb-4"/>
+              <div className="writing-vertical-rl transform rotate-180 text-theme-text font-bold tracking-widest flex items-center gap-2">
+                ยังไม่ได้จัด <span className="bg-[#065bca] text-white text-xs px-2 py-0.5 rounded-full">{data.columns["unassigned"].memberIds.length}</span>
               </div>
             </div>
+          )}
 
-            {/* Sub Field */}
-            <div>
-              <div className="flex items-center gap-3 mb-4">
-                <h2 className="text-xl font-extrabold text-theme-warning uppercase tracking-wide">สนามรอง (Sub Field)</h2>
-                <div className="h-px bg-theme-divider flex-1"></div>
-                <span className="text-sm font-bold text-theme-textSecondary bg-theme-panel px-3 py-1 rounded-full border border-theme-border shadow-sm">
-                  {data.subOrder.reduce((acc, colId) => acc + data.columns[colId].memberIds.length, 0)} คน / {data.subOrder.length} ทีม
-                </span>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
-                {data.subOrder.map((colId, index) => (
-                  <TeamColumn key={colId} column={data.columns[colId]} members={data.members} index={index} />
-                ))}
-              </div>
+          {/* Main Content Area */}
+          <div className="flex-1 min-w-0 flex flex-col h-[calc(100vh-140px)]">
+            
+            {/* Tabs */}
+            <div className="flex gap-2 mb-4 bg-theme-panel p-1.5 rounded-lg border border-theme-border self-start">
+              <button 
+                onClick={() => setActiveTab("main")}
+                className={`px-6 py-2 rounded-md font-bold text-sm transition-all ${activeTab === 'main' ? 'bg-[#065bca] text-white shadow-sm' : 'text-theme-textSecondary hover:text-theme-text hover:bg-theme-bg'}`}
+              >
+                สนามหลัก (60 คน)
+              </button>
+              <button 
+                onClick={() => setActiveTab("sub")}
+                className={`px-6 py-2 rounded-md font-bold text-sm transition-all ${activeTab === 'sub' ? 'bg-[#065bca] text-white shadow-sm' : 'text-theme-textSecondary hover:text-theme-text hover:bg-theme-bg'}`}
+              >
+                สนามรอง ({Object.keys(data.members).length - 60 > 0 ? Object.keys(data.members).length - 60 : 0} คน)
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto">
+              {activeTab === "main" ? (
+                <div className="space-y-8 pb-12">
+                  {/* Zone 1 */}
+                  <div>
+                    <h2 className="text-lg font-bold text-theme-text flex items-center gap-2 mb-4"><LayoutGrid size={18} className="text-[#065bca]"/> โซน 1 (ทีม 1-6)</h2>
+                    <Droppable droppableId="mainZone1" direction="horizontal" type="TEAM">
+                      {(provided) => (
+                        <div ref={provided.innerRef} {...provided.droppableProps} className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-4 xl:gap-6">
+                          {data.mainZone1Order.map((colId, index) => (
+                            <TeamCard key={colId} column={data.columns[colId]} members={data.members} index={index} toggleLock={toggleLock} clearTeam={clearTeam} removeMember={removeMember} />
+                          ))}
+                          {provided.placeholder}
+                        </div>
+                      )}
+                    </Droppable>
+                  </div>
+                  
+                  {/* Zone 2 */}
+                  <div>
+                    <h2 className="text-lg font-bold text-theme-text flex items-center gap-2 mb-4"><LayoutGrid size={18} className="text-[#065bca]"/> โซน 2 (ทีม 7-12)</h2>
+                    <Droppable droppableId="mainZone2" direction="horizontal" type="TEAM">
+                      {(provided) => (
+                        <div ref={provided.innerRef} {...provided.droppableProps} className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-4 xl:gap-6">
+                          {data.mainZone2Order.map((colId, index) => (
+                            <TeamCard key={colId} column={data.columns[colId]} members={data.members} index={index} toggleLock={toggleLock} clearTeam={clearTeam} removeMember={removeMember} />
+                          ))}
+                          {provided.placeholder}
+                        </div>
+                      )}
+                    </Droppable>
+                  </div>
+                </div>
+              ) : (
+                <div className="pb-12">
+                   <h2 className="text-lg font-bold text-theme-text flex items-center gap-2 mb-4"><LayoutGrid size={18} className="text-theme-warning"/> ทีมสนามรอง</h2>
+                   <Droppable droppableId="subZone" direction="horizontal" type="TEAM">
+                      {(provided) => (
+                        <div ref={provided.innerRef} {...provided.droppableProps} className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-4 xl:gap-6">
+                          {data.subOrder.map((colId, index) => (
+                            <TeamCard key={colId} column={data.columns[colId]} members={data.members} index={index} toggleLock={toggleLock} clearTeam={clearTeam} removeMember={removeMember} />
+                          ))}
+                          {provided.placeholder}
+                        </div>
+                      )}
+                    </Droppable>
+                </div>
+              )}
             </div>
 
           </div>
@@ -368,51 +417,89 @@ export default function TeamsPage() {
   );
 }
 
-// --- Subcomponents ---
-
-function TeamColumn({ column, members, index }: { column: Column; members: Record<string, Member>; index: number }) {
-  const isFull = column.memberIds.length >= 5;
-  const isMain = column.type === "main";
+// --- Team Card Component ---
+function TeamCard({ column, members, index, toggleLock, clearTeam, removeMember }: { column: Column; members: Record<string, Member>; index: number; toggleLock: (id: string) => void; clearTeam: (id: string) => void; removeMember: (colId: string, memId: string) => void; }) {
+  const isFull = column.memberIds.length === 5;
+  const totalPower = column.memberIds.reduce((sum, id) => sum + (members[id]?.power || 0), 0);
 
   return (
-    <div className={`bg-theme-panel rounded-xl shadow-sm border ${isMain ? 'border-theme-primary/20' : 'border-theme-warning/20'} flex flex-col overflow-hidden`}>
-      <div className={`p-2.5 flex items-center justify-between border-b ${isMain ? 'bg-theme-primary/5 border-theme-primary/20' : 'bg-theme-warning/5 border-theme-warning/20'}`}>
-        <h3 className={`font-bold text-sm ${isMain ? 'text-[#065bca]' : 'text-theme-warning'}`}>{column.title}</h3>
-        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isFull ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-theme-textSecondary'}`}>
-          {column.memberIds.length}/5
-        </span>
-      </div>
-      
-      <Droppable droppableId={column.id}>
-        {(provided, snapshot) => (
-          <div 
-            ref={provided.innerRef} 
-            {...provided.droppableProps}
-            className={`p-2 min-h-[220px] transition-colors space-y-1.5 ${snapshot.isDraggingOver ? (isFull ? 'bg-red-50' : 'bg-theme-bg') : 'bg-theme-panel'}`}
-          >
-            {column.memberIds.map((id, idx) => {
-              const m = members[id];
-              return <MemberCard key={id} member={m} index={idx} inTeam={true} />;
-            })}
-            {provided.placeholder}
-            
-            {/* Empty Slots Fillers for visual guide */}
-            {column.memberIds.length < 5 && Array.from({ length: 5 - column.memberIds.length }).map((_, i) => (
-              <div key={`empty-${i}`} className="h-10 border border-dashed border-theme-border rounded-lg flex items-center justify-center bg-theme-bg/50">
-                <span className="text-[10px] text-slate-300 font-bold uppercase tracking-widest">Empty Slot</span>
-              </div>
-            ))}
+    <Draggable draggableId={column.id} index={index}>
+      {(providedTeam, snapshotTeam) => (
+        <div ref={providedTeam.innerRef} {...providedTeam.draggableProps} className={`bg-theme-panel rounded-xl shadow-md border overflow-hidden ${snapshotTeam.isDragging ? 'shadow-xl ring-2 ring-[#065bca] border-[#065bca] z-50' : 'border-theme-border'} ${column.locked ? 'opacity-90 border-[#f59e0b]' : ''}`}>
+          
+          {/* Header */}
+          <div className="bg-[#1C6BA0] p-3 text-white flex items-center justify-between" {...providedTeam.dragHandleProps}>
+            <div className="flex items-center gap-2">
+              <GripVertical size={16} className="opacity-50 cursor-grab active:cursor-grabbing" />
+              <h3 className="font-bold text-sm tracking-wide">{column.title}</h3>
+              <span className="text-xs bg-black/20 px-2 py-0.5 rounded font-mono">{totalPower.toLocaleString()}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isFull ? 'bg-[#50b1e5] text-white' : 'bg-white/20 text-white'}`}>
+                {isFull ? 'ครบ 5/5' : `${column.memberIds.length}/5`}
+              </span>
+              <button onClick={() => toggleLock(column.id)} className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold ${column.locked ? 'bg-[#F1C40F] text-black' : 'bg-black/20 hover:bg-black/40 text-white'}`}>
+                {column.locked ? <Lock size={12}/> : <Unlock size={12}/>} {column.locked ? 'ล็อก' : 'ปลดล็อก'}
+              </button>
+              <button onClick={() => clearTeam(column.id)} className="bg-[#E74C3C] hover:bg-red-600 text-white p-1 rounded transition-colors disabled:opacity-50" disabled={column.locked} title="ล้างทีม">
+                <X size={12} strokeWidth={3}/>
+              </button>
+            </div>
           </div>
-        )}
-      </Droppable>
-    </div>
+          
+          {/* Table Headers */}
+          <div className="grid grid-cols-[30px_1fr_120px_70px_30px] gap-2 px-3 py-2 bg-theme-bg/50 border-b border-theme-border text-[11px] font-bold text-theme-textSecondary">
+            <div></div>
+            <div>ชื่อ</div>
+            <div className="text-center">อาชีพ</div>
+            <div className="text-right">ค่าพลัง</div>
+            <div></div>
+          </div>
+
+          {/* Body (Droppable) */}
+          <Droppable droppableId={column.id} type="MEMBER" isDropDisabled={column.locked}>
+            {(provided, snapshot) => (
+              <div ref={provided.innerRef} {...provided.droppableProps} className={`p-2 min-h-[220px] transition-colors flex flex-col gap-1.5 ${snapshot.isDraggingOver ? 'bg-[#065bca]/5' : 'bg-theme-panel'}`}>
+                {column.memberIds.map((id, idx) => {
+                  const m = members[id];
+                  if (!m) return null;
+                  return (
+                    <Draggable key={id} draggableId={id} index={idx} isDragDisabled={column.locked}>
+                      {(prov, snap) => {
+                         const color = JOB_COLORS[m.job] || "#475569";
+                         return (
+                          <div ref={prov.innerRef} {...prov.draggableProps} className={`grid grid-cols-[30px_1fr_120px_70px_30px] gap-2 items-center px-1 py-1.5 rounded border border-transparent hover:bg-theme-bg/50 group ${snap.isDragging ? 'bg-theme-panel shadow-lg border-theme-border ring-1 ring-[#065bca]/20 z-50' : ''}`} style={prov.draggableProps.style}>
+                            <div className="flex items-center justify-center text-theme-textMuted cursor-grab" {...prov.dragHandleProps}><GripVertical size={14}/></div>
+                            <div className="text-xs font-bold text-theme-text truncate flex items-center gap-2"><span className="text-[#065bca] opacity-70 w-3 text-right">{idx+1}</span>{m.name}</div>
+                            <div className="text-[10px] font-bold text-white px-2 py-0.5 rounded-full text-center truncate" style={{backgroundColor: color}}>{m.job}</div>
+                            <div className="text-[11px] font-bold text-theme-textSecondary text-right tabular-nums">{m.power.toLocaleString()}</div>
+                            <button onClick={() => removeMember(column.id, m.id)} disabled={column.locked} className="text-theme-textMuted hover:text-theme-danger opacity-0 group-hover:opacity-100 transition-opacity flex justify-center disabled:hidden"><X size={14}/></button>
+                          </div>
+                         )
+                      }}
+                    </Draggable>
+                  );
+                })}
+                {provided.placeholder}
+                
+                {/* Empty slots visual */}
+                {column.memberIds.length < 5 && Array.from({ length: 5 - column.memberIds.length }).map((_, i) => (
+                  <div key={`empty-${i}`} className="h-8 border border-dashed border-theme-border/50 rounded flex items-center justify-center bg-theme-bg/30">
+                    <span className="text-[10px] text-theme-textMuted font-bold uppercase tracking-widest">Empty Slot</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Droppable>
+        </div>
+      )}
+    </Draggable>
   );
 }
 
-function MemberCard({ member, index, inTeam = false }: { member: Member; index: number; inTeam?: boolean }) {
+// --- Member Card (For Unassigned Pool) ---
+function MemberCard({ member, index }: { member: Member; index: number; }) {
   const color = JOB_COLORS[member.job] || "#475569";
-  
-  // Create a tinted background using CSS string manipulation for simplicity
   const hexToRgba = (hex: string, alpha: number) => {
     let r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
@@ -426,11 +513,11 @@ function MemberCard({ member, index, inTeam = false }: { member: Member; index: 
           {...provided.draggableProps}
           {...provided.dragHandleProps}
           className={`flex items-center justify-between p-2 rounded-lg border shadow-sm select-none transition-shadow ${
-            snapshot.isDragging ? 'shadow-lg border-theme-primary z-50 ring-2 ring-theme-primary/20' : 'border-theme-border hover:border-theme-borderHover'
+            snapshot.isDragging ? 'shadow-lg border-[#065bca] z-50 ring-2 ring-[#065bca]/20' : 'border-theme-border hover:border-theme-borderHover'
           }`}
           style={{
             ...provided.draggableProps.style,
-            backgroundColor: snapshot.isDragging ? 'white' : hexToRgba(color, 0.04),
+            backgroundColor: snapshot.isDragging ? 'var(--theme-panel)' : hexToRgba(color, 0.04),
             borderLeftWidth: '4px',
             borderLeftColor: color
           }}
@@ -440,7 +527,7 @@ function MemberCard({ member, index, inTeam = false }: { member: Member; index: 
             <span className="text-[9px] font-bold truncate opacity-80" style={{ color }}>{member.job}</span>
           </div>
           <div className="text-[11px] font-bold tabular-nums tracking-tight flex-shrink-0" style={{ color }}>
-            {member.power.toLocaleString('en-US')}
+            {member.power.toLocaleString()}
           </div>
         </div>
       )}
