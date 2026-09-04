@@ -15,6 +15,7 @@ type DataState = {
   mainZone1Order: string[];
   mainZone2Order: string[];
   subOrder: string[];
+  offlineIds: string[];
 };
 
 export default function TeamsPage() {
@@ -63,7 +64,7 @@ export default function TeamsPage() {
         });
       }
 
-      let initialData: DataState = { members: membersMap, columns: {}, mainZone1Order: [], mainZone2Order: [], subOrder: [] };
+      let initialData: DataState = { members: membersMap, columns: {}, mainZone1Order: [], mainZone2Order: [], subOrder: [], offlineIds: savedTeams?.offlineIds || [] };
       let hasData = false;
       let unassignedMembers = new Set(Object.keys(membersMap));
       
@@ -133,12 +134,37 @@ export default function TeamsPage() {
           initialData.columns[id] = { id, title: `ทีม ${i}`, memberIds: [null, null, null, null, null], type: "main", locked: false };
           if (i <= 6) initialData.mainZone1Order.push(id); else initialData.mainZone2Order.push(id);
         }
-        for (let i = 1; i <= 5; i++) {
+        for (let i = 1; i <= 6; i++) {
           const id = `sub-${i}`;
-          initialData.columns[id] = { id, title: `ทีม ${i}`, memberIds: [null, null, null, null, null], type: "sub", locked: false };
+          initialData.columns[id] = { id, title: `ทีมรอง ${i}`, memberIds: [null, null, null, null, null], type: "sub", locked: false };
           initialData.subOrder.push(id);
         }
       }
+
+      // Ensure offline members are not in unassigned
+      if (initialData.columns["unassigned"] && initialData.offlineIds && initialData.offlineIds.length > 0) {
+        initialData.columns["unassigned"].memberIds = initialData.columns["unassigned"].memberIds.filter(
+          id => id && !initialData.offlineIds.includes(id)
+        );
+      }
+
+      // Merge saved teams if it's the newer format
+      if (savedTeams && savedTeams.columns) {
+        initialData = { ...initialData, ...savedTeams, offlineIds: savedTeams.offlineIds || [] };
+        
+        // Final sanity check for offline members
+        if (initialData.offlineIds && initialData.offlineIds.length > 0) {
+          Object.keys(initialData.columns).forEach(colId => {
+            initialData.columns[colId].memberIds = initialData.columns[colId].memberIds.map(
+              id => (id && initialData.offlineIds.includes(id)) ? null : id
+            );
+          });
+          if (initialData.columns["unassigned"]) {
+            initialData.columns["unassigned"].memberIds = initialData.columns["unassigned"].memberIds.filter(id => id !== null);
+          }
+        }
+      }
+
       setData(initialData);
     } catch (error) {
       alert("โหลดข้อมูลไม่สำเร็จ");
@@ -272,6 +298,11 @@ export default function TeamsPage() {
     setIsSaving(true);
     try {
       const payload = {
+        columns: data.columns,
+        mainZone1Order: data.mainZone1Order,
+        mainZone2Order: data.mainZone2Order,
+        subOrder: data.subOrder,
+        offlineIds: data.offlineIds,
         main: [...data.mainZone1Order, ...data.mainZone2Order].map(colId => data.columns[colId].memberIds.map(id => id ? data.members[id] : { name: "", job: "", power: null })),
         sub: data.subOrder.map(colId => data.columns[colId].memberIds.map(id => id ? data.members[id] : { name: "", job: "", power: null }))
       };
@@ -311,6 +342,42 @@ export default function TeamsPage() {
     const idx = newData.columns[colId].memberIds.indexOf(memberId);
     if (idx !== -1) newData.columns[colId].memberIds[idx] = null;
     newData.columns["unassigned"].memberIds.unshift(memberId);
+    setData(newData);
+  };
+
+  const markAsOffline = (memberId: string) => {
+    if (!data || !memberId) return;
+    const newData = { ...data };
+    
+    // Add to offlineIds
+    if (!newData.offlineIds.includes(memberId)) {
+      newData.offlineIds = [...newData.offlineIds, memberId];
+    }
+    
+    // Remove from unassigned
+    newData.columns["unassigned"].memberIds = newData.columns["unassigned"].memberIds.filter(id => id !== memberId);
+    
+    // Remove from any team column
+    Object.keys(newData.columns).forEach(colId => {
+      if (colId === "unassigned") return;
+      const idx = newData.columns[colId].memberIds.indexOf(memberId);
+      if (idx !== -1) newData.columns[colId].memberIds[idx] = null;
+    });
+    
+    setData(newData);
+    // Auto-save logic? Optional, but good to have. The user can click Save.
+  };
+
+  const removeFromOffline = (memberId: string) => {
+    if (!data || !memberId) return;
+    const newData = { ...data };
+    
+    newData.offlineIds = newData.offlineIds.filter(id => id !== memberId);
+    // Put back to unassigned if they exist in roster
+    if (newData.members[memberId] && !newData.columns["unassigned"].memberIds.includes(memberId)) {
+      newData.columns["unassigned"].memberIds.unshift(memberId);
+    }
+    
     setData(newData);
   };
 
@@ -440,7 +507,7 @@ export default function TeamsPage() {
     <div className="space-y-4 bg-theme-bg min-h-screen p-4 xl:p-6 pb-20">
       <AutoMatchModal />
       
-      <div className="bg-theme-panel rounded-xl p-4 md:p-6 flex flex-col lg:flex-row items-center justify-between shadow-sm border border-theme-border sticky top-4 z-20">
+      <div className="bg-theme-panel rounded-xl p-4 md:p-6 flex flex-col lg:flex-row items-center justify-between shadow-sm border border-theme-border relative">
         <div className="flex items-center space-x-4 mb-4 lg:mb-0">
           <div className="bg-[#065bca] p-2.5 rounded-lg text-white shadow-sm"><Shield size={28} /></div>
           <div>
@@ -572,56 +639,117 @@ export default function TeamsPage() {
                     </Droppable>
                 </div>
               ) : (
-                <div className="pb-12 space-y-6">
-                  <h2 className="text-lg font-bold text-theme-danger flex items-center gap-2 mb-4">
-                    บันทึกการลา / ข้อมูลผู้เล่นออฟไลน์
-                  </h2>
-                  {leaveRecords.length === 0 ? (
-                    <div className="text-center p-12 bg-theme-panel rounded-xl text-theme-textMuted border border-theme-border font-bold">
-                      ไม่มีข้อมูลการลาในช่วงนี้
+                  <div className="pb-12 space-y-12">
+                    
+                    {/* Offline Section */}
+                    <div>
+                      <h2 className="text-lg font-bold text-theme-danger flex items-center gap-2 mb-4">
+                        <X size={18} /> รายชื่อผู้เล่นออฟไลน์
+                      </h2>
+                      <div className="bg-theme-panel rounded-xl border border-theme-border p-6 shadow-sm">
+                        <div className="flex flex-col md:flex-row gap-4 mb-6">
+                          <select
+                            className="bg-theme-bg border border-theme-border rounded-lg px-4 py-2 flex-1 focus:ring-2 focus:ring-[#065bca] outline-none text-sm font-bold text-theme-text cursor-pointer"
+                            onChange={(e) => {
+                              if (e.target.value) {
+                                markAsOffline(e.target.value);
+                                e.target.value = "";
+                              }
+                            }}
+                            defaultValue=""
+                          >
+                            <option value="" disabled>+ เลือกรายชื่อเพื่อทำให้ออฟไลน์ (นำออกจากทีม)</option>
+                            {Object.values(data.members)
+                              .sort((a, b) => a.name.localeCompare(b.name))
+                              .filter(m => !data.offlineIds.includes(m.id))
+                              .map(m => (
+                                <option key={m.id} value={m.id}>{m.name} ({m.job})</option>
+                              ))}
+                          </select>
+                        </div>
+
+                        {data.offlineIds.length === 0 ? (
+                          <div className="text-center py-8 text-theme-textMuted font-bold border-2 border-dashed border-theme-divider rounded-lg">
+                            ไม่มีผู้เล่นที่ถูกทำเครื่องหมายว่าออฟไลน์
+                          </div>
+                        ) : (
+                          <div className="flex flex-wrap gap-3">
+                            {data.offlineIds.map(id => {
+                              const m = data.members[id];
+                              if (!m) return null;
+                              return (
+                                <div key={id} className="flex items-center gap-2 bg-theme-bg/80 border border-theme-border rounded-full py-1.5 pl-3 pr-1.5 shadow-sm">
+                                  <span className="text-sm font-bold text-theme-text">{m.name}</span>
+                                  <span className="text-[10px] font-bold text-white px-2 py-0.5 rounded-full" style={{ backgroundColor: JOB_COLORS[m.job] || "#475569" }}>
+                                    {m.job}
+                                  </span>
+                                  <button
+                                    onClick={() => removeFromOffline(id)}
+                                    className="p-1 hover:bg-theme-danger hover:text-white rounded-full text-theme-textSecondary transition-colors"
+                                    title="นำกลับเข้าระบบ (ออนไลน์)"
+                                  >
+                                    <X size={14} />
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  ) : (
-                    <div className="bg-theme-panel rounded-xl border border-theme-border overflow-hidden">
-                      <table className="w-full text-left">
-                        <thead className="bg-theme-bg/50 border-b border-theme-divider text-xs uppercase tracking-wider text-theme-textMuted">
-                          <tr>
-                            <th className="p-4 font-bold">ชื่อในเกม</th>
-                            <th className="p-4 font-bold">วันที่ลา</th>
-                            <th className="p-4 font-bold">เหตุผล</th>
-                            <th className="p-4 font-bold w-20 text-center">จัดการ</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-theme-divider">
-                          {leaveRecords.map((r: any, i) => (
-                            <tr key={r.id || i} className="hover:bg-theme-bg/30">
-                              <td className="p-4 font-bold text-theme-text">{r.name}</td>
-                              <td className="p-4 font-bold text-theme-textSecondary">{r.date || r.day}</td>
-                              <td className="p-4 text-sm text-theme-textMuted">{r.reason || "-"}</td>
-                              <td className="p-4 text-center">
-                                <button
-                                  onClick={async () => {
-                                    if (confirm(`ต้องการลบรายการลาของ ${r.name} ใช่หรือไม่?`)) {
-                                      try {
-                                        await axios.delete('/api/leave', { data: { id: r.id } });
-                                        setLeaveRecords(prev => prev.filter(rec => rec.id !== r.id));
-                                      } catch (err) {
-                                        alert("ลบไม่สำเร็จ");
-                                      }
-                                    }
-                                  }}
-                                  className="text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 p-2 rounded-lg transition-colors"
-                                  title="ลบรายการ"
-                                >
-                                  <X size={16} />
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+
+                    {/* Leave Records Section */}
+                    <div>
+                      <h2 className="text-lg font-bold text-theme-text flex items-center gap-2 mb-4">
+                        <LayoutGrid size={18} className="text-[#065bca]" /> บันทึกการลาจากระบบแจ้งลา
+                      </h2>
+                      {leaveRecords.length === 0 ? (
+                        <div className="text-center p-12 bg-theme-panel rounded-xl text-theme-textMuted border border-theme-border font-bold">
+                          ไม่มีข้อมูลการลาในช่วงนี้
+                        </div>
+                      ) : (
+                        <div className="bg-theme-panel rounded-xl border border-theme-border overflow-hidden">
+                          <table className="w-full text-left">
+                            <thead className="bg-theme-bg/50 border-b border-theme-divider text-xs uppercase tracking-wider text-theme-textMuted">
+                              <tr>
+                                <th className="p-4 font-bold">ชื่อในเกม</th>
+                                <th className="p-4 font-bold">วันที่ลา</th>
+                                <th className="p-4 font-bold">เหตุผล</th>
+                                <th className="p-4 font-bold w-20 text-center">จัดการ</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-theme-divider">
+                              {leaveRecords.map((r: any, i) => (
+                                <tr key={r.id || i} className="hover:bg-theme-bg/30">
+                                  <td className="p-4 font-bold text-theme-text">{r.name}</td>
+                                  <td className="p-4 font-bold text-theme-textSecondary">{r.date || r.day}</td>
+                                  <td className="p-4 text-sm text-theme-textMuted">{r.reason || "-"}</td>
+                                  <td className="p-4 text-center">
+                                    <button
+                                      onClick={async () => {
+                                        if (confirm(`ต้องการลบรายการลาของ ${r.name} ใช่หรือไม่?`)) {
+                                          try {
+                                            await axios.delete('/api/leave', { data: { id: r.id } });
+                                            setLeaveRecords(prev => prev.filter(rec => rec.id !== r.id));
+                                          } catch (err) {
+                                            alert("ลบไม่สำเร็จ");
+                                          }
+                                        }
+                                      }}
+                                      className="text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 p-2 rounded-lg transition-colors"
+                                      title="ลบรายการ"
+                                    >
+                                      <X size={16} />
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
+                  </div>
               )}
             </div>
           </div>
