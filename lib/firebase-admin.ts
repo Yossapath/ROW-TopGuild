@@ -2,18 +2,43 @@ import * as admin from "firebase-admin";
 
 let initError = "";
 
+function formatPrivateKey(key: string) {
+  if (!key) return "";
+  
+  // 1. Remove surrounding quotes if they exist
+  let cleaned = key.replace(/^["']|["']$/g, "");
+  
+  // 2. Replace literal '\n' strings with actual newlines
+  cleaned = cleaned.replace(/\\n/g, "\n");
+  
+  // 3. Remove \r
+  cleaned = cleaned.replace(/\r/g, "");
+  
+  // 4. If the key got completely flattened (no newlines at all), reconstruct it
+  if (!cleaned.includes("\n")) {
+    const beginHeader = "-----BEGIN PRIVATE KEY-----";
+    const endHeader = "-----END PRIVATE KEY-----";
+    if (cleaned.startsWith(beginHeader) && cleaned.includes(endHeader)) {
+      const base64Body = cleaned
+        .substring(beginHeader.length, cleaned.indexOf(endHeader))
+        .replace(/\s+/g, ""); // Remove any spaces that might have been added
+        
+      // Reconstruct with proper newlines (split base64 into 64-char lines)
+      const formattedBody = base64Body.match(/.{1,64}/g)?.join("\n") || base64Body;
+      cleaned = `${beginHeader}\n${formattedBody}\n${endHeader}\n`;
+    }
+  }
+  
+  return cleaned.trim();
+}
+
 // Lazy initialize Firebase admin
 function getDb() {
   if (!admin.apps.length) {
     try {
       if (process.env.FIREBASE_PRIVATE_KEY) {
-        // Clean up the private key
-        let formattedKey = process.env.FIREBASE_PRIVATE_KEY;
-        // Remove surrounding quotes if they exist (single or double)
-        formattedKey = formattedKey.replace(/^["']|["']$/g, "");
-        // Replace escaped newlines with actual newlines
-        formattedKey = formattedKey.replace(/\\n/g, "\n");
-
+        const formattedKey = formatPrivateKey(process.env.FIREBASE_PRIVATE_KEY);
+        
         admin.initializeApp({
           credential: admin.credential.cert({
             projectId: process.env.FIREBASE_PROJECT_ID,
@@ -28,7 +53,6 @@ function getDb() {
     } catch (error: any) {
       console.warn("Firebase admin initialization error:", error);
       initError = error.message || "Unknown Initialization Error";
-      // Fallback so it doesn't crash the entire app
       if (!admin.apps.length) {
         admin.initializeApp({ projectId: "topguild-build-demo" });
       }
@@ -42,7 +66,6 @@ function getDb() {
   return admin.firestore();
 }
 
-// ── Helper: guild_system document refs (Evaluated only when called) ──
 export const COLL = "guild_system";
 
 export const rosterRef    = () => getDb().collection(COLL).doc("roster");
