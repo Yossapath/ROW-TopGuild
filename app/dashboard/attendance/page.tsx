@@ -107,28 +107,26 @@ export default function AttendancePage() {
 
   useEffect(() => {
     const curWeek = getCurrentWeekIndex();
-    setWeekOffset(curWeek);
-    const dates = getWeekDates(curWeek);
-    const now = new Date();
-    const todayStr = now.toISOString().split("T")[0];
-    
-    // Default to the first day of the week, or the current/upcoming day
-    let initialDay: WarDay = "อาทิตย์";
-    if (todayStr >= dates["พฤหัสบดี"]) initialDay = "พฤหัสบดี";
-    else if (todayStr >= dates["อังคาร"]) initialDay = "อังคาร";
+    // todayStr in Thai time (+7h)
+    const todayStr = new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().split("T")[0];
 
     const savedDate = localStorage.getItem("att_date");
-    if (savedDate) {
+    const savedDay = localStorage.getItem("att_day") as WarDay | null;
+    const savedWeek = localStorage.getItem("att_week");
+
+    if (savedDate && savedDay) {
+      // Restore exact selection from localStorage
+      const wIdx = savedWeek !== null ? parseInt(savedWeek, 10) : curWeek;
+      setWeekOffset(isNaN(wIdx) ? curWeek : wIdx);
       setSelectedDate(savedDate);
-      const dayIdx = new Date(savedDate + "T00:00:00").getDay();
-      setSelectedDay(WAR_DAYS.find((d) => DAY_ISO[d] === dayIdx) ?? "");
-      // Calculate week offset based on saved date to sync the dropdown
-      const d = new Date(savedDate + "T00:00:00");
-      const diffTime = d.getTime() - BASE_DATE.getTime();
-      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-      const wIdx = Math.floor(diffDays / 7);
-      if (wIdx >= 0) setWeekOffset(wIdx);
+      setSelectedDay(savedDay);
     } else {
+      // Default: pick today's war day or first upcoming
+      const dates = getWeekDates(curWeek);
+      let initialDay: WarDay = "อาทิตย์";
+      if (todayStr >= dates["พฤหัสบดี"]) initialDay = "พฤหัสบดี";
+      else if (todayStr >= dates["อังคาร"]) initialDay = "อังคาร";
+      setWeekOffset(curWeek);
       setSelectedDate(dates[initialDay]);
       setSelectedDay(initialDay);
     }
@@ -193,6 +191,8 @@ export default function AttendancePage() {
   useEffect(() => {
     if (!selectedDate) { setRows([]); return; }
     localStorage.setItem("att_date", selectedDate);
+    localStorage.setItem("att_day", getDayName(selectedDate));
+
     const dayName = getDayName(selectedDate);
     const baseRows = flattenRoster(roster);
     
@@ -228,6 +228,8 @@ export default function AttendancePage() {
     setSelectedDay(day);
     const dates = getWeekDates(weekOffset);
     setSelectedDate(dates[day]);
+    localStorage.setItem("att_day", day);
+    localStorage.setItem("att_week", String(weekOffset));
   };
 
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -489,10 +491,10 @@ export default function AttendancePage() {
                 <thead>
                   <tr className="bg-[#eef4fb] text-[#1a6abb] text-xs font-semibold">
                     <th className="px-4 py-3.5 text-left w-10">#</th>
-                    <th className="px-4 py-3.5 text-left w-[35%]">ชื่อตัวละคร</th>
-                    <th className="px-4 py-3.5 text-left w-[30%]">อาชีพ</th>
-                    <th className="px-4 py-3.5 text-right w-[15%]">ค่าพลัง</th>
-                    <th className="px-4 py-3.5 text-left w-[20%]">สถานะ</th>
+                    <th className="px-4 py-3.5 text-left w-[28%]">ชื่อตัวละคร</th>
+                    <th className="px-4 py-3.5 text-left w-[24%]">อาชีพ</th>
+                    <th className="px-4 py-3.5 text-right w-[16%]">ค่าพลัง</th>
+                    <th className="px-4 py-3.5 text-left w-[32%]">สถานะ</th>
                   </tr>
                 </thead>
                 <tbody>

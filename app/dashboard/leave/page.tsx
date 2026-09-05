@@ -118,7 +118,18 @@ export default function LeavePage() {
   const lockedCls = "w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm font-semibold text-slate-500 bg-slate-50 select-none";
 
   return (
-    <div className="bg-[#eef4fb] min-h-screen p-4 lg:py-8 lg:px-12 xl:px-24 2xl:px-32" style={{ zoom: 0.85 }}>
+    <div className="bg-[#f0f6fc] min-h-screen p-4 lg:py-8 lg:px-12 xl:px-24 2xl:px-32" style={{ zoom: 0.85 }}>
+
+      {/* Header Card */}
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 mb-5 flex items-center gap-3">
+        <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: "#0b3d63" }}>
+          <CalendarOff className="w-6 h-6 text-white" />
+        </div>
+        <div>
+          <h1 className="text-xl font-bold text-slate-800">ระบบแจ้งลาวอ</h1>
+          <p className="text-sm text-slate-500">แจ้งลาการเข้าร่วมวอร์ | อังคาร · พฤหัสบดี · อาทิตย์</p>
+        </div>
+      </div>
 
       {/* ── FORM CARD ── */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-4">

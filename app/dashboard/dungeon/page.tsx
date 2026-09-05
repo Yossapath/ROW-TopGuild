@@ -273,6 +273,18 @@ export default function DungeonPage() {
   // ────────────────────────────────────────────────────────────
   return (
     <div style={{ zoom: 0.85 }} className="min-h-screen bg-[#f0f6fc] p-4 lg:py-8 lg:px-12 xl:px-24 2xl:px-32">
+
+      {/* Header Card */}
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 mb-5 flex items-center gap-3">
+        <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: "#0b3d63" }}>
+          <Swords className="w-6 h-6 text-white" />
+        </div>
+        <div>
+          <h1 className="text-xl font-bold text-slate-800">ระบบจองดันมายา</h1>
+          <p className="text-sm text-slate-500">จองคิวดันเจี้ยนมายา · 5 คนต่อทีม · 1-2 รอบต่อรอบ</p>
+        </div>
+      </div>
+
       <div className="flex flex-col lg:flex-row gap-5">
 
         {/* ═══════════════════════════════════════════════════
