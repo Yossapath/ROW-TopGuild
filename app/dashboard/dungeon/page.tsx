@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import {
   Swords,
   ListPlus,
@@ -20,6 +20,7 @@ import {
   isBookingOpen,
   formatTimestamp,
 } from "@/lib/utils";
+import { calculateDungeonEstimates } from "@/lib/dungeon-estimator";
 import type { DungeonQueue, DungeonSchedule } from "@/types";
 
 // ────────────────────────────────────────────────────────────
@@ -41,6 +42,8 @@ export default function DungeonPage() {
   // Queue state
   const [queues, setQueues] = useState<DungeonQueue[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const estimates = useMemo(() => calculateDungeonEstimates(queues), [queues]);
 
   // Form state
   const [formName, setFormName] = useState("");
@@ -555,10 +558,13 @@ export default function DungeonPage() {
         <div className="flex-1 min-w-0">
           {/* Header */}
           <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="font-semibold text-slate-700 dark:text-white">รายชื่อคิว</span>
               <span className="bg-[#0b3d63] dark:bg-[#3B66D1] text-white text-xs font-bold px-2.5 py-1 rounded-full">
                 {queues.length} คน
+              </span>
+              <span className="text-xs font-bold text-slate-600 dark:text-[#8B93A7] bg-white dark:bg-[#232733] border border-slate-200 dark:border-[#2D3342] px-2.5 py-1 rounded-lg">
+                ⏱️ ~11-12 นาที/คิว ({estimates.totalPartiesCount} ตี้)
               </span>
             </div>
             
@@ -618,6 +624,7 @@ export default function DungeonPage() {
                 const renderQueue = (q: DungeonQueue, idx: number, isDone: boolean, isR2 = false) => {
                   const statusBadge = STATUS_BADGE[q.status] ?? STATUS_BADGE.waiting;
                   const jobColor = JOB_COLORS[q.job] ?? "#888";
+                  const qEst = estimates.estimatesById[q.id] || estimates.estimatesByName[q.name.toLowerCase()];
 
                   return (
                     <div
@@ -656,11 +663,31 @@ export default function DungeonPage() {
                             </span>
                           )}
 
+                          {/* Party Badge */}
+                          {qEst && qEst.partyNumber > 0 && !isDone && (
+                            <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-[#0b3d63]/10 dark:bg-[#3B66D1]/20 text-[#0b3d63] dark:text-[#82A0F5] border border-[#0b3d63]/20 dark:border-[#4D73CD]/30">
+                              ตี้ที่ {qEst.partyNumber}
+                            </span>
+                          )}
+
                           {/* Status badge */}
                           <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusBadge.cls}`}>
                             {statusBadge.label}
                           </span>
                         </div>
+
+                        {/* Estimated time for waiting */}
+                        {qEst && qEst.status === "waiting" && (
+                          <div className="flex items-center gap-2 mt-1.5 flex-wrap text-xs">
+                            <span className="text-[11px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-800/40 flex items-center gap-1">
+                              <Clock size={11} />
+                              {qEst.queuesAhead === 0 ? "คิวถัดไป (~0-3 นาที)" : `อีก ${qEst.queuesAhead} คิว (~${qEst.waitMinutesMin}-${qEst.waitMinutesMax} นาที)`}
+                            </span>
+                            <span className="text-[11px] font-bold text-blue-600 dark:text-[#82A0F5]">
+                              🕒 ถึงคิวประมาณ {qEst.estimatedStartTimeText}
+                            </span>
+                          </div>
+                        )}
 
                         {/* Power + timestamp */}
                         <div className="flex items-center gap-3 mt-1 flex-wrap">
