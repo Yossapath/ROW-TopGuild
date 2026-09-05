@@ -264,7 +264,7 @@ export default function TopHeader({
                 <button 
                   type="submit"
                   disabled={isSaving}
-                  className="px-6 py-2.5 bg-theme-primary hover:bg-[#1a66a1] text-white rounded-xl text-sm font-bold shadow-lg shadow-[#065bca]/20 transition-all active:scale-95 disabled:opacity-50 flex items-center gap-2"
+                  className="px-6 py-2.5 bg-[#0b3d63] hover:bg-[#0f4b7a] text-white rounded-xl text-sm font-bold shadow-lg shadow-[#0b3d63]/20 transition-all active:scale-95 disabled:opacity-50 flex items-center gap-2"
                 >
                   {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
                   {isSaving ? "กำลังบันทึก..." : "บันทึกการเปลี่ยนแปลง"}

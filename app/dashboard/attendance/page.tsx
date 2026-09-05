@@ -489,7 +489,7 @@ export default function AttendancePage() {
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="bg-[#eef4fb] text-[#1a6abb] text-xs font-semibold">
+                  <tr className="bg-[#eef4fb] text-[#0b3d63] text-xs font-semibold">
                     <th className="px-4 py-3.5 text-left w-10">#</th>
                     <th className="px-4 py-3.5 text-left w-[28%]">ชื่อตัวละคร</th>
                     <th className="px-4 py-3.5 text-left w-[24%]">อาชีพ</th>

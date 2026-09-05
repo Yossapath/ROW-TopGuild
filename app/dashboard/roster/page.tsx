@@ -147,9 +147,9 @@ export default function RosterPage() {
     <div className="space-y-6 bg-[#f0f6fc] min-h-screen p-4 lg:py-8 lg:px-12 xl:px-24 2xl:px-32 relative" style={{ zoom: 0.85 }}>
       
       {/* Top Banner */}
-      <div className="bg-[#0f4b7a] rounded-2xl p-6 text-white flex items-center justify-between shadow-md">
+      <div className="bg-[#0b3d63] rounded-2xl p-6 text-white flex items-center justify-between shadow-md">
         <div className="flex items-center space-x-4">
-          <div className="bg-[#1b5d92] p-3 rounded-xl hidden sm:block">
+          <div className="bg-white/10 p-3 rounded-xl hidden sm:block">
             <Shield className="w-8 h-8 text-blue-200" />
           </div>
           <div>
@@ -172,21 +172,21 @@ export default function RosterPage() {
             <input
               type="text"
               placeholder="ค้นหาชื่อสมาชิก..."
-              className="block w-full rounded-full border border-theme-border bg-theme-bg py-2.5 pl-11 pr-4 text-slate-900 focus:bg-theme-panel focus:ring-2 focus:ring-[#1e76b9] sm:text-sm font-medium transition-colors"
+              className="block w-full rounded-full border border-theme-border bg-theme-bg py-2.5 pl-11 pr-4 text-slate-900 focus:bg-theme-panel focus:ring-2 focus:ring-[#0b3d63] sm:text-sm font-medium transition-colors"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
           <button 
             onClick={openAddModal}
-            className="w-full sm:w-auto flex-shrink-0 rounded-full bg-[#1e76b9] px-6 py-2.5 text-sm font-bold text-white hover:bg-[#165a8e] transition-colors shadow-sm"
+            className="w-full sm:w-auto flex-shrink-0 rounded-full bg-[#0b3d63] px-6 py-2.5 text-sm font-bold text-white hover:bg-[#0f4b7a] transition-colors shadow-sm"
           >
             เพิ่มสมาชิกใหม่
           </button>
         </div>
         <button 
           onClick={() => alert("ระบบ Import Excel กำลังพัฒนา")}
-          className="w-full md:w-auto rounded-full bg-theme-panel border border-[#1e76b9] px-6 py-2.5 text-sm font-bold text-[#1e76b9] hover:bg-blue-50 transition-colors shadow-sm"
+          className="w-full md:w-auto rounded-full bg-theme-panel border border-[#0b3d63] px-6 py-2.5 text-sm font-bold text-[#0b3d63] hover:bg-blue-50 transition-colors shadow-sm"
         >
           เพิ่มกลุ่ม (Excel)
         </button>
@@ -365,7 +365,7 @@ export default function RosterPage() {
                   type="text" 
                   value={editName}
                   onChange={e => setEditName(e.target.value)}
-                  className="w-full border border-blue-100 rounded-xl px-4 py-3 text-theme-text font-bold focus:ring-2 focus:ring-[#1e76b9] focus:border-[#1e76b9] bg-blue-50/40 transition-all outline-none"
+                  className="w-full border border-blue-100 rounded-xl px-4 py-3 text-theme-text font-bold focus:ring-2 focus:ring-[#0b3d63] focus:border-[#0b3d63] bg-blue-50/40 transition-all outline-none"
                   placeholder="กรอกชื่อตัวละคร..."
                 />
               </div>
@@ -375,7 +375,7 @@ export default function RosterPage() {
                 <select 
                   value={editJob}
                   onChange={e => setEditJob(e.target.value)}
-                  className="w-full border border-blue-100 rounded-xl px-4 py-3 text-[#0b3d63] font-bold focus:ring-2 focus:ring-[#1e76b9] focus:border-[#1e76b9] bg-blue-50/40 transition-all outline-none appearance-none cursor-pointer"
+                  className="w-full border border-blue-100 rounded-xl px-4 py-3 text-[#0b3d63] font-bold focus:ring-2 focus:ring-[#0b3d63] focus:border-[#0b3d63] bg-blue-50/40 transition-all outline-none appearance-none cursor-pointer"
                 >
                   {JOB_LIST.map(job => (
                     <option key={job} value={job}>{job}</option>
@@ -389,7 +389,7 @@ export default function RosterPage() {
                   type="number" 
                   value={editPower}
                   onChange={e => setEditPower(e.target.value)}
-                  className="w-full border border-blue-100 rounded-xl px-4 py-3 text-[#0b3d63] font-bold focus:ring-2 focus:ring-[#1e76b9] focus:border-[#1e76b9] bg-blue-50/40 transition-all outline-none"
+                  className="w-full border border-blue-100 rounded-xl px-4 py-3 text-[#0b3d63] font-bold focus:ring-2 focus:ring-[#0b3d63] focus:border-[#0b3d63] bg-blue-50/40 transition-all outline-none"
                   placeholder="เช่น 150000"
                 />
               </div>
@@ -402,7 +402,7 @@ export default function RosterPage() {
                   value={editRole}
                   onChange={e => setEditRole(e.target.value)}
                   disabled={user?.role !== "admin"}
-                  className={`w-full border rounded-xl px-4 py-3 font-bold transition-all outline-none appearance-none ${user?.role === "admin" ? "border-blue-100 text-[#0b3d63] focus:ring-2 focus:ring-[#1e76b9] focus:border-[#1e76b9] bg-blue-50/40 cursor-pointer" : "bg-gray-100 text-gray-500 cursor-not-allowed border-gray-200"}`}
+                  className={`w-full border rounded-xl px-4 py-3 font-bold transition-all outline-none appearance-none ${user?.role === "admin" ? "border-blue-100 text-[#0b3d63] focus:ring-2 focus:ring-[#0b3d63] focus:border-[#0b3d63] bg-blue-50/40 cursor-pointer" : "bg-gray-100 text-gray-500 cursor-not-allowed border-gray-200"}`}
                 >
                   <option value="อิสระ (ให้ระบบจัดให้)">อิสระ (ให้ระบบจัดให้)</option>
                   <option value="สนามหลัก">สนามหลัก</option>
@@ -432,7 +432,7 @@ export default function RosterPage() {
                 <button 
                   onClick={handleSave}
                   disabled={mutation.isPending}
-                  className="bg-[#1e76b9] text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-[#165a8e] transition-all shadow-sm hover:shadow disabled:opacity-70"
+                  className="bg-[#0b3d63] text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-[#0f4b7a] transition-all shadow-sm hover:shadow disabled:opacity-70"
                 >
                   {mutation.isPending ? "กำลังบันทึก..." : "บันทึกสมาชิก"}
                 </button>

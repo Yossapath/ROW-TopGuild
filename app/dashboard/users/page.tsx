@@ -44,14 +44,14 @@ export default function UsersPage() {
 
   if (user?.role !== "admin") {
     return (
-      <div className="space-y-6 bg-theme-bg min-h-screen p-4 lg:py-8 lg:px-12 xl:px-24 2xl:px-32 relative" style={{ zoom: 0.85 }}>
-        <div className="bg-theme-panel rounded-2xl p-6 flex items-center space-x-4 shadow-sm border border-theme-border">
-          <div className="bg-theme-danger p-3 rounded-xl text-white shadow-md">
-            <UserCog size={32} />
+      <div className="space-y-6 bg-[#f0f6fc] min-h-screen p-4 lg:py-8 lg:px-12 xl:px-24 2xl:px-32 relative" style={{ zoom: 0.85 }}>
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 mb-5 flex items-center gap-3">
+          <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 bg-red-600 text-white">
+            <UserCog className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold tracking-wide text-theme-danger">Access Denied</h1>
-            <p className="text-theme-textSecondary text-sm md:text-base font-medium mt-1">คุณไม่มีสิทธิ์เข้าถึงหน้านี้ (เฉพาะ Admin เท่านั้น)</p>
+            <h1 className="text-xl font-bold text-red-600">Access Denied</h1>
+            <p className="text-slate-500 text-sm font-medium mt-0.5">คุณไม่มีสิทธิ์เข้าถึงหน้านี้ (เฉพาะ Admin เท่านั้น)</p>
           </div>
         </div>
       </div>
@@ -77,15 +77,19 @@ export default function UsersPage() {
   });
 
   return (
-    <div className="space-y-6 bg-theme-bg min-h-screen p-4 lg:py-8 lg:px-12 xl:px-24 2xl:px-32 relative" style={{ zoom: 0.85 }}>
-      <div className="bg-theme-panel rounded-2xl p-6 flex items-center space-x-4 shadow-sm border border-theme-border justify-between flex-wrap gap-4">
-        <div className="flex items-center space-x-4">
-          <div className="bg-theme-primary p-3 rounded-xl text-white shadow-md">
-            <UserCog size={32} />
+    <div className="space-y-6 bg-[#f0f6fc] min-h-screen p-4 lg:py-8 lg:px-12 xl:px-24 2xl:px-32 relative" style={{ zoom: 0.85 }}>
+      {/* Header Card */}
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div
+            className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+            style={{ backgroundColor: "#0b3d63" }}
+          >
+            <UserCog className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold tracking-wide text-theme-text">จัดการผู้ใช้ (User Management)</h1>
-            <p className="text-theme-textSecondary text-sm md:text-base font-medium mt-1">ตั้งค่าและจัดการสิทธิ์สมาชิกในกิลด์</p>
+            <h1 className="text-xl font-bold text-slate-800">จัดการผู้ใช้ (User Management)</h1>
+            <p className="text-sm text-slate-500">ตั้งค่าและจัดการสิทธิ์สมาชิกในกิลด์</p>
           </div>
         </div>
         
@@ -96,34 +100,34 @@ export default function UsersPage() {
             placeholder="ค้นหาชื่อในเกม หรือ Discord..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-4 pr-10 py-2.5 rounded-xl border border-theme-border bg-theme-bg text-theme-text font-medium focus:outline-none focus:ring-2 focus:ring-theme-primary transition-all"
+            className="w-full pl-4 pr-10 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-[#0b3d63] transition-all"
           />
-          <svg className="w-5 h-5 absolute right-3 top-3 text-theme-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-5 h-5 absolute right-3 top-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
           </svg>
         </div>
       </div>
 
-      <div className="bg-theme-panel p-6 rounded-2xl shadow-sm border border-theme-border min-h-[400px]">
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 min-h-[400px]">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center h-64">
-            <Loader2 size={48} className="text-theme-primary animate-spin mb-4" />
-            <p className="text-theme-textSecondary font-bold text-lg animate-pulse">กำลังโหลดข้อมูลผู้ใช้...</p>
+            <Loader2 size={48} className="text-[#0b3d63] animate-spin mb-4" />
+            <p className="text-slate-500 font-bold text-lg animate-pulse">กำลังโหลดข้อมูลผู้ใช้...</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse min-w-[600px]">
               <thead>
-                <tr className="border-b border-theme-divider">
-                  <th className="py-3 px-4 font-bold text-theme-textMuted uppercase tracking-wider text-xs">Discord</th>
-                  <th className="py-3 px-4 font-bold text-theme-textMuted uppercase tracking-wider text-xs">Game Name</th>
-                  <th className="py-3 px-4 font-bold text-theme-textMuted uppercase tracking-wider text-xs">Class / Power</th>
-                  <th className="py-3 px-4 font-bold text-theme-textMuted uppercase tracking-wider text-xs text-center">Role</th>
+                <tr className="border-b border-slate-100">
+                  <th className="py-3 px-4 font-bold text-slate-400 uppercase tracking-wider text-xs">Discord</th>
+                  <th className="py-3 px-4 font-bold text-slate-400 uppercase tracking-wider text-xs">Game Name</th>
+                  <th className="py-3 px-4 font-bold text-slate-400 uppercase tracking-wider text-xs">Class / Power</th>
+                  <th className="py-3 px-4 font-bold text-slate-400 uppercase tracking-wider text-xs text-center">Role</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-theme-divider">
+              <tbody className="divide-y divide-slate-100">
                 {sortedUsers.map((u) => (
-                  <tr key={u.discordId} className={`hover:bg-theme-bg/50 transition-colors ${u.role === 'admin' ? 'bg-theme-primary/5' : ''}`}>
+                  <tr key={u.discordId} className={`hover:bg-slate-50/70 transition-colors ${u.role === 'admin' ? 'bg-blue-50/50' : ''}`}>
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-3">
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm text-white ${u.role === 'admin' ? 'bg-theme-warning' : 'bg-slate-400'}`}>

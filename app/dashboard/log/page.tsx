@@ -196,18 +196,14 @@ export default function LogPage() {
       style={{ zoom: 0.85 }}
     >
       {/* ── Header Card ──────────────────────────────────────── */}
-      <div className="bg-white rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between shadow-sm border border-slate-200 gap-4">
-        <div className="flex items-center space-x-4">
-          <div className="bg-[#0f4b7a] p-3 rounded-xl text-white shadow-md">
-            <ScrollText size={32} />
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 mb-5 flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 rounded-xl bg-[#0b3d63] flex items-center justify-center flex-shrink-0">
+            <ScrollText className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold tracking-wide text-[#0b3d63]">
-              ประวัติระบบ
-            </h1>
-            <p className="text-slate-500 text-sm md:text-base font-medium mt-1">
-              ดูประวัติการทำรายการทั้งหมด
-            </p>
+            <h1 className="text-xl font-bold text-slate-800">ประวัติระบบ</h1>
+            <p className="text-sm text-slate-500">ดูประวัติการทำรายการทั้งหมด</p>
           </div>
         </div>
         <div className="relative w-full md:w-auto">
@@ -217,7 +213,7 @@ export default function LogPage() {
             placeholder="ค้นหา..."
             value={search}
             onChange={(e) => { setSearch(e.target.value); setLogPage(1); }}
-            className="pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-400 font-medium w-full md:w-72 text-sm"
+            className="pl-10 pr-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#0b3d63] font-medium w-full md:w-72 text-sm"
           />
         </div>
       </div>
@@ -258,7 +254,7 @@ export default function LogPage() {
                 <select
                   value={moduleFilter}
                   onChange={(e) => { setModuleFilter(e.target.value); setLogPage(1); }}
-                  className="text-sm border border-slate-200 rounded-lg px-3 py-1.5 font-medium focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  className="text-sm border border-slate-200 rounded-lg px-3 py-1.5 font-medium focus:outline-none focus:ring-2 focus:ring-[#0b3d63]"
                 >
                   <option value="all">ทุก Module</option>
                   {moduleOptions.map((m) => (

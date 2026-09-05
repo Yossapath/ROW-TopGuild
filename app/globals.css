@@ -54,10 +54,10 @@
 @layer base {
   :root {
     --theme-bg: #f0f6fc;
-    --theme-sidebar: #065bca;
-    --theme-sidebar-active: #eff6ff;
-    --theme-sidebar-text-active: #065bca;
-    --theme-sidebar-text: #cce0ff;
+    --theme-sidebar: #0b3d63;
+    --theme-sidebar-active: #ffffff;
+    --theme-sidebar-text-active: #0b3d63;
+    --theme-sidebar-text: #bfdbfe;
     --theme-panel: #ffffff;
     --theme-input: #ffffff;
     --theme-border: #e2e8f0;
@@ -66,8 +66,8 @@
     --theme-text: #1e293b;
     --theme-text-secondary: #64748b;
     --theme-text-muted: #94a3b8;
-    --theme-primary: #065bca;
-    --theme-primary-hover: #054bb0;
+    --theme-primary: #0b3d63;
+    --theme-primary-hover: #0f4b7a;
     --theme-success: #10b981;
     --theme-warning: #f59e0b;
     --theme-danger: #ef4444;

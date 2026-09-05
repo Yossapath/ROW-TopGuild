@@ -161,6 +161,25 @@ export default function DungeonPage() {
     return () => clearInterval(interval);
   }, [fetchQueues, fetchSchedule, fetchRoster]);
 
+  // ── Auto-fill & Lock for Member ───────────────────────────
+  useEffect(() => {
+    if (!isAdmin && user?.gameUsername) {
+      setFormName(user.gameUsername);
+      if (user.class) {
+        setFormJob(user.class);
+      }
+    }
+  }, [user, isAdmin]);
+
+  useEffect(() => {
+    if (!isAdmin && user?.gameUsername && rosterMembers.length > 0) {
+      const found = rosterMembers.find((m) => m.name === user.gameUsername);
+      if (found) {
+        setFormJob(found.job);
+      }
+    }
+  }, [user, isAdmin, rosterMembers]);
+
   // ── Submit queue booking ──────────────────────────────────
   const handleSubmit = async () => {
     if (!formName.trim()) {
@@ -188,7 +207,11 @@ export default function DungeonPage() {
       const json = await res.json();
       if (json.ok) {
         setFormMsg({ type: "ok", text: "จองคิวสำเร็จ! 🎉" });
-        setFormName("");
+        if (isAdmin) {
+          setFormName("");
+          setFormJob(JOB_LIST[0] ?? "");
+        }
+        setFormRounds(1);
         fetchQueues();
       } else {
         setFormMsg({ type: "err", text: json.error ?? "เกิดข้อผิดพลาด" });
@@ -310,40 +333,69 @@ export default function DungeonPage() {
             {!formCollapsed && <div className="p-5 flex flex-col gap-4">
               {/* Name */}
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">ชื่อตัวละคร</label>
-                <input
-                  list="roster-names"
-                  value={formName}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setFormName(val);
-                    const member = rosterMembers.find((m) => m.name === val);
-                    if (member) {
-                      setFormJob(member.job);
-                    }
-                  }}
-                  placeholder="พิมพ์หรือเลือกชื่อ…"
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0b3d63]/30"
-                />
-                <datalist id="roster-names">
-                  {rosterMembers.map((m) => (
-                    <option key={m.name} value={m.name} />
-                  ))}
-                </datalist>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">
+                  ชื่อตัวละคร <span className="text-red-500">*</span>
+                </label>
+                {isAdmin ? (
+                  <>
+                    <input
+                      list="roster-names"
+                      value={formName}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setFormName(val);
+                        const member = rosterMembers.find((m) => m.name === val);
+                        if (member) {
+                          setFormJob(member.job);
+                        }
+                      }}
+                      placeholder="พิมพ์หรือเลือกชื่อ…"
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0b3d63]/30"
+                    />
+                    <datalist id="roster-names">
+                      {rosterMembers.map((m) => (
+                        <option key={m.name} value={m.name} />
+                      ))}
+                    </datalist>
+                  </>
+                ) : (
+                  <div>
+                    <input
+                      type="text"
+                      readOnly
+                      value={formName}
+                      placeholder="ใส่ชื่อตัวละคร..."
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-slate-100 text-slate-500 cursor-not-allowed font-medium"
+                    />
+                    <p className="text-[11px] text-slate-400 mt-1">ชื่อและอาชีพถูกดึงจากโปรไฟล์ของคุณ</p>
+                  </div>
+                )}
               </div>
 
               {/* Job */}
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">อาชีพ</label>
-                <select
-                  value={formJob}
-                  onChange={(e) => setFormJob(e.target.value)}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0b3d63]/30 bg-white"
-                >
-                  {JOB_LIST.map((j) => (
-                    <option key={j} value={j}>{j}</option>
-                  ))}
-                </select>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">
+                  อาชีพ <span className="text-red-500">*</span>
+                </label>
+                {isAdmin ? (
+                  <select
+                    value={formJob}
+                    onChange={(e) => setFormJob(e.target.value)}
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0b3d63]/30 bg-white"
+                  >
+                    {JOB_LIST.map((j) => (
+                      <option key={j} value={j}>{j}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-slate-100 text-slate-500 cursor-not-allowed font-medium flex items-center gap-2">
+                    <span
+                      className="w-2.5 h-2.5 rounded-full inline-block"
+                      style={{ backgroundColor: JOB_COLORS[formJob] ?? "#94a3b8" }}
+                    />
+                    {formJob || "กำลังโหลด..."}
+                  </div>
+                )}
               </div>
 
               {/* Rounds toggle */}

@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 import { leaveRef, teamsRef } from "@/lib/firebase-admin";
 import { getCurrentUser } from "@/lib/auth";
-import { ok, err, unauthorized } from "@/lib/server-utils";
+import { ok, err, unauthorized, logAction } from "@/lib/server-utils";
 
 export async function GET() {
   try {
@@ -69,6 +69,16 @@ export async function POST(req: Request) {
       console.error("Error auto-removing from teams:", e);
     }
 
+    // Save audit log to database
+    logAction({
+      module: "LEAVE",
+      action: "SUBMIT_LEAVE",
+      actor: user.gameUsername || user.discordUsername || "User",
+      target: name,
+      detail: `แจ้งลาวอ วัน${day ? ` ${day}` : ""} วันที่ ${date || "-"} (เหตุผล: ${reason || "-"})`,
+      extra: { name, job, date, day, reason },
+    });
+
     return ok({ id: docRef.id, ...newLeave });
   } catch (e: any) {
     return err(e.message, 500);
@@ -83,7 +93,21 @@ export async function DELETE(req: Request) {
     const { id } = await req.json();
     if (!id) return err("Missing id");
 
+    const snap = await leaveRef().collection("records").doc(id).get();
+    const lData = snap.data() as any;
+
     await leaveRef().collection("records").doc(id).delete();
+
+    // Save audit log to database
+    logAction({
+      module: "LEAVE",
+      action: "DELETE_LEAVE",
+      actor: user.gameUsername || user.discordUsername || "Admin",
+      target: lData?.name || id,
+      detail: `ลบรายการแจ้งลาของ ${lData?.name || id} (วันที่ ${lData?.date || lData?.day || "-"})`,
+      extra: lData || { id },
+    });
+
     return ok({ success: true });
   } catch (e: any) {
     return err(e.message, 500);

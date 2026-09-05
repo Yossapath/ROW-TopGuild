@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 import { dungeonsRef, scheduleRef } from "@/lib/firebase-admin";
 import { getCurrentUser } from "@/lib/auth";
-import { ok, err } from "@/lib/server-utils";
+import { ok, err, logAction } from "@/lib/server-utils";
 import { isBookingOpen } from "@/lib/utils";
 
 export async function GET() {
@@ -59,6 +59,17 @@ export async function POST(req: Request) {
     };
 
     const docRef = await dungeonsRef().collection("queues").add(newQueue);
+
+    // Save audit log to database
+    logAction({
+      module: "DUNGEON",
+      action: "BOOK_QUEUE",
+      actor: body.name || "Member",
+      target: body.name,
+      detail: `จองคิวดันเจี้ยน ${body.dungeon || "ดันมายา"} (${body.job}) จำนวน ${body.rounds || 1} รอบ`,
+      extra: { name: body.name, job: body.job, dungeon: body.dungeon, rounds: body.rounds || 1 },
+    });
+
     return ok({ id: docRef.id, ...newQueue });
   } catch (e: any) {
     return err(e.message, 500);

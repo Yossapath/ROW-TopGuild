@@ -133,7 +133,7 @@ export default function LeavePage() {
 
       {/* ── FORM CARD ── */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-4">
-        <h2 className="font-bold text-[#1e4a7c] text-base mb-5">แบบฟอร์มแจ้งลาวอ</h2>
+        <h2 className="font-bold text-[#0b3d63] text-base mb-5">แบบฟอร์มแจ้งลาวอ</h2>
         <form onSubmit={handleSubmit}>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
 
@@ -213,7 +213,7 @@ export default function LeavePage() {
           <div className="flex items-center gap-3">
             <button
               type="submit" disabled={submitting}
-              className="px-6 py-2.5 bg-[#1a6abb] hover:bg-[#155aa0] text-white rounded-lg font-bold text-sm transition-colors disabled:opacity-50"
+              className="px-6 py-2.5 bg-[#0b3d63] hover:bg-[#0f4b7a] text-white rounded-xl font-bold text-sm transition-colors disabled:opacity-50 shadow-sm"
             >
               {submitting ? "กำลังบันทึก..." : "บันทึกการลา"}
             </button>
@@ -229,8 +229,8 @@ export default function LeavePage() {
       {/* ── LIST CARD ── */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-3">
-          <CalendarOff className="w-5 h-5 text-[#1a6abb]" />
-          <h2 className="font-bold text-[#1e4a7c]">รายการแจ้งลาล่วงหน้า</h2>
+          <CalendarOff className="w-5 h-5 text-[#0b3d63]" />
+          <h2 className="font-bold text-[#0b3d63]">รายการแจ้งลาล่วงหน้า</h2>
           <span className="bg-slate-100 text-slate-500 text-xs font-bold px-2 py-0.5 rounded-full ml-auto">
             {allRecords.length} รายการ
           </span>
@@ -250,7 +250,7 @@ export default function LeavePage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-[#eef4fb] text-[#1a6abb] text-xs font-semibold border-b border-slate-100">
+                <tr className="bg-[#eef4fb] text-[#0b3d63] text-xs font-semibold border-b border-slate-100">
                   <th className="px-5 py-3 text-left">วันที่ลา</th>
                   <th className="px-5 py-3 text-left">วัน</th>
                   <th className="px-5 py-3 text-left">ชื่อตัวละคร</th>
