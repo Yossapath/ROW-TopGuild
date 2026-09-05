@@ -228,12 +228,12 @@ export default function RosterPage() {
                   : "border-theme-border hover:border-[#4D73CD]/50"
               }`}
             >
-              <div className="flex items-center space-x-2 font-bold text-sm lg:text-base text-theme-text">
-                <span className="w-2.5 h-2.5 rounded-full shadow-sm" style={{ backgroundColor: color }}></span>
-                <span>{job}</span>
+              <div className="flex items-center space-x-2 font-bold text-sm lg:text-base min-w-0" style={{ color: color }}>
+                <span className="w-2.5 h-2.5 rounded-full shadow-sm shrink-0" style={{ backgroundColor: color }}></span>
+                <span className="truncate">{job}</span>
               </div>
               <div 
-                className="px-3 py-1 rounded-lg text-sm font-bold bg-theme-input text-theme-text"
+                className="px-3 py-1 rounded-lg text-sm font-bold bg-theme-input text-theme-text shrink-0"
               >
                 {count}
               </div>
@@ -267,12 +267,12 @@ export default function RosterPage() {
             >
               {/* Header */}
               <div className="px-5 py-4 flex items-center justify-between border-b border-theme-border/50 bg-theme-panel">
-                <div className="flex items-center space-x-2 font-bold text-base lg:text-lg text-theme-text">
-                  <span className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: color }}></span>
-                  <span>{job}</span>
+                <div className="flex items-center space-x-2 font-bold text-base lg:text-lg min-w-0" style={{ color: color }}>
+                  <span className="w-3 h-3 rounded-full shadow-sm shrink-0" style={{ backgroundColor: color }}></span>
+                  <span className="truncate">{job}</span>
                 </div>
                 <div 
-                  className="px-3 py-1.5 rounded-xl text-xs font-bold text-theme-text shadow-sm tracking-wide bg-theme-input border border-theme-border"
+                  className="px-3 py-1.5 rounded-xl text-xs font-bold text-theme-text shadow-sm tracking-wide bg-theme-input border border-theme-border shrink-0 ml-2"
                 >
                   {members.length} คน
                 </div>
@@ -283,7 +283,7 @@ export default function RosterPage() {
                 <div className="col-span-2 text-left">#</div>
                 <div className={isAdmin ? "col-span-4 text-left" : "col-span-6 text-left"}>ชื่อ</div>
                 <div className={isAdmin ? "col-span-3 text-center" : "col-span-4 text-center"}>ค่าพลัง</div>
-                {isAdmin && <div className="col-span-3 text-center">การจัดการ</div>}
+                {isAdmin && <div className="col-span-3 text-center">จัดการ</div>}
               </div>
 
               {/* List */}
@@ -300,7 +300,7 @@ export default function RosterPage() {
                         <div className={`${isAdmin ? "col-span-4" : "col-span-6"} text-left truncate text-theme-text font-semibold text-[13.5px]`}>
                           {m.name || "Unknown"}
                         </div>
-                        <div className={`${isAdmin ? "col-span-3" : "col-span-4"} text-center font-medium tracking-tight text-theme-text`}>
+                        <div className={`${isAdmin ? "col-span-3" : "col-span-4"} text-center font-medium tracking-tight`} style={{ color: color }}>
                           {m.power != null ? Number(m.power).toLocaleString('en-US') : '-'}
                         </div>
                         {isAdmin && (
