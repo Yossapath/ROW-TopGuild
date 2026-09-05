@@ -12,7 +12,10 @@ export async function GET() {
     const db = getDb();
     const snapshot = await db.collection(COLL_USER).get();
     const users: any[] = [];
-    snapshot.forEach((doc) => users.push(doc.data()));
+    snapshot.forEach((doc) => {
+      const data = doc.data();
+      users.push({ discordId: doc.id, ...data });
+    });
     return ok(users);
   } catch (err: unknown) {
     return handleServerError(err, "Failed to load users");

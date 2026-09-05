@@ -19,14 +19,16 @@ type UserData = {
 export default function UsersPage() {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
+  const isAdmin = user?.role === "admin" || user?.role === "owner";
 
-  const { data: users = [], isLoading } = useQuery<UserData[]>({
+  const { data: users = [], isLoading, isError } = useQuery<UserData[]>({
     queryKey: ["users"],
     queryFn: async () => {
       const res = await axios.get("/api/users");
-      return res.data;
+      const list = res.data?.data ?? res.data;
+      return Array.isArray(list) ? list : [];
     },
-    enabled: user?.role === "admin",
+    enabled: isAdmin,
   });
 
   const updateRoleMutation = useMutation({
@@ -63,8 +65,6 @@ export default function UsersPage() {
 
   const [searchQuery, setSearchQuery] = useState("");
 
-  const isAdmin = user?.role === "admin" || user?.role === "owner";
-
   if (!isAdmin) {
     return (
       <div className="space-y-6 bg-[#f0f6fc] min-h-screen p-4 lg:py-8 lg:px-12 xl:px-24 2xl:px-32 relative" style={{ zoom: 0.85 }}>
@@ -81,15 +81,19 @@ export default function UsersPage() {
     );
   }
 
+  const userList = Array.isArray(users) ? users : [];
+
   // Sort and filter users: admins first, then by gameUsername
-  const filteredUsers = users.filter((u) => {
+  const filteredUsers = userList.filter((u) => {
+    if (!u) return false;
     const search = searchQuery.toLowerCase();
-    const discordName = u.discordUsername?.toLowerCase() || "";
-    const gameName = u.gameUsername?.toLowerCase() || "";
+    const discordName = (u.discordUsername || "").toLowerCase();
+    const gameName = (u.gameUsername || "").toLowerCase();
     return discordName.includes(search) || gameName.includes(search);
   });
 
   const sortedUsers = [...filteredUsers].sort((a, b) => {
+    if (!a || !b) return 0;
     if (a.role === "admin" && b.role !== "admin") return -1;
     if (a.role !== "admin" && b.role === "admin") return 1;
     const nameA = a.gameUsername || a.discordUsername || "";
@@ -134,6 +138,12 @@ export default function UsersPage() {
             <Loader2 size={48} className="text-[#0b3d63] dark:text-sky-400 animate-spin mb-4" />
             <p className="text-slate-500 dark:text-slate-400 font-bold text-lg animate-pulse">กำลังโหลดข้อมูลผู้ใช้...</p>
           </div>
+        ) : isError ? (
+          <div className="flex flex-col items-center justify-center h-64 text-center p-4">
+            <AlertTriangle size={48} className="text-red-500 mb-4" />
+            <p className="text-red-500 font-bold text-lg">ไม่สามารถโหลดข้อมูลผู้ใช้ได้</p>
+            <p className="text-slate-400 text-sm mt-1">กรุณาลองรีเฟรชหน้าใหม่อีกครั้ง หรือตรวจสอบสิทธิ์ Admin</p>
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse min-w-[600px]">
@@ -147,70 +157,78 @@ export default function UsersPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-[#1e3550]">
-                {sortedUsers.map((u) => (
-                  <tr key={u.discordId} className={`hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors ${u.role === 'admin' ? 'bg-blue-50/50 dark:bg-blue-950/20' : ''}`}>
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm text-white ${u.role === 'admin' ? 'bg-theme-warning' : 'bg-slate-400'}`}>
-                          {u.discordUsername?.charAt(0).toUpperCase()}
-                        </div>
-                        <span className="font-bold text-theme-text">{u.discordUsername}</span>
-                      </div>
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className="font-semibold text-theme-text">{u.gameUsername || "-"}</span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="flex flex-col">
-                        <span className="text-sm font-bold text-theme-text">{u.class || "-"}</span>
-                        <span className="text-xs text-theme-textSecondary">{u.power?.toLocaleString() || "0"} CP</span>
-                      </div>
-                    </td>
-                    <td className="py-3 px-4 text-center">
-                      <div className="flex justify-center items-center">
-                        <select
-                          value={u.role || "member"}
-                          onChange={(e) => {
-                            if (window.confirm(`ต้องการเปลี่ยนยศของ ${u.discordUsername} เป็น ${e.target.value} ใช่หรือไม่?`)) {
-                              updateRoleMutation.mutate({ discordId: u.discordId, role: e.target.value });
-                            }
-                          }}
-                          disabled={updateRoleMutation.isPending}
-                          className={`px-3 py-1.5 rounded-lg font-bold text-sm border-2 outline-none cursor-pointer transition-colors ${
-                            u.role === 'admin' 
-                              ? 'bg-theme-warning/10 text-theme-warning border-theme-warning/30 hover:border-theme-warning' 
-                              : 'bg-slate-100 text-slate-600 border-slate-200 hover:border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
-                          }`}
-                        >
-                          <option value="admin">Admin</option>
-                          <option value="member">Member</option>
-                        </select>
-                      </div>
-                    </td>
-                    <td className="py-3 px-4 text-center">
-                      {isAdmin && (
-                        u.discordId === user?.discordId ? (
-                          <span className="text-xs font-semibold text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-[#15263d] px-2.5 py-1 rounded-md">
-                            คุณเอง
-                          </span>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setUserToDelete(u);
-                              setConfirmInput("");
-                            }}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 hover:bg-red-100 dark:hover:bg-red-900/60 border border-red-200 dark:border-red-900/50 transition-colors cursor-pointer"
-                            title="ลบผู้ใช้"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                            ลบ
-                          </button>
-                        )
-                      )}
+                {sortedUsers.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="py-12 text-center text-slate-400 dark:text-slate-500 font-medium">
+                      {searchQuery ? "ไม่พบผู้ใช้ที่ตรงกับคำค้นหา" : "ไม่มีข้อมูลผู้ใช้ในระบบ"}
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  sortedUsers.map((u, index) => (
+                    <tr key={u.discordId || `user-${index}`} className={`hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors ${u.role === 'admin' ? 'bg-blue-50/50 dark:bg-blue-950/20' : ''}`}>
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm text-white ${u.role === 'admin' ? 'bg-theme-warning' : 'bg-slate-400'}`}>
+                            {u.discordUsername ? u.discordUsername.charAt(0).toUpperCase() : "U"}
+                          </div>
+                          <span className="font-bold text-theme-text">{u.discordUsername || "Unknown"}</span>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className="font-semibold text-theme-text">{u.gameUsername || "-"}</span>
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex flex-col">
+                          <span className="text-sm font-bold text-theme-text">{u.class || "-"}</span>
+                          <span className="text-xs text-theme-textSecondary">{u.power ? u.power.toLocaleString() : "0"} CP</span>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <div className="flex justify-center items-center">
+                          <select
+                            value={u.role || "member"}
+                            onChange={(e) => {
+                              if (window.confirm(`ต้องการเปลี่ยนยศของ ${u.discordUsername || 'ผู้ใช้'} เป็น ${e.target.value} ใช่หรือไม่?`)) {
+                                updateRoleMutation.mutate({ discordId: u.discordId, role: e.target.value });
+                              }
+                            }}
+                            disabled={updateRoleMutation.isPending}
+                            className={`px-3 py-1.5 rounded-lg font-bold text-sm border-2 outline-none cursor-pointer transition-colors ${
+                              u.role === 'admin' 
+                                ? 'bg-theme-warning/10 text-theme-warning border-theme-warning/30 hover:border-theme-warning' 
+                                : 'bg-slate-100 text-slate-600 border-slate-200 hover:border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
+                            }`}
+                          >
+                            <option value="admin">Admin</option>
+                            <option value="member">Member</option>
+                          </select>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        {isAdmin && (
+                          u.discordId === user?.discordId ? (
+                            <span className="text-xs font-semibold text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-[#15263d] px-2.5 py-1 rounded-md">
+                              คุณเอง
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setUserToDelete(u);
+                                setConfirmInput("");
+                              }}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 hover:bg-red-100 dark:hover:bg-red-900/60 border border-red-200 dark:border-red-900/50 transition-colors cursor-pointer"
+                              title="ลบผู้ใช้"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              ลบ
+                            </button>
+                          )
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
