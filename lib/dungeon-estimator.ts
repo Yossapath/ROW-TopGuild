@@ -4,7 +4,7 @@ export interface QueueEstimate {
   queueId: string;
   name: string;
   job: string;
-  status: "waiting" | "active" | "done";
+  status: "waiting" | "active" | "done" | "skipped";
   track: "priest" | "others";
   assignedRound: number; // รอบการลงดัน เช่น รอบที่ 1, รอบที่ 2... (0 ถ้า active/done)
   assignedTeam: number; // ทีมแบกที่จะได้ลง เช่น ทีม 1, ทีม 2...
@@ -105,9 +105,8 @@ export function calculateDungeonEstimates(
 
   const activeQueues = queues.filter((q) => q.status === "active");
   const doneQueues = queues.filter((q) => q.status === "done");
-  const waitingQueues = queues.filter(
-    (q) => q.status !== "active" && q.status !== "done"
-  );
+  const skippedQueues = queues.filter((q) => q.status === "skipped");
+  const waitingQueues = queues.filter((q) => q.status === "waiting");
 
   const hasActiveParty = activeQueues.length > 0;
 
@@ -337,6 +336,34 @@ export function calculateDungeonEstimates(
       waitMinutesMax: 0,
       estimatedWaitText: "ลงเสร็จสิ้นแล้ว 🎉",
       estimatedStartTimeText: "เสร็จสิ้น",
+      isCurrentParty: false,
+      partyNumber: 0,
+      partySlot: 0,
+      partyMemberCount: 0,
+      globalQueueIndex: 0,
+    };
+    estimatesById[m.id] = est;
+    estimatesByName[m.name.toLowerCase()] = est;
+  });
+
+  // สมาชิกที่ถูกข้าม (skipped / ไม่อยู่)
+  skippedQueues.forEach((m) => {
+    const isPriest = m.job === "Priest";
+    const est: QueueEstimate = {
+      queueId: m.id,
+      name: m.name,
+      job: m.job,
+      status: "skipped",
+      track: isPriest ? "priest" : "others",
+      assignedRound: 0,
+      assignedTeam: 0,
+      slotInTeam: 0,
+      trackPosition: 0,
+      queuesAhead: 0,
+      waitMinutesMin: 0,
+      waitMinutesMax: 0,
+      estimatedWaitText: "ข้ามคิว (ไม่อยู่)",
+      estimatedStartTimeText: "ข้ามคิว",
       isCurrentParty: false,
       partyNumber: 0,
       partySlot: 0,

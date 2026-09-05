@@ -66,7 +66,7 @@ export type DungeonType =
   | "ฟองสบู่ (Bubble)"
   | "กระจก (Mirror)";
 
-export type QueueStatus = "waiting" | "active" | "done";
+export type QueueStatus = "waiting" | "active" | "done" | "skipped";
 
 export interface DungeonQueue {
   id: string;

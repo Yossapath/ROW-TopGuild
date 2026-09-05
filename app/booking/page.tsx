@@ -44,6 +44,7 @@ function StatusBadge({ open, reason }: { open: boolean; reason?: string }) {
 function QueueDot({ status }: { status: string }) {
   if (status === "active") return <span className="w-2 h-2 rounded-full bg-blue-400 inline-block" />;
   if (status === "waiting") return <span className="w-2 h-2 rounded-full bg-yellow-400 inline-block" />;
+  if (status === "skipped") return <span className="w-2 h-2 rounded-full bg-amber-400 inline-block" />;
   return <span className="w-2 h-2 rounded-full bg-green-400 inline-block" />;
 }
 
@@ -52,6 +53,7 @@ const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
   waiting: { label: "รอคิว", cls: "bg-yellow-100 text-yellow-700" },
   active: { label: "กำลังลง", cls: "bg-blue-100 text-blue-700" },
   done: { label: "เสร็จแล้ว", cls: "bg-green-100 text-green-700" },
+  skipped: { label: "ข้าม (ไม่อยู่)", cls: "bg-amber-100 text-amber-700 border border-amber-300 dark:border-amber-800/40" },
 };
 
 export default function BookingPage() {
@@ -601,6 +603,8 @@ export default function BookingPage() {
                       <span className="text-blue-600 dark:text-blue-400 font-bold">⚔️ กำลังลงดันเจี้ยนอยู่ในขณะนี้!</span>
                     ) : myQueueEstimate.status === "done" ? (
                       <span className="text-green-600 dark:text-emerald-400 font-bold">🎉 ลงดันเจี้ยนเสร็จสิ้นเรียบร้อยแล้ว</span>
+                    ) : myQueueEstimate.status === "skipped" ? (
+                      <span className="text-amber-600 dark:text-amber-400 font-bold">⚠️ คิวของคุณถูกข้ามเนื่องจากไม่อยู่ขณะเรียกคิว (กรุณาแจ้งแอดมินหรือหัวตี้เพื่อนำกลับเข้าคิว)</span>
                     ) : myQueueEstimate.queuesAhead === 0 ? (
                       <span className="text-emerald-600 dark:text-emerald-400 font-bold">
                         {myQueueEstimate.track === "priest"
@@ -695,10 +699,11 @@ export default function BookingPage() {
           ) : (
             <div className="flex flex-col gap-2 p-4">
               {(() => {
-                const waitingRound1Priests = queues.filter(q => q.status !== "done" && !(q.rounds === 2 && q.round1 === true) && q.job === "Priest");
-                const waitingRound1Others = queues.filter(q => q.status !== "done" && !(q.rounds === 2 && q.round1 === true) && q.job !== "Priest");
-                const waitingRound2Priests = queues.filter(q => q.status !== "done" && (q.rounds === 2 && q.round1 === true) && q.job === "Priest");
-                const waitingRound2Others = queues.filter(q => q.status !== "done" && (q.rounds === 2 && q.round1 === true) && q.job !== "Priest");
+                const waitingRound1Priests = queues.filter(q => q.status === "waiting" && !(q.rounds === 2 && q.round1 === true) && q.job === "Priest");
+                const waitingRound1Others = queues.filter(q => q.status === "waiting" && !(q.rounds === 2 && q.round1 === true) && q.job !== "Priest");
+                const waitingRound2Priests = queues.filter(q => q.status === "waiting" && (q.rounds === 2 && q.round1 === true) && q.job === "Priest");
+                const waitingRound2Others = queues.filter(q => q.status === "waiting" && (q.rounds === 2 && q.round1 === true) && q.job !== "Priest");
+                const skippedQueues = queues.filter(q => q.status === "skipped");
                 const doneQueues = queues.filter(q => q.status === "done");
                 
                 let currentGlobalIdx = 1;
@@ -708,13 +713,18 @@ export default function BookingPage() {
                   const jobColor = JOB_COLORS[q.job] ?? "#888";
                   const isMe = (user?.gameUsername && user.gameUsername === q.name) || (inspectedName && inspectedName.toLowerCase() === q.name.toLowerCase());
                   const qEst = estimates.estimatesById[q.id] || estimates.estimatesByName[q.name.toLowerCase()];
+                  const isSkipped = q.status === "skipped";
 
                   return (
                     <div
                       key={q.id}
                       className={`bg-white dark:bg-[#272C38] rounded-2xl shadow-sm border px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3 transition-colors ${
-                        isMe ? "border-[#3B66D1] dark:border-[#4D73CD] ring-2 ring-[#3B66D1]/20 dark:ring-[#4D73CD]/20 bg-blue-50/50 dark:bg-[#3B66D1]/25" : "border-slate-200 dark:border-[#2D3342]"
-                      } ${isDone ? "opacity-60" : ""} ${isR2 && !isDone && !isMe ? "border-l-4 border-l-purple-500" : ""}`}
+                        isMe
+                          ? "border-[#3B66D1] dark:border-[#4D73CD] ring-2 ring-[#3B66D1]/20 dark:ring-[#4D73CD]/20 bg-blue-50/50 dark:bg-[#3B66D1]/25"
+                          : isSkipped
+                          ? "border-amber-300/70 dark:border-amber-700/50 bg-amber-50/20 dark:bg-amber-950/10"
+                          : "border-slate-200 dark:border-[#2D3342]"
+                      } ${isDone ? "opacity-60" : ""} ${isR2 && !isDone && !isMe && !isSkipped ? "border-l-4 border-l-purple-500" : ""}`}
                     >
                       {/* Number */}
                       <span className={`font-bold text-sm w-6 shrink-0 ${isMe ? "text-blue-600 dark:text-white" : "text-slate-400 dark:text-[#6B7280]"}`}>
@@ -724,22 +734,28 @@ export default function BookingPage() {
                       {/* Main info */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className={`font-bold text-sm ${isMe ? "text-blue-900 dark:text-white" : "text-slate-800 dark:text-white"}`}>{q.name} {isMe && "(คุณ)"}</span>
-
-                          {/* Job badge */}
-                          <span
-                            className="flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full"
-                            style={{
-                              backgroundColor: jobColor + "22",
-                              color: jobColor,
-                            }}
-                          >
+                          {/* name : {q.name}   |   class : {q.job} */}
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-xs text-slate-400 dark:text-[#8B93A7] font-medium">name :</span>
+                            <span className={`font-bold text-sm ${isMe ? "text-blue-900 dark:text-white" : "text-slate-800 dark:text-white"}`}>
+                              {q.name} {isMe && "(คุณ)"}
+                            </span>
+                            <span className="text-slate-300 dark:text-[#4B5563] mx-1">|</span>
+                            <span className="text-xs text-slate-400 dark:text-[#8B93A7] font-medium">class :</span>
                             <span
-                              className="w-1.5 h-1.5 rounded-full shrink-0"
-                              style={{ backgroundColor: jobColor }}
-                            />
-                            {q.job}
-                          </span>
+                              className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-0.5 rounded-full"
+                              style={{
+                                backgroundColor: jobColor + "22",
+                                color: jobColor,
+                              }}
+                            >
+                              <span
+                                className="w-1.5 h-1.5 rounded-full shrink-0"
+                                style={{ backgroundColor: jobColor }}
+                              />
+                              {q.job}
+                            </span>
+                          </div>
 
                           {/* 2 rounds badge */}
                           {q.rounds === 2 && (
@@ -749,7 +765,7 @@ export default function BookingPage() {
                           )}
 
                           {/* Carry Round & Team Badge */}
-                          {qEst && qEst.assignedRound > 0 && !isDone && (
+                          {qEst && qEst.assignedRound > 0 && !isDone && !isSkipped && (
                             <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-[#0b3d63]/10 dark:bg-[#3B66D1]/20 text-[#0b3d63] dark:text-[#82A0F5] border border-[#0b3d63]/20 dark:border-[#4D73CD]/30">
                               {qEst.track === "priest"
                                 ? `โควตาพระ · รอบที่ ${qEst.assignedRound} (ทีม ${qEst.assignedTeam})`
@@ -758,7 +774,7 @@ export default function BookingPage() {
                           )}
 
                           {/* Status badge */}
-                          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusBadge.cls}`}>
+                          <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${statusBadge.cls}`}>
                             {statusBadge.label}
                           </span>
                         </div>
@@ -774,13 +790,19 @@ export default function BookingPage() {
                               <>
                                 <span className="text-[11px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-800/40 flex items-center gap-1">
                                   <Clock size={11} />
-                                  อีก {qEst.queuesAhead} รอบ (~${qEst.waitMinutesMin}-${qEst.waitMinutesMax} นาที)
+                                  อีก {qEst.queuesAhead} รอบ (~{qEst.waitMinutesMin}-{qEst.waitMinutesMax} นาที)
                                 </span>
                                 <span className="text-[11px] font-bold text-blue-600 dark:text-[#82A0F5]">
                                   🕒 คาดว่าได้ลง {qEst.estimatedStartTimeText}
                                 </span>
                               </>
                             )}
+                          </div>
+                        )}
+
+                        {isSkipped && (
+                          <div className="flex items-center gap-2 mt-1.5 text-xs text-amber-600 dark:text-amber-400 font-medium">
+                            ⚠️ คิวถูกข้ามเนื่องจากไม่อยู่ขณะเรียกคิว (ติดต่อแอดมินหรือหัวตี้เพื่อนำกลับเข้าคิว)
                           </div>
                         )}
                       </div>
@@ -819,9 +841,19 @@ export default function BookingPage() {
                     {waitingRound2Priests.map(q => renderQueue(q, currentGlobalIdx++, false, true))}
                     
                     {waitingRound2Others.length > 0 && (
-                      <div className="text-xs font-bold text-purple-700 dark:text-purple-300 mt-2 px-2">อาชีพอื่นๆ - รอคิวรอบ 2</div>
+                      <div className="text-xs font-bold text-purple-700 dark:text-purple-300 mt-2 px-2 border-t border-slate-200 dark:border-[#2D3342] pt-3">อาชีพอื่นๆ - รอคิวรอบ 2</div>
                     )}
                     {waitingRound2Others.map(q => renderQueue(q, currentGlobalIdx++, false, true))}
+
+                    {skippedQueues.length > 0 && (
+                      <div className="text-xs font-bold text-amber-600 dark:text-amber-400 mt-2 px-2 border-t border-slate-200 dark:border-[#2D3342] pt-3 flex items-center gap-1.5">
+                        <span>ข้ามคิว (ไม่อยู่ / รอเรียกใหม่)</span>
+                        <span className="bg-amber-100 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 text-[10px] px-2 py-0.5 rounded-full font-bold">
+                          {skippedQueues.length}
+                        </span>
+                      </div>
+                    )}
+                    {skippedQueues.map(q => renderQueue(q, currentGlobalIdx++, false))}
 
                     {doneQueues.length > 0 && (
                       <div className="text-xs font-bold text-green-600 dark:text-emerald-400 mt-2 px-2 border-t border-slate-200 dark:border-[#2D3342] pt-3">ลงเสร็จแล้ว</div>

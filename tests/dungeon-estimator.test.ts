@@ -148,3 +148,28 @@ test("Dungeon Estimator - Active party increases wait by 1 round", () => {
   assert.equal(wait1.assignedRound, 1);
   assert.equal(wait1.queuesAhead, 1); // active run is ahead
 });
+
+test("Dungeon Estimator - Skipped players do not block the queue and next player moves forward", () => {
+  const queues: DungeonQueue[] = [
+    { id: "o1", name: "Bob", job: "High Wizard", dungeon: "ดันมายา (Maya)", power: 100, status: "skipped", rounds: 1, timestamp: 1 },
+    { id: "o2", name: "Charlie", job: "Sniper", dungeon: "ดันมายา (Maya)", power: 100, status: "waiting", rounds: 1, timestamp: 2 },
+    { id: "o3", name: "David", job: "Lord Knight", dungeon: "ดันมายา (Maya)", power: 100, status: "waiting", rounds: 1, timestamp: 3 },
+  ];
+
+  const now = new Date("2026-09-06T14:00:00Z");
+  const result = calculateDungeonEstimates(queues, now, 1);
+
+  // Bob is skipped
+  const bob = result.estimatesByName["bob"];
+  assert.equal(bob.status, "skipped");
+  assert.equal(bob.assignedRound, 0);
+
+  // Charlie and David both get into Round 1 because Bob was skipped!
+  const charlie = result.estimatesByName["charlie"];
+  const david = result.estimatesByName["david"];
+  assert.equal(charlie.assignedRound, 1);
+  assert.equal(charlie.slotInTeam, 1);
+  assert.equal(david.assignedRound, 1);
+  assert.equal(david.slotInTeam, 2);
+});
+

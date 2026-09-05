@@ -40,37 +40,53 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     let newRound2 = data.round2 ?? false;
     let totalRounds = data.rounds ?? 1;
 
-    // Check if the action is updating rounds
-    if (action === "updateRounds") {
+    // Check action
+    if (action === "skip") {
+      update.status = "skipped";
+    } else if (action === "unskip") {
+      const allDone = totalRounds === 1 ? newRound1 : newRound1 && newRound2;
+      update.status = allDone ? "done" : (newRound1 || newRound2) ? "active" : "waiting";
+    } else if (action === "updateRounds") {
       if (newRounds === 1 || newRounds === 2) {
         update.rounds = newRounds;
         totalRounds = newRounds;
       }
+      const allDone = totalRounds === 1 ? newRound1 : newRound1 && newRound2;
+      update.status = allDone ? "done" : (newRound1 || newRound2) ? "active" : "waiting";
     } else {
       // Normal mark round done
       if (round === 1) { update.round1 = true; newRound1 = true; }
       if (round === 2) { update.round2 = true; newRound2 = true; }
-    }
-
-    const allDone = totalRounds === 1 ? newRound1 : newRound1 && newRound2;
-
-    if (allDone) {
-      update.status = "done";
-    } else {
-      update.status = (newRound1 || newRound2) ? "active" : "waiting";
+      const allDone = totalRounds === 1 ? newRound1 : newRound1 && newRound2;
+      update.status = allDone ? "done" : (newRound1 || newRound2) ? "active" : "waiting";
     }
 
     await docRef.update(update);
 
     // Save audit log to database
+    let logDetail = "";
+    let logActionType = "COMPLETE_ROUND";
+
+    if (action === "skip") {
+      logActionType = "SKIP_QUEUE";
+      logDetail = `ข้ามคิวของ ${data?.name || id} (ไม่อยู่)`;
+    } else if (action === "unskip") {
+      logActionType = "UNSKIP_QUEUE";
+      logDetail = `นำคิวของ ${data?.name || id} กลับเข้าระบบ`;
+    } else if (action === "updateRounds") {
+      logActionType = "UPDATE_ROUNDS";
+      logDetail = `แก้ไขจำนวนรอบเป็น ${update.rounds} รอบ`;
+    } else {
+      logActionType = "COMPLETE_ROUND";
+      logDetail = `อัปเดตรอบที่ ${round} สำเร็จ (สถานะ: ${update.status === "done" ? "เสร็จสิ้น" : "กำลังลง"})`;
+    }
+
     logAction({
       module: "DUNGEON",
-      action: action === "updateRounds" ? "UPDATE_ROUNDS" : "COMPLETE_ROUND",
+      action: logActionType,
       actor: data?.name || "System",
       target: data?.name || id,
-      detail: action === "updateRounds" 
-        ? `แก้ไขจำนวนรอบเป็น ${update.rounds} รอบ` 
-        : `อัปเดตรอบที่ ${round} สำเร็จ (สถานะ: ${update.status === "done" ? "เสร็จสิ้น" : "กำลังลง"})`,
+      detail: logDetail,
       extra: { id, ...update },
     });
 

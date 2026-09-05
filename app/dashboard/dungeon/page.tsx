@@ -13,6 +13,8 @@ import {
   RefreshCw,
   Shield,
   Search,
+  FastForward,
+  RotateCcw,
 } from "lucide-react";
 import { useAuthStore } from "@/stores/useAuthStore";
 import {
@@ -31,6 +33,7 @@ const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
   waiting: { label: "รอคิว", cls: "bg-yellow-100 dark:bg-yellow-950/40 text-yellow-700 dark:text-yellow-400" },
   active:  { label: "กำลังลง", cls: "bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-white" },
   done:    { label: "เสร็จแล้ว", cls: "bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400" },
+  skipped: { label: "ข้าม (ไม่อยู่)", cls: "bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-300 dark:border-amber-800/40" },
 };
 
 // ────────────────────────────────────────────────────────────
@@ -290,6 +293,22 @@ export default function DungeonPage() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ round }),
+      });
+      const json = await res.json();
+      if (json.ok) fetchQueues();
+    } catch {
+      /* silent */
+    }
+  };
+
+  // ── Skip / Unskip queue item ──────────────────────────────
+  const handleSkip = async (queueId: string, currentStatus: string) => {
+    const action = currentStatus === "skipped" ? "unskip" : "skip";
+    try {
+      const res = await fetch(`/api/dungeon/queues/${queueId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
       });
       const json = await res.json();
       if (json.ok) fetchQueues();
@@ -713,23 +732,30 @@ export default function DungeonPage() {
                 {(() => {
                   let currentGlobalIdx = 1;
 
-                  const waitingR1Priests = filteredQueues.filter(q => q.status !== "done" && !(q.rounds === 2 && q.round1 === true) && q.job === "Priest");
-                  const waitingR1Others = filteredQueues.filter(q => q.status !== "done" && !(q.rounds === 2 && q.round1 === true) && q.job !== "Priest");
-                  const waitingR2Priests = filteredQueues.filter(q => q.status !== "done" && (q.rounds === 2 && q.round1 === true) && q.job === "Priest");
-                  const waitingR2Others = filteredQueues.filter(q => q.status !== "done" && (q.rounds === 2 && q.round1 === true) && q.job !== "Priest");
+                  const waitingR1Priests = filteredQueues.filter(q => q.status === "waiting" && !(q.rounds === 2 && q.round1 === true) && q.job === "Priest");
+                  const waitingR1Others = filteredQueues.filter(q => q.status === "waiting" && !(q.rounds === 2 && q.round1 === true) && q.job !== "Priest");
+                  const waitingR2Priests = filteredQueues.filter(q => q.status === "waiting" && (q.rounds === 2 && q.round1 === true) && q.job === "Priest");
+                  const waitingR2Others = filteredQueues.filter(q => q.status === "waiting" && (q.rounds === 2 && q.round1 === true) && q.job !== "Priest");
+                  const activeQueues = filteredQueues.filter(q => q.status === "active");
+                  const skippedQueues = filteredQueues.filter(q => q.status === "skipped");
                   const doneQueues = filteredQueues.filter(q => q.status === "done");
 
                   const renderQueue = (q: DungeonQueue, idx: number, isDone: boolean, isR2 = false) => {
                     const statusBadge = STATUS_BADGE[q.status] ?? STATUS_BADGE.waiting;
                     const jobColor = JOB_COLORS[q.job] ?? "#888";
                     const qEst = estimates.estimatesById[q.id] || estimates.estimatesByName[q.name.toLowerCase()];
+                    const isSkipped = q.status === "skipped";
 
                     return (
                       <div
                         key={q.id}
-                        className={`bg-slate-50 dark:bg-[#272C38] rounded-xl p-3 flex items-center justify-between gap-3 border ${
-                          isDone ? "border-slate-100 dark:border-[#2D3342] opacity-50" : "border-slate-200 dark:border-[#2D3342]"
-                        } ${isR2 && !isDone ? "border-l-4 border-l-purple-500" : ""}`}
+                        className={`bg-slate-50 dark:bg-[#272C38] rounded-xl p-3.5 flex items-center justify-between gap-3 border transition-colors ${
+                          isDone
+                            ? "border-slate-100 dark:border-[#2D3342] opacity-50"
+                            : isSkipped
+                            ? "border-amber-300/70 dark:border-amber-700/50 bg-amber-50/20 dark:bg-amber-950/10"
+                            : "border-slate-200 dark:border-[#2D3342]"
+                        } ${isR2 && !isDone && !isSkipped ? "border-l-4 border-l-purple-500" : ""}`}
                       >
                         {/* Number */}
                         <span className="font-mono text-xs font-bold text-slate-400 dark:text-[#8B93A7] w-6 shrink-0 text-center">
@@ -739,22 +765,28 @@ export default function DungeonPage() {
                         {/* Main info */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-bold text-slate-800 dark:text-white text-sm">{q.name}</span>
+                            {/* name : {q.name}   |   class : {q.job} */}
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-xs text-slate-400 dark:text-[#8B93A7] font-medium">name :</span>
+                              <span className="font-bold text-slate-800 dark:text-white text-base">{q.name}</span>
 
-                            {/* Job badge */}
-                            <span
-                              className="flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full"
-                              style={{
-                                backgroundColor: jobColor + "22",
-                                color: jobColor,
-                              }}
-                            >
+                              <span className="text-slate-300 dark:text-[#4B5563] mx-1">|</span>
+
+                              <span className="text-xs text-slate-400 dark:text-[#8B93A7] font-medium">class :</span>
                               <span
-                                className="w-1.5 h-1.5 rounded-full shrink-0"
-                                style={{ backgroundColor: jobColor }}
-                              />
-                              {q.job}
-                            </span>
+                                className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-0.5 rounded-full"
+                                style={{
+                                  backgroundColor: jobColor + "22",
+                                  color: jobColor,
+                                }}
+                              >
+                                <span
+                                  className="w-1.5 h-1.5 rounded-full shrink-0"
+                                  style={{ backgroundColor: jobColor }}
+                                />
+                                {q.job}
+                              </span>
+                            </div>
 
                             {/* 2 rounds badge */}
                             {q.rounds === 2 && (
@@ -764,7 +796,7 @@ export default function DungeonPage() {
                             )}
 
                             {/* Carry Round & Team Badge */}
-                            {qEst && qEst.assignedRound > 0 && !isDone && (
+                            {qEst && qEst.assignedRound > 0 && !isDone && !isSkipped && (
                               <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-[#0b3d63]/10 dark:bg-[#3B66D1]/20 text-[#0b3d63] dark:text-[#82A0F5] border border-[#0b3d63]/20 dark:border-[#4D73CD]/30">
                                 {qEst.track === "priest"
                                   ? `โควตาพระ · รอบที่ ${qEst.assignedRound} (ทีม ${qEst.assignedTeam})`
@@ -773,7 +805,7 @@ export default function DungeonPage() {
                             )}
 
                             {/* Status badge */}
-                            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusBadge.cls}`}>
+                            <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${statusBadge.cls}`}>
                               {statusBadge.label}
                             </span>
                           </div>
@@ -799,91 +831,164 @@ export default function DungeonPage() {
                             </div>
                           )}
 
-                        {/* Power + timestamp */}
-                        <div className="flex items-center gap-3 mt-1 flex-wrap">
-                          {q.power > 0 && (
-                            <span className="text-xs text-slate-500 dark:text-[#8B93A7]">
-                              <Shield size={11} className="inline mr-0.5" />
-                              {q.power.toLocaleString()}
-                            </span>
+                          {isSkipped && (
+                            <div className="flex items-center gap-2 mt-1.5 text-xs text-amber-600 dark:text-amber-400 font-medium">
+                              ⚠️ ผู้เล่นไม่อยู่ขณะเรียกคิว (สามารถกดปุ่ม &quot;กลับเข้าคิว&quot; เมื่อผู้เล่นกลับมา)
+                            </div>
                           )}
-                          <span className="text-xs text-slate-400 dark:text-[#6B7280]">{formatTimestamp(q.timestamp)}</span>
+
+                          {/* Power + timestamp */}
+                          <div className="flex items-center gap-3 mt-1 flex-wrap">
+                            {q.power > 0 && (
+                              <span className="text-xs text-slate-500 dark:text-[#8B93A7]">
+                                <Shield size={11} className="inline mr-0.5" />
+                                {q.power.toLocaleString()}
+                              </span>
+                            )}
+                            <span className="text-xs text-slate-400 dark:text-[#6B7280]">{formatTimestamp(q.timestamp)}</span>
+                          </div>
+                        </div>
+
+                        {/* Round indicators + Admin actions */}
+                        <div className="flex items-center gap-2 flex-wrap shrink-0">
+                          {isSkipped ? (
+                            <>
+                              {/* Return to queue button */}
+                              {isAdmin && (
+                                <button
+                                  onClick={() => handleSkip(q.id, q.status)}
+                                  className="text-sm font-semibold px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                                  title="นำผู้เล่นกลับเข้าคิว"
+                                >
+                                  <RotateCcw size={15} />
+                                  กลับเข้าคิว
+                                </button>
+                              )}
+
+                              {/* Admin delete */}
+                              {isAdmin && (
+                                <button
+                                  onClick={() => handleDelete(q.id)}
+                                  className="text-sm font-semibold px-3.5 py-1.5 rounded-xl bg-red-50 dark:bg-red-950/30 hover:bg-red-500 hover:text-white dark:hover:bg-red-600 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/40 transition-colors flex items-center gap-1.5 cursor-pointer"
+                                >
+                                  <Trash2 size={15} />
+                                  ลบ
+                                </button>
+                              )}
+                            </>
+                          ) : (
+                            <>
+                              {/* Round 1 */}
+                              <button
+                                onClick={() => isAdmin && handleRound(q.id, 1)}
+                                className={`text-sm font-semibold px-3.5 py-1.5 rounded-xl transition-all ${
+                                  q.round1
+                                    ? "bg-emerald-600 text-white shadow-xs"
+                                    : "bg-slate-100 dark:bg-[#202636] text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-[#3A4256] " +
+                                      (isAdmin
+                                        ? "hover:bg-emerald-500 hover:text-white dark:hover:bg-emerald-600 hover:border-transparent cursor-pointer"
+                                        : "cursor-default")
+                                }`}
+                                title={isAdmin ? "คลิกเพื่อทำเครื่องหมายรอบ 1" : undefined}
+                              >
+                                รอบ 1
+                              </button>
+
+                              {/* Round 2 (only if rounds=2) */}
+                              {q.rounds === 2 && (
+                                <button
+                                  onClick={() => isAdmin && handleRound(q.id, 2)}
+                                  className={`text-sm font-semibold px-3.5 py-1.5 rounded-xl transition-all ${
+                                    q.round2
+                                      ? "bg-purple-600 text-white shadow-xs"
+                                      : "bg-slate-100 dark:bg-[#202636] text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-[#3A4256] " +
+                                        (isAdmin
+                                          ? "hover:bg-purple-500 hover:text-white dark:hover:bg-purple-600 hover:border-transparent cursor-pointer"
+                                          : "cursor-default")
+                                  }`}
+                                  title={isAdmin ? "คลิกเพื่อทำเครื่องหมายรอบ 2" : undefined}
+                                >
+                                  รอบ 2
+                                </button>
+                              )}
+
+                              {/* Skip button (ถ้าผู้เล่นไม่อยู่) */}
+                              {isAdmin && !isDone && (
+                                <button
+                                  onClick={() => handleSkip(q.id, q.status)}
+                                  className="text-sm font-semibold px-3.5 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 hover:bg-amber-500 hover:text-white dark:hover:bg-amber-600 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-900/50 transition-colors flex items-center gap-1.5 cursor-pointer"
+                                  title="ผู้เล่นไม่อยู่ - กดข้ามเพื่อให้คิวถัดไปได้ลงก่อน"
+                                >
+                                  <FastForward size={15} />
+                                  ข้าม
+                                </button>
+                              )}
+
+                              {/* Admin delete */}
+                              {isAdmin && (
+                                <button
+                                  onClick={() => handleDelete(q.id)}
+                                  className="text-sm font-semibold px-3.5 py-1.5 rounded-xl bg-red-50 dark:bg-red-950/30 hover:bg-red-500 hover:text-white dark:hover:bg-red-600 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/40 transition-colors flex items-center gap-1.5 cursor-pointer"
+                                >
+                                  <Trash2 size={15} />
+                                  ลบ
+                                </button>
+                              )}
+                            </>
+                          )}
                         </div>
                       </div>
+                    );
+                  };
 
-                      {/* Round indicators + Admin actions */}
-                      <div className="flex items-center gap-2 flex-wrap shrink-0">
-                        {/* Round 1 */}
-                        <button
-                          onClick={() => isAdmin && handleRound(q.id, 1)}
-                          className={`text-xs font-medium px-2.5 py-1 rounded-lg transition-colors ${
-                            q.round1
-                              ? "bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400"
-                              : "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-[#6B7280] " + (isAdmin ? "hover:bg-green-50 dark:hover:bg-green-950/30 hover:text-green-600 dark:hover:text-green-400 cursor-pointer" : "cursor-default")
-                          }`}
-                          title={isAdmin ? "คลิกเพื่อทำเครื่องหมายรอบ 1" : undefined}
-                        >
-                          รอบ 1
-                        </button>
+                  return (
+                    <>
+                      {activeQueues.length > 0 && (
+                        <div className="text-xs font-bold text-blue-600 dark:text-[#82A0F5] mt-2 px-2 flex items-center gap-1.5">
+                          <span>กำลังลงดันเจี้ยน (Active)</span>
+                          <span className="bg-blue-100 dark:bg-blue-950/50 text-blue-800 dark:text-[#82A0F5] text-[10px] px-2 py-0.5 rounded-full font-bold">
+                            {activeQueues.length}
+                          </span>
+                        </div>
+                      )}
+                      {activeQueues.map(q => renderQueue(q, currentGlobalIdx++, false))}
 
-                        {/* Round 2 (only if rounds=2) */}
-                        {q.rounds === 2 && (
-                          <button
-                            onClick={() => isAdmin && handleRound(q.id, 2)}
-                            className={`text-xs font-medium px-2.5 py-1 rounded-lg transition-colors ${
-                              q.round2
-                                ? "bg-orange-100 dark:bg-orange-950/40 text-orange-700 dark:text-orange-400"
-                                : "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-[#6B7280] " + (isAdmin ? "hover:bg-orange-50 dark:hover:bg-orange-950/30 hover:text-orange-600 dark:hover:text-orange-400 cursor-pointer" : "cursor-default")
-                            }`}
-                            title={isAdmin ? "คลิกเพื่อทำเครื่องหมายรอบ 2" : undefined}
-                          >
-                            รอบ 2
-                          </button>
-                        )}
+                      {waitingR1Priests.length > 0 && (
+                        <div className="text-xs font-bold text-blue-700 dark:text-white mt-2 px-2">พระ (Priest) - รอคิวรอบ 1</div>
+                      )}
+                      {waitingR1Priests.map(q => renderQueue(q, currentGlobalIdx++, false))}
+                      
+                      {waitingR1Others.length > 0 && (
+                        <div className="text-xs font-bold text-slate-500 dark:text-[#8B93A7] mt-2 px-2">อาชีพอื่นๆ - รอคิวรอบ 1</div>
+                      )}
+                      {waitingR1Others.map(q => renderQueue(q, currentGlobalIdx++, false))}
 
-                        {/* Admin delete */}
-                        {isAdmin && (
-                          <button
-                            onClick={() => handleDelete(q.id)}
-                            className="text-xs bg-red-50 dark:bg-red-950/30 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 font-medium px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1"
-                          >
-                            <Trash2 size={12} />
-                            ลบ
-                          </button>
-                        )}
-                      </div>
-                    </div>
+                      {waitingR2Priests.length > 0 && (
+                        <div className="text-xs font-bold text-purple-700 dark:text-purple-400 mt-2 px-2 border-t border-slate-200 dark:border-[#2D3342] pt-3">พระ (Priest) - รอคิวรอบ 2</div>
+                      )}
+                      {waitingR2Priests.map(q => renderQueue(q, currentGlobalIdx++, false, true))}
+                      
+                      {waitingR2Others.length > 0 && (
+                        <div className="text-xs font-bold text-purple-700 dark:text-purple-400 mt-2 px-2 border-t border-slate-200 dark:border-[#2D3342] pt-3">อาชีพอื่นๆ - รอคิวรอบ 2</div>
+                      )}
+                      {waitingR2Others.map(q => renderQueue(q, currentGlobalIdx++, false, true))}
+
+                      {skippedQueues.length > 0 && (
+                        <div className="text-xs font-bold text-amber-600 dark:text-amber-400 mt-2 px-2 border-t border-slate-200 dark:border-[#2D3342] pt-3 flex items-center gap-1.5">
+                          <span>ข้ามคิว (ไม่อยู่ / รอเรียกใหม่)</span>
+                          <span className="bg-amber-100 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 text-[10px] px-2 py-0.5 rounded-full font-bold">
+                            {skippedQueues.length}
+                          </span>
+                        </div>
+                      )}
+                      {skippedQueues.map(q => renderQueue(q, currentGlobalIdx++, false))}
+
+                      {doneQueues.length > 0 && (
+                        <div className="text-xs font-bold text-green-600 dark:text-emerald-400 mt-2 px-2 border-t border-slate-200 dark:border-[#2D3342] pt-3">ลงเสร็จแล้ว</div>
+                      )}
+                      {doneQueues.map(q => renderQueue(q, currentGlobalIdx++, true))}
+                    </>
                   );
-                };
-
-                return (
-                  <>
-                    {waitingR1Priests.length > 0 && (
-                      <div className="text-xs font-bold text-blue-700 dark:text-white mt-2 px-2">พระ (Priest) - รอคิวรอบ 1</div>
-                    )}
-                    {waitingR1Priests.map(q => renderQueue(q, currentGlobalIdx++, false))}
-                    
-                    {waitingR1Others.length > 0 && (
-                      <div className="text-xs font-bold text-slate-500 dark:text-[#8B93A7] mt-2 px-2">อาชีพอื่นๆ - รอคิวรอบ 1</div>
-                    )}
-                    {waitingR1Others.map(q => renderQueue(q, currentGlobalIdx++, false))}
-
-                    {waitingR2Priests.length > 0 && (
-                      <div className="text-xs font-bold text-purple-700 dark:text-purple-400 mt-2 px-2 border-t border-slate-200 dark:border-[#2D3342] pt-3">พระ (Priest) - รอคิวรอบ 2</div>
-                    )}
-                    {waitingR2Priests.map(q => renderQueue(q, currentGlobalIdx++, false, true))}
-                    
-                    {waitingR2Others.length > 0 && (
-                      <div className="text-xs font-bold text-purple-700 dark:text-purple-400 mt-2 px-2 border-t border-slate-200 dark:border-[#2D3342] pt-3">อาชีพอื่นๆ - รอคิวรอบ 2</div>
-                    )}
-                    {waitingR2Others.map(q => renderQueue(q, currentGlobalIdx++, false, true))}
-
-                    {doneQueues.length > 0 && (
-                      <div className="text-xs font-bold text-green-600 dark:text-emerald-400 mt-2 px-2 border-t border-slate-200 dark:border-[#2D3342] pt-3">ลงเสร็จแล้ว</div>
-                    )}
-                    {doneQueues.map(q => renderQueue(q, currentGlobalIdx++, true))}
-                  </>
-                );
               })()}
             </div>
           )}

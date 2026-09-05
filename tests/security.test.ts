@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   leaveSubmitSchema,
   dungeonQueueBookingSchema,
+  dungeonQueuePatchSchema,
   userRoleUpdateSchema,
   userDeleteSchema,
   attendancePostSchema,
@@ -150,6 +151,22 @@ test("Zod Validation - Rejects malformed payloads and validates allowed fields",
     rounds: 3, // Invalid rounds (only 1 or 2)
   });
   assert.equal(invalidQueueRounds.success, false);
+
+  // Dungeon Queue Patch validation (round completion, updateRounds, skip, unskip)
+  const validPatchRound = validateBody(dungeonQueuePatchSchema, { round: 1 });
+  assert.equal(validPatchRound.success, true);
+
+  const validPatchSkip = validateBody(dungeonQueuePatchSchema, { action: "skip" });
+  assert.equal(validPatchSkip.success, true);
+
+  const validPatchUnskip = validateBody(dungeonQueuePatchSchema, { action: "unskip" });
+  assert.equal(validPatchUnskip.success, true);
+
+  const validPatchRounds = validateBody(dungeonQueuePatchSchema, { action: "updateRounds", rounds: 2 });
+  assert.equal(validPatchRounds.success, true);
+
+  const invalidPatchAction = validateBody(dungeonQueuePatchSchema, { action: "invalidAction" as any });
+  assert.equal(invalidPatchAction.success, false);
 
   // User Role Update validation
   const validRole = validateBody(userRoleUpdateSchema, {
