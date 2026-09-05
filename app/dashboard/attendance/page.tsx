@@ -470,46 +470,64 @@ export default function AttendancePage() {
                     <th className="px-3 py-3 text-center min-w-[120px]">สถานะ</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                 <tbody className="divide-y divide-slate-100">
                   {rows.map((r, i) => {
                     if (search && !r.name.toLowerCase().includes(search.toLowerCase())) return null;
                     const jobColor = JOB_COLORS[r.job] ?? "#64748b";
                     return (
-                      <tr key={`${r.name}-${i}`} className="hover:bg-slate-50 transition-colors">
-                        <td className="px-3 py-2.5 text-slate-400 text-xs">{i + 1}</td>
-                        <td className="px-3 py-2.5 font-medium text-slate-800">{r.name}</td>
-                        <td className="px-3 py-2.5">
+                      <tr key={`${r.name}-${i}`} className={`transition-colors ${r.status === "มา" ? "bg-green-50/40" : r.status === "ลา" ? "bg-yellow-50/40" : r.status === "ขาด" ? "bg-red-50/40" : "hover:bg-slate-50"}`}>
+                        <td className="px-3 py-3 text-slate-400 text-sm font-medium">{i + 1}</td>
+                        <td className="px-3 py-3">
+                          <span className="font-bold text-slate-800 text-base">{r.name}</span>
+                        </td>
+                        <td className="px-3 py-3">
                           <span
-                            className="px-2 py-0.5 rounded-full text-xs font-semibold text-white whitespace-nowrap"
+                            className="px-2.5 py-1 rounded-full text-xs font-bold text-white whitespace-nowrap"
                             style={{ backgroundColor: jobColor }}
                           >
                             {r.job}
                           </span>
                         </td>
-                        <td className="px-3 py-3 text-center">
+                        <td className="px-3 py-4 text-center">
                           {isAdmin ? (
                             <div className="flex items-center justify-center gap-2">
-                              {(["มา", "ลา", "ขาด"] as Status[]).map(st => {
-                                if (!st) return null;
-                                const sc = STATUS_CONFIG[st];
-                                const active = r.status === st;
-                                return (
-                                  <button
-                                    key={st}
-                                    onClick={() => setStatus(i, st)}
-                                    className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all border min-w-[60px] ${
-                                      active ? `${sc.bg} ${sc.text} border-transparent shadow-sm` : "bg-white text-slate-400 border-slate-200 hover:bg-slate-50"
-                                    }`}
-                                  >
-                                    {sc.emoji} {st}
-                                  </button>
-                                );
-                              })}
+                              {/* มา */}
+                              <button
+                                onClick={() => setStatus(i, "มา")}
+                                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-sm border-2 ${
+                                  r.status === "มา"
+                                    ? "bg-green-500 border-green-500 text-white shadow-green-200"
+                                    : "bg-white border-green-200 text-green-500 hover:bg-green-50"
+                                }`}
+                              >
+                                ✅ มา
+                              </button>
+                              {/* ลา */}
+                              <button
+                                onClick={() => setStatus(i, "ลา")}
+                                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-sm border-2 ${
+                                  r.status === "ลา"
+                                    ? "bg-yellow-400 border-yellow-400 text-white shadow-yellow-200"
+                                    : "bg-white border-yellow-200 text-yellow-600 hover:bg-yellow-50"
+                                }`}
+                              >
+                                🟡 ลา
+                              </button>
+                              {/* ขาด */}
+                              <button
+                                onClick={() => setStatus(i, "ขาด")}
+                                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-sm border-2 ${
+                                  r.status === "ขาด"
+                                    ? "bg-red-500 border-red-500 text-white shadow-red-200"
+                                    : "bg-white border-red-200 text-red-500 hover:bg-red-50"
+                                }`}
+                              >
+                                ❌ ขาด
+                              </button>
+                              {/* clear */}
                               <button
                                 onClick={() => setStatus(i, null)}
-                                className={`px-2 py-1.5 rounded-lg text-xs font-bold transition-all border ml-1 ${
-                                  r.status === null ? "bg-slate-200 text-slate-600 border-transparent shadow-sm" : "bg-white text-slate-300 border-slate-200 hover:bg-slate-50"
-                                }`}
+                                className="p-2 rounded-xl border-2 border-slate-200 text-slate-300 hover:bg-slate-50 hover:border-slate-300 hover:text-slate-400 transition-all text-xs"
                                 title="ล้างสถานะ"
                               >
                                 ✖
