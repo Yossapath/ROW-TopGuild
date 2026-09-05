@@ -20,6 +20,7 @@ type Status = "มา" | "ขาด" | "ลา" | null;
 interface AttendanceRow {
   name: string;
   job: string;
+  power: number;
   status: Status;
 }
 
@@ -34,10 +35,10 @@ const JOB_COLORS: Record<string, string> = {
   Sniper: "#d4a015", Priest: "#25ae62", Champion: "#15a083",
   "Assassin Cross": "#8b46af", Merchant: "#c2185d", Gunslinger: "#894517", Druid: "#41b388",
 };
-const STATUS_CONFIG: Record<NonNullable<Status>, { emoji: string; bg: string; text: string }> = {
-  มา:  { emoji: "✅", bg: "bg-green-100",  text: "text-green-700"  },
-  ขาด: { emoji: "❌", bg: "bg-red-100",    text: "text-red-700"    },
-  ลา:  { emoji: "🟡", bg: "bg-yellow-100", text: "text-yellow-700" },
+const STATUS_CONFIG: Record<NonNullable<Status>, { label: string; bg: string; text: string; border: string }> = {
+  มา:  { label: "เข้าร่วม", bg: "bg-green-50",  text: "text-green-700",  border: "border-green-200" },
+  ขาด: { label: "ขาด",      bg: "bg-red-50",    text: "text-red-600",    border: "border-red-200"   },
+  ลา:  { label: "ลา",       bg: "bg-yellow-50", text: "text-yellow-700", border: "border-yellow-200" },
 };
 
 const BASE_DATE = new Date("2026-09-06T00:00:00+07:00"); // Sunday 6 Sep 2026
@@ -45,28 +46,18 @@ const BASE_DATE = new Date("2026-09-06T00:00:00+07:00"); // Sunday 6 Sep 2026
 function getWeekDates(weeksSinceBase: number): Record<WarDay, string> {
   const sunday = new Date(BASE_DATE);
   sunday.setDate(sunday.getDate() + weeksSinceBase * 7);
-  
   const fmt = (d: Date) => d.toISOString().split("T")[0];
-  
   const t = new Date(sunday); t.setDate(sunday.getDate() + 2);
   const th = new Date(sunday); th.setDate(sunday.getDate() + 4);
-  const su = new Date(sunday); // Sunday is index 0
-  // Note: For Sunday war, is it the Sunday *at the start* of the week or *end* of the week? 
-  // Base date is Sunday 06/09. If war is Sunday, it's that day.
-  
-  return {
-    "อาทิตย์": fmt(su),
-    "อังคาร": fmt(t),
-    "พฤหัสบดี": fmt(th)
-  };
+  const su = new Date(sunday);
+  return { "อาทิตย์": fmt(su), "อังคาร": fmt(t), "พฤหัสบดี": fmt(th) };
 }
 
 function getCurrentWeekIndex(): number {
   const now = new Date();
   const diffTime = now.getTime() - BASE_DATE.getTime();
   const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-  const weekIdx = Math.floor(diffDays / 7);
-  return Math.max(0, weekIdx);
+  return Math.max(0, Math.floor(diffDays / 7));
 }
 
 function formatDateTH(dateStr: string): string {
@@ -84,10 +75,11 @@ function flattenRoster(roster: Record<string, { name: string; power?: number }[]
   const rows: AttendanceRow[] = [];
   for (const [job, members] of Object.entries(roster)) {
     for (const m of members) {
-      rows.push({ name: m.name, job, status: null });
+      rows.push({ name: m.name, job, power: m.power ?? 0, status: null });
     }
   }
-  return rows.sort((a, b) => a.job.localeCompare(b.job) || a.name.localeCompare(b.name));
+  // Sort by power descending (like the image)
+  return rows.sort((a, b) => b.power - a.power);
 }
 
 export default function AttendancePage() {
@@ -463,85 +455,52 @@ export default function AttendancePage() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="bg-slate-50 text-slate-500 text-xs uppercase">
-                    <th className="px-3 py-3 text-left w-8">#</th>
-                    <th className="px-3 py-3 text-left">ชื่อ</th>
-                    <th className="px-3 py-3 text-left">อาชีพ</th>
-                    <th className="px-3 py-3 text-center min-w-[120px]">สถานะ</th>
+                  <tr className="bg-[#eef4fb] text-[#1a6abb] text-xs font-semibold border-b border-blue-100">
+                    <th className="px-4 py-3 text-left w-10">#</th>
+                    <th className="px-4 py-3 text-left">ชื่อตัวละคร</th>
+                    <th className="px-4 py-3 text-left">อาชีพ</th>
+                    <th className="px-4 py-3 text-right">ค่าพลัง</th>
+                    <th className="px-4 py-3 text-left min-w-[180px]">สถานะ</th>
                   </tr>
                 </thead>
-                 <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-slate-100">
                   {rows.map((r, i) => {
                     if (search && !r.name.toLowerCase().includes(search.toLowerCase())) return null;
                     const jobColor = JOB_COLORS[r.job] ?? "#64748b";
+                    const sc = r.status ? STATUS_CONFIG[r.status] : null;
                     return (
-                      <tr key={`${r.name}-${i}`} className={`transition-colors ${r.status === "มา" ? "bg-green-50/40" : r.status === "ลา" ? "bg-yellow-50/40" : r.status === "ขาด" ? "bg-red-50/40" : "hover:bg-slate-50"}`}>
-                        <td className="px-3 py-3 text-slate-400 text-sm font-medium">{i + 1}</td>
-                        <td className="px-3 py-3">
-                          <span className="font-bold text-slate-800 text-base">{r.name}</span>
+                      <tr key={`${r.name}-${i}`} className="hover:bg-slate-50/60 transition-colors">
+                        <td className="px-4 py-2.5 text-slate-400 text-xs font-medium">{i + 1}</td>
+                        <td className="px-4 py-2.5 font-semibold text-slate-800">{r.name}</td>
+                        <td className="px-4 py-2.5 font-semibold" style={{ color: jobColor }}>{r.job}</td>
+                        <td className="px-4 py-2.5 text-right text-slate-500 text-xs tabular-nums">
+                          {r.power > 0 ? r.power.toLocaleString() : "—"}
                         </td>
-                        <td className="px-3 py-3">
-                          <span
-                            className="px-2.5 py-1 rounded-full text-xs font-bold text-white whitespace-nowrap"
-                            style={{ backgroundColor: jobColor }}
-                          >
-                            {r.job}
-                          </span>
-                        </td>
-                        <td className="px-3 py-4 text-center">
+                        <td className="px-4 py-2.5">
                           {isAdmin ? (
-                            <div className="flex items-center justify-center gap-2">
-                              {/* มา */}
-                              <button
-                                onClick={() => setStatus(i, "มา")}
-                                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-sm border-2 ${
-                                  r.status === "มา"
-                                    ? "bg-green-500 border-green-500 text-white shadow-green-200"
-                                    : "bg-white border-green-200 text-green-500 hover:bg-green-50"
+                            <div className="relative inline-flex items-center">
+                              <select
+                                value={r.status ?? ""}
+                                onChange={(e) => {
+                                  const val = e.target.value as Status;
+                                  setStatus(i, val || null);
+                                }}
+                                className={`appearance-none pl-3 pr-8 py-1.5 rounded-lg text-sm font-semibold border cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-300 transition-colors ${
+                                  sc
+                                    ? `${sc.bg} ${sc.text} ${sc.border}`
+                                    : "bg-slate-50 text-slate-400 border-slate-200"
                                 }`}
                               >
-                                ✅ มา
-                              </button>
-                              {/* ลา */}
-                              <button
-                                onClick={() => setStatus(i, "ลา")}
-                                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-sm border-2 ${
-                                  r.status === "ลา"
-                                    ? "bg-yellow-400 border-yellow-400 text-white shadow-yellow-200"
-                                    : "bg-white border-yellow-200 text-yellow-600 hover:bg-yellow-50"
-                                }`}
-                              >
-                                🟡 ลา
-                              </button>
-                              {/* ขาด */}
-                              <button
-                                onClick={() => setStatus(i, "ขาด")}
-                                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-sm border-2 ${
-                                  r.status === "ขาด"
-                                    ? "bg-red-500 border-red-500 text-white shadow-red-200"
-                                    : "bg-white border-red-200 text-red-500 hover:bg-red-50"
-                                }`}
-                              >
-                                ❌ ขาด
-                              </button>
-                              {/* clear */}
-                              <button
-                                onClick={() => setStatus(i, null)}
-                                className="p-2 rounded-xl border-2 border-slate-200 text-slate-300 hover:bg-slate-50 hover:border-slate-300 hover:text-slate-400 transition-all text-xs"
-                                title="ล้างสถานะ"
-                              >
-                                ✖
-                              </button>
+                                <option value="">— เลือก —</option>
+                                <option value="มา">เข้าร่วม</option>
+                                <option value="ลา">ลา</option>
+                                <option value="ขาด">ขาด</option>
+                              </select>
+                              <span className="pointer-events-none absolute right-2 text-xs opacity-50">▼</span>
                             </div>
                           ) : (
-                            <span
-                              className={`inline-flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-bold ${r.status ? `${STATUS_CONFIG[r.status].bg} ${STATUS_CONFIG[r.status].text}` : "bg-slate-100 text-slate-400"}`}
-                            >
-                              {r.status ? (
-                                <>
-                                  {STATUS_CONFIG[r.status].emoji} {r.status}
-                                </>
-                              ) : "ยังไม่เช็ค"}
+                            <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold border ${sc ? `${sc.bg} ${sc.text} ${sc.border}` : "bg-slate-50 text-slate-400 border-slate-200"}`}>
+                              {sc ? sc.label : "ยังไม่เช็ค"}
                             </span>
                           )}
                         </td>
@@ -554,31 +513,21 @@ export default function AttendancePage() {
           )}
 
           {isAdmin && rows.length > 0 && (
-            <div className="px-5 py-4 border-t border-slate-100 flex items-center gap-3">
+            <div className="px-5 py-3 border-t border-slate-100 flex items-center gap-3">
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-50"
+                className="flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-50"
                 style={{ backgroundColor: "#0b3d63" }}
               >
                 {saving ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                    กำลังบันทึก...
-                  </>
+                  <><div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />กำลังบันทึก...</>
                 ) : (
-                  <>
-                    <CheckSquare className="w-4 h-4" />
-                    บันทึกเช็คชื่อ
-                  </>
+                  <><CheckSquare className="w-4 h-4" />บันทึกเช็คชื่อ</>
                 )}
               </button>
               {msg && (
-                <span
-                  className={`text-sm font-medium ${
-                    msg.type === "ok" ? "text-green-600" : "text-red-500"
-                  }`}
-                >
+                <span className={`text-sm font-medium ${msg.type === "ok" ? "text-green-600" : "text-red-500"}`}>
                   {msg.text}
                 </span>
               )}
@@ -586,60 +535,51 @@ export default function AttendancePage() {
           )}
         </div>
 
-        {/* Right — Summary */}
-        <div className="flex flex-col gap-4">
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
-            <p className="text-sm font-semibold text-slate-500 mb-4">สรุปการเข้าร่วม</p>
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center gap-3 p-3 rounded-xl bg-green-50 border border-green-100">
-                <CheckCircle2 className="w-8 h-8 text-green-500 flex-shrink-0" />
-                <div>
-                  <p className="text-xs text-green-600 font-medium">มาวอ</p>
-                  <p className="text-3xl font-extrabold text-green-700 leading-none">{countMa}</p>
+        {/* Right — Summary (compact) */}
+        <div className="flex flex-col gap-3 min-w-[180px]">
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
+            <p className="text-xs font-semibold text-slate-400 mb-3 uppercase tracking-wide">สรุปการเข้าร่วม</p>
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-green-50 border border-green-100">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-green-500" />
+                  <span className="text-xs font-semibold text-green-700">มาวอ</span>
                 </div>
-                <span className="ml-auto text-xs text-green-500">คน</span>
+                <span className="text-lg font-extrabold text-green-700">{countMa}</span>
               </div>
-              <div className="flex items-center gap-3 p-3 rounded-xl bg-red-50 border border-red-100">
-                <XCircle className="w-8 h-8 text-red-400 flex-shrink-0" />
-                <div>
-                  <p className="text-xs text-red-500 font-medium">ขาดวอ</p>
-                  <p className="text-3xl font-extrabold text-red-600 leading-none">{countKhad}</p>
+              <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-red-50 border border-red-100">
+                <div className="flex items-center gap-2">
+                  <XCircle className="w-4 h-4 text-red-400" />
+                  <span className="text-xs font-semibold text-red-600">ขาดวอ</span>
                 </div>
-                <span className="ml-auto text-xs text-red-400">คน</span>
+                <span className="text-lg font-extrabold text-red-600">{countKhad}</span>
               </div>
-              <div className="flex items-center gap-3 p-3 rounded-xl bg-yellow-50 border border-yellow-100">
-                <AlertCircle className="w-8 h-8 text-yellow-500 flex-shrink-0" />
-                <div>
-                  <p className="text-xs text-yellow-600 font-medium">ลา</p>
-                  <p className="text-3xl font-extrabold text-yellow-600 leading-none">{countLa}</p>
+              <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-yellow-50 border border-yellow-100">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-yellow-500" />
+                  <span className="text-xs font-semibold text-yellow-700">ลา</span>
                 </div>
-                <span className="ml-auto text-xs text-yellow-500">คน</span>
+                <span className="text-lg font-extrabold text-yellow-600">{countLa}</span>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 flex-1">
-            <p className="text-sm font-semibold text-slate-500 mb-3">รายชื่อผู้ลา</p>
-            {laList.length === 0 ? (
-              <div className="bg-slate-50 rounded-xl p-4 text-center text-slate-400 text-sm">
-                ไม่มีผู้ลาในวันนี้
-              </div>
-            ) : (
-              <div className="flex flex-col gap-2">
+          {laList.length > 0 && (
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
+              <p className="text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wide">รายชื่อผู้ลา</p>
+              <div className="flex flex-col gap-1.5 max-h-60 overflow-y-auto">
                 {laList.map((r, i) => (
-                  <div
-                    key={i}
-                    className="flex items-start gap-2 bg-yellow-50 rounded-xl px-3 py-2.5 border border-yellow-100"
-                  >
-                    <span className="text-yellow-500 mt-0.5">🟡</span>
+                  <div key={i} className="flex items-center gap-2 px-2 py-1.5 bg-yellow-50 rounded-lg border border-yellow-100">
+                    <span className="text-yellow-500 text-xs">🟡</span>
                     <div>
-                      <p className="text-sm font-semibold text-slate-700">{r.name}</p>
+                      <p className="text-xs font-semibold text-slate-700">{r.name}</p>
+                      <p className="text-[10px] font-medium" style={{ color: JOB_COLORS[r.job] ?? "#64748b" }}>{r.job}</p>
                     </div>
                   </div>
                 ))}
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
       {/* Import Modal */}
