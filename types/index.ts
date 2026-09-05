@@ -99,6 +99,7 @@ export interface DungeonSchedule {
   openDate: string;   // "YYYY-MM-DD"
   openTime: string;   // "HH:MM"
   closeTime: string;  // "HH:MM"
+  carryTeamsCount?: number; // จำนวนทีมแบก (ค่าเริ่มต้น 1 หรือ 2)
 }
 
 // ── Attendance ────────────────────────────────────────────────

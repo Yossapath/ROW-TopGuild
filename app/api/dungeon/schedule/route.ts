@@ -10,10 +10,17 @@ export async function GET() {
       return ok({
         openDate: "",
         openTime: "",
-        closeTime: ""
+        closeTime: "",
+        carryTeamsCount: 1,
       });
     }
-    return ok(doc.data());
+    const data = doc.data() || {};
+    return ok({
+      openDate: data.openDate ?? "",
+      openTime: data.openTime ?? "",
+      closeTime: data.closeTime ?? "",
+      carryTeamsCount: typeof data.carryTeamsCount === "number" && data.carryTeamsCount > 0 ? data.carryTeamsCount : 1,
+    });
   } catch (e: unknown) {
     return handleServerError(e, "Failed to load schedule");
   }
@@ -25,15 +32,19 @@ export async function PUT(req: Request) {
     if (auth.errorResponse) return auth.errorResponse;
 
     const body = await req.json();
-    const { openDate, openTime, closeTime } = body;
+    const updateData: Record<string, any> = {};
 
-    if (!openDate || !openTime || !closeTime) {
-      return err("ข้อมูลเวลาไม่ครบถ้วน", 400);
+    if (body.openDate !== undefined) updateData.openDate = body.openDate;
+    if (body.openTime !== undefined) updateData.openTime = body.openTime;
+    if (body.closeTime !== undefined) updateData.closeTime = body.closeTime;
+    if (body.carryTeamsCount !== undefined) {
+      const count = Number(body.carryTeamsCount);
+      updateData.carryTeamsCount = !isNaN(count) && count > 0 ? Math.floor(count) : 1;
     }
 
-    await scheduleRef().set({ openDate, openTime, closeTime }, { merge: true });
+    await scheduleRef().set(updateData, { merge: true });
     
-    return ok({ message: "อัปเดตเวลาเปิดจองสำเร็จ" });
+    return ok({ message: "อัปเดตการตั้งค่าสำเร็จ", data: updateData });
   } catch (e: unknown) {
     return handleServerError(e, "Failed to update schedule");
   }

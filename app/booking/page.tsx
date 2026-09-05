@@ -101,15 +101,24 @@ export default function BookingPage() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [copied, setCopied] = useState(false);
 
+  const [carryTeamsCount, setCarryTeamsCount] = useState<number>(1);
+
   // ── Fetch schedule ───────────────────────────────────────────
   useEffect(() => {
     fetch("/api/dungeon/schedule")
       .then((r) => r.json())
       .then((d) => {
         const sched = d.data ?? d;
-        if (sched && sched.openDate) {
+        if (sched) {
           setSchedule(sched);
-          setBookingStatus(isBookingOpen(sched));
+          if (sched.carryTeamsCount) {
+            setCarryTeamsCount(sched.carryTeamsCount);
+          }
+          if (sched.openDate) {
+            setBookingStatus(isBookingOpen(sched));
+          } else {
+            setBookingStatus({ open: true });
+          }
         } else {
           // No schedule set — show as open (no time limit)
           setBookingStatus({ open: true });
@@ -239,8 +248,8 @@ export default function BookingPage() {
   const [selectedCheckName, setSelectedCheckName] = useState<string>("");
 
   const estimates = useMemo(() => {
-    return calculateDungeonEstimates(queues);
-  }, [queues]);
+    return calculateDungeonEstimates(queues, new Date(), carryTeamsCount);
+  }, [queues, carryTeamsCount]);
 
   const inspectedName = selectedCheckName || success?.name || user?.gameUsername || "";
   const myQueueEstimate = useMemo(() => {
@@ -289,22 +298,21 @@ export default function BookingPage() {
         </div>
 
         {/* ── Info Strip ─────────────────────────────────────── */}
-        <div className="bg-blue-50 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-900/50 rounded-xl p-4 flex flex-wrap gap-4 items-center">
-          <Info size={18} className="text-blue-400 dark:text-white flex-shrink-0" />
-          {[
-            { label: "ขนาดทีม", value: "5 คน/ทีม" },
-            { label: "รอบต่อคน", value: "1-2 รอบ/คน" },
-            { label: "ดันเจี้ยน", value: "ดันมายา" },
-          ].map((item) => (
-            <div key={item.label} className="flex items-center gap-2">
-              <span className="text-xs font-bold text-blue-400 dark:text-white uppercase tracking-wide">
-                {item.label}
-              </span>
-              <span className="text-sm font-bold text-blue-700 dark:text-white bg-blue-100 dark:bg-blue-900/50 px-2.5 py-0.5 rounded-full">
-                {item.value}
-              </span>
-            </div>
-          ))}
+        <div className="bg-blue-50 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-900/50 rounded-xl p-4 flex flex-wrap gap-4 items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Info size={18} className="text-blue-500 dark:text-[#82A0F5] flex-shrink-0" />
+            <span className="text-xs font-bold text-blue-800 dark:text-[#82A0F5]">
+              🛡️ ทีมแบกกิลด์ {carryTeamsCount} ทีม (รองรับ พระ {estimates.capacityPerRound.priest} คน + อาชีพอื่น {estimates.capacityPerRound.others} คน/รอบ)
+            </span>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-bold text-slate-500 dark:text-[#8B93A7] bg-white dark:bg-[#272C38] px-2.5 py-1 rounded-full border border-slate-200 dark:border-[#2D3342]">
+              ⏱️ ~11-12 นาที/รอบ
+            </span>
+            <span className="text-xs font-bold text-slate-500 dark:text-[#8B93A7] bg-white dark:bg-[#272C38] px-2.5 py-1 rounded-full border border-slate-200 dark:border-[#2D3342]">
+              จองได้ 1-2 รอบ/คน
+            </span>
+          </div>
         </div>
 
         {/* ── Booking Form Card ───────────────────────────────── */}
@@ -333,13 +341,15 @@ export default function BookingPage() {
                         <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-white">
                           <span>ตำแหน่งคิว:</span>
                           <span className="text-[#3B66D1] dark:text-[#82A0F5] text-sm font-extrabold">
-                            ตี้ที่ {myEst.partyNumber} ({myEst.partyMemberCount}/5 คน) · ลำดับที่ {myQueueIdx + 1}
+                            {myEst.track === "priest"
+                              ? `โควตาพระ · รอบที่ ${myEst.assignedRound} (ทีม ${myEst.assignedTeam})`
+                              : `รอบที่ ${myEst.assignedRound} · ทีม ${myEst.assignedTeam} (ช่อง ${myEst.slotInTeam}/2)`}
                           </span>
                         </div>
                         <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-white">
                           <span>คิวก่อนหน้า:</span>
                           <span className="text-amber-600 dark:text-amber-400 font-bold">
-                            {myEst.queuesAhead === 0 ? "คิวแรก (พร้อมลงทันที)" : `อีก ${myEst.queuesAhead} คิว`}
+                            {myEst.queuesAhead === 0 ? "รอบแรก (พร้อมลงทันที)" : `อีก ${myEst.queuesAhead} รอบ`}
                           </span>
                         </div>
                         <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-white">
@@ -593,13 +603,25 @@ export default function BookingPage() {
                       <span className="text-green-600 dark:text-emerald-400 font-bold">🎉 ลงดันเจี้ยนเสร็จสิ้นเรียบร้อยแล้ว</span>
                     ) : myQueueEstimate.queuesAhead === 0 ? (
                       <span className="text-emerald-600 dark:text-emerald-400 font-bold">
-                        ✨ ถึงคิวของคุณแล้ว! คุณอยู่ใน <span className="underline">ตี้ที่ {myQueueEstimate.partyNumber} ({myQueueEstimate.partyMemberCount}/5 คน)</span> (คิวแรก พร้อมลงทันทีเมื่อครบตี้)
+                        {myQueueEstimate.track === "priest"
+                          ? `✨ ถึงคิวของคุณแล้ว! คุณอยู่ใน โควตาพระ · รอบที่ ${myQueueEstimate.assignedRound} (ทีมแบก ${myQueueEstimate.assignedTeam})`
+                          : `✨ ถึงคิวของคุณแล้ว! คุณอยู่ใน รอบที่ ${myQueueEstimate.assignedRound} · ทีมแบก ${myQueueEstimate.assignedTeam} (ช่อง ${myQueueEstimate.slotInTeam}/2)`}
                       </span>
                     ) : (
                       <>
-                        คุณอยู่ <span className="font-bold text-[#0b3d63] dark:text-[#82A0F5]">คิวตี้ที่ {myQueueEstimate.partyNumber} ({myQueueEstimate.partyMemberCount}/5 คน)</span>
+                        คุณอยู่{" "}
+                        <span className="font-bold text-[#0b3d63] dark:text-[#82A0F5]">
+                          {myQueueEstimate.track === "priest"
+                            ? `โควตาพระ · รอบที่ ${myQueueEstimate.assignedRound} (ทีมแบก ${myQueueEstimate.assignedTeam})`
+                            : `รอบที่ ${myQueueEstimate.assignedRound} · ทีมแบก ${myQueueEstimate.assignedTeam} (ช่อง ${myQueueEstimate.slotInTeam}/2)`}
+                        </span>
                         {" · "}
-                        เหลืออีก <span className="font-bold text-amber-600 dark:text-amber-400">{myQueueEstimate.queuesAhead} คิว</span> จะถึงคุณ
+                        เหลืออีก <span className="font-bold text-amber-600 dark:text-amber-400">{myQueueEstimate.queuesAhead} รอบ</span> จะถึงคุณ
+                        {myQueueEstimate.track === "others" && (
+                          <span className="text-[10px] text-slate-400 dark:text-[#8B93A7] block mt-0.5">
+                            *คิวอาชีพอื่นคำนวณแยกอิสระ ไม่นับรวมพระ
+                          </span>
+                        )}
                       </>
                     )}
                   </p>
@@ -609,10 +631,10 @@ export default function BookingPage() {
                   <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
                     <div className="bg-white dark:bg-[#232733] border border-slate-200 dark:border-[#2D3342] rounded-xl px-3.5 py-2 text-center flex-1 sm:flex-initial min-w-[110px]">
                       <span className="block text-[10px] font-bold text-slate-400 dark:text-[#8B93A7] uppercase tracking-wider">
-                        อีกกี่คิวถึงเรา
+                        อีกกี่รอบถึงเรา
                       </span>
                       <span className="font-extrabold text-sm text-amber-600 dark:text-amber-400">
-                        {myQueueEstimate.queuesAhead === 0 ? "คิวแรก" : `อีก ${myQueueEstimate.queuesAhead} คิว`}
+                        {myQueueEstimate.queuesAhead === 0 ? "รอบแรก" : `อีก ${myQueueEstimate.queuesAhead} รอบ`}
                       </span>
                     </div>
 
@@ -726,10 +748,12 @@ export default function BookingPage() {
                             </span>
                           )}
 
-                          {/* Party Badge */}
-                          {qEst && qEst.partyNumber > 0 && !isDone && (
+                          {/* Carry Round & Team Badge */}
+                          {qEst && qEst.assignedRound > 0 && !isDone && (
                             <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-[#0b3d63]/10 dark:bg-[#3B66D1]/20 text-[#0b3d63] dark:text-[#82A0F5] border border-[#0b3d63]/20 dark:border-[#4D73CD]/30">
-                              ตี้ที่ {qEst.partyNumber} ({qEst.partyMemberCount}/5 คน)
+                              {qEst.track === "priest"
+                                ? `โควตาพระ · รอบที่ ${qEst.assignedRound} (ทีม ${qEst.assignedTeam})`
+                                : `รอบที่ ${qEst.assignedRound} · ทีม ${qEst.assignedTeam} (ช่อง ${qEst.slotInTeam}/2)`}
                             </span>
                           )}
 
@@ -744,13 +768,13 @@ export default function BookingPage() {
                           <div className="flex items-center gap-2 mt-1.5 flex-wrap text-xs">
                             {qEst.queuesAhead === 0 ? (
                               <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800/40 flex items-center gap-1">
-                                🚀 ตี้แรก (พร้อมลงทันทีเมื่อครบ 5 คน)
+                                🚀 รอบแรก (ทีมแบก {qEst.assignedTeam} · พร้อมลงทันที)
                               </span>
                             ) : (
                               <>
                                 <span className="text-[11px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-800/40 flex items-center gap-1">
                                   <Clock size={11} />
-                                  อีก {qEst.queuesAhead} คิว (~${qEst.waitMinutesMin}-${qEst.waitMinutesMax} นาที)
+                                  อีก {qEst.queuesAhead} รอบ (~${qEst.waitMinutesMin}-${qEst.waitMinutesMax} นาที)
                                 </span>
                                 <span className="text-[11px] font-bold text-blue-600 dark:text-[#82A0F5]">
                                   🕒 คาดว่าได้ลง {qEst.estimatedStartTimeText}

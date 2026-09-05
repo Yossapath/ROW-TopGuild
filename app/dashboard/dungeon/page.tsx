@@ -12,6 +12,7 @@ import {
   Calendar,
   RefreshCw,
   Shield,
+  Search,
 } from "lucide-react";
 import { useAuthStore } from "@/stores/useAuthStore";
 import {
@@ -42,8 +43,9 @@ export default function DungeonPage() {
   // Queue state
   const [queues, setQueues] = useState<DungeonQueue[]>([]);
   const [loading, setLoading] = useState(true);
+  const [carryTeamsCount, setCarryTeamsCount] = useState<number>(1);
 
-  const estimates = useMemo(() => calculateDungeonEstimates(queues), [queues]);
+  const estimates = useMemo(() => calculateDungeonEstimates(queues, new Date(), carryTeamsCount), [queues, carryTeamsCount]);
 
   // Form state
   const [formName, setFormName] = useState("");
@@ -57,6 +59,7 @@ export default function DungeonPage() {
     openDate: "",
     openTime: "06:00",
     closeTime: "23:59",
+    carryTeamsCount: 1,
   });
   const [schedDate, setSchedDate] = useState("");
   const [schedOpen, setSchedOpen] = useState("06:00");
@@ -71,8 +74,17 @@ export default function DungeonPage() {
   // Clipboard toast
   const [copied, setCopied] = useState(false);
 
-  // Search state
+  // Search & filter state
   const [search, setSearch] = useState("");
+  const [selectedJobs, setSelectedJobs] = useState<string[]>([]);
+
+  const filteredQueues = useMemo(() => {
+    return queues.filter((q) => {
+      const matchSearch = !search || q.name.toLowerCase().includes(search.toLowerCase());
+      const matchJob = selectedJobs.length === 0 || selectedJobs.includes(q.job);
+      return matchSearch && matchJob;
+    });
+  }, [queues, search, selectedJobs]);
 
   // ── Fetch queues ──────────────────────────────────────────
   const fetchQueues = useCallback(async () => {
@@ -130,11 +142,29 @@ export default function DungeonPage() {
         setSchedDate(s.openDate ?? "");
         setSchedOpen(s.openTime ?? "06:00");
         setSchedClose(s.closeTime ?? "23:59");
+        if (s.carryTeamsCount) {
+          setCarryTeamsCount(s.carryTeamsCount);
+        }
       }
     } catch {
       /* silent */
     }
   }, []);
+
+  // ── Update carry teams count (auto-saved) ──────────────────
+  const updateCarryTeamsCount = async (count: number) => {
+    const validCount = Math.max(1, count);
+    setCarryTeamsCount(validCount);
+    try {
+      await fetch("/api/dungeon/schedule", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ carryTeamsCount: validCount }),
+      });
+    } catch {
+      /* silent */
+    }
+  };
 
   // ── Fetch roster names ────────────────────────────────────
   const fetchRoster = useCallback(async () => {
@@ -232,8 +262,8 @@ export default function DungeonPage() {
     setSchedMsg(null);
     try {
       const body: DungeonSchedule = schedUnlimited
-        ? { openDate: "", openTime: "", closeTime: "" }
-        : { openDate: schedDate, openTime: schedOpen, closeTime: schedClose };
+        ? { openDate: "", openTime: "", closeTime: "", carryTeamsCount }
+        : { openDate: schedDate, openTime: schedOpen, closeTime: schedClose, carryTeamsCount };
       const res = await fetch("/api/dungeon/schedule", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -511,11 +541,45 @@ export default function DungeonPage() {
                   <span className="text-xs text-slate-600 dark:text-white">เปิดจองไม่จำกัดเวลา</span>
                 </label>
 
+                {/* Carry Teams setting */}
+                <div className="pt-2 border-t border-slate-200 dark:border-[#2D3342]">
+                  <label className="block text-xs font-semibold text-slate-600 dark:text-white mb-1.5 flex items-center justify-between">
+                    <span>🛡️ จำนวนทีมแบก (Carry Teams)</span>
+                    <span className="text-[#3B66D1] dark:text-[#82A0F5] font-bold">{carryTeamsCount} ทีม</span>
+                  </label>
+                  <div className="grid grid-cols-4 gap-1.5 mb-2">
+                    {[1, 2, 3, 4].map((num) => (
+                      <button
+                        key={num}
+                        type="button"
+                        onClick={() => updateCarryTeamsCount(num)}
+                        className={`py-1.5 text-xs font-bold rounded-lg border transition-all ${
+                          carryTeamsCount === num
+                            ? "bg-[#0b3d63] dark:bg-[#3B66D1] text-white border-transparent shadow-xs"
+                            : "bg-white dark:bg-[#272C38] text-slate-700 dark:text-slate-300 border-slate-200 dark:border-[#2D3342] hover:bg-slate-50 dark:hover:bg-[#2F3547]"
+                        }`}
+                      >
+                        {num} ทีม
+                      </button>
+                    ))}
+                  </div>
+                  <div className="bg-blue-50/80 dark:bg-[#202636] border border-blue-100 dark:border-[#2D3342] rounded-lg p-2 text-[11px] text-slate-600 dark:text-slate-300">
+                    <p className="font-semibold text-blue-800 dark:text-[#82A0F5]">
+                      กำลังแบก: {carryTeamsCount} ทีม (~11-12 นาที/รอบ)
+                    </p>
+                    <p className="text-[10px] text-slate-500 dark:text-[#8B93A7] mt-0.5">
+                      • พระ {carryTeamsCount * 1} คน/รอบ (ทีมละ 1)
+                      {" • "}
+                      อาชีพอื่น {carryTeamsCount * 2} คน/รอบ (ทีมละ 2)
+                    </p>
+                  </div>
+                </div>
+
                 {/* Save button */}
                 <button
                   onClick={handleSaveSchedule}
                   disabled={schedSaving}
-                  className="flex items-center justify-center gap-2 bg-[#3B66D1] hover:bg-[#4D73CD] text-white rounded-lg py-2 text-sm font-semibold transition-colors disabled:opacity-50"
+                  className="flex items-center justify-center gap-2 bg-[#3B66D1] hover:bg-[#4D73CD] text-white rounded-lg py-2 text-sm font-semibold transition-colors disabled:opacity-50 mt-1"
                 >
                   <CheckCircle size={14} />
                   {schedSaving ? "กำลังบันทึก…" : "บันทึกตั้งค่า"}
@@ -563,139 +627,177 @@ export default function DungeonPage() {
               <span className="bg-[#0b3d63] dark:bg-[#3B66D1] text-white text-xs font-bold px-2.5 py-1 rounded-full">
                 {queues.length} คน
               </span>
+              <span className="text-xs font-bold text-blue-700 dark:text-[#82A0F5] bg-blue-50 dark:bg-[#3B66D1]/20 border border-blue-200 dark:border-[#4D73CD]/30 px-2.5 py-1 rounded-lg">
+                🛡️ ทีมแบก {carryTeamsCount} ทีม (พระ {estimates.capacityPerRound.priest} + อื่นๆ {estimates.capacityPerRound.others}/รอบ)
+              </span>
               <span className="text-xs font-bold text-slate-600 dark:text-[#8B93A7] bg-white dark:bg-[#232733] border border-slate-200 dark:border-[#2D3342] px-2.5 py-1 rounded-lg">
-                ⏱️ ~11-12 นาที/คิว ({estimates.totalPartiesCount} ตี้)
+                ⏱️ {estimates.totalRoundsCount} รอบ (~11-12 นาที/รอบ)
               </span>
             </div>
             
             <div className="flex items-center gap-2 w-full sm:w-auto">
-              <input
-                type="text"
-                placeholder="ค้นหาชื่อ..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full sm:w-40 border border-slate-200 dark:border-[#2D3342] bg-white dark:bg-[#272C38] text-slate-800 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#6B7280] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#4D73CD] dark:focus:ring-[#4D73CD]"
-              />
-            </div>
-            <div className="flex items-center gap-2">
+              <div className="relative flex-1 sm:w-64">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-[#8B93A7]" />
+                <input
+                  type="text"
+                  placeholder="ค้นหาชื่อตัวละคร..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full pl-8 pr-3 py-1.5 border border-slate-200 dark:border-[#2D3342] rounded-lg text-xs bg-white dark:bg-[#272C38] text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-[#8B93A7] focus:outline-none focus:ring-2 focus:ring-[#4D73CD]"
+                />
+              </div>
               <button
                 onClick={fetchQueues}
-                className="flex items-center gap-1 text-xs text-slate-500 dark:text-[#8B93A7] hover:text-[#0b3d63] dark:hover:text-sky-400 transition-colors px-2 py-1 rounded-lg hover:bg-slate-100 dark:hover:bg-[#2A2F3E]"
+                className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-[#272C38] transition-colors text-slate-500 dark:text-[#8B93A7] hover:text-slate-800 dark:hover:text-white"
+                title="รีเฟรช"
               >
-                <RefreshCw size={13} />
-                รีเฟรช
-              </button>
-              <button
-                onClick={handleCopyLink}
-                className="flex items-center gap-1.5 bg-white dark:bg-[#272C38] border border-slate-200 dark:border-[#2D3342] hover:bg-slate-50 dark:hover:bg-[#2A2F3E] text-slate-700 dark:text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors shadow-sm"
-              >
-                {copied ? <CheckCircle size={13} className="text-green-600 dark:text-green-400" /> : <Share2 size={13} />}
-                {copied ? "คัดลอกแล้ว!" : "แชร์ลิงก์จองตัว"}
+                <RefreshCw size={15} />
               </button>
             </div>
           </div>
 
-          {/* Queue list */}
-          {loading ? (
-            <div className="bg-white dark:bg-[#232733] rounded-2xl shadow-sm border border-slate-200 dark:border-[#2D3342] p-10 text-center text-slate-400 dark:text-[#6B7280] text-sm">
-              กำลังโหลด…
-            </div>
-          ) : queues.length === 0 ? (
-            <div className="bg-white dark:bg-[#232733] rounded-2xl shadow-sm border border-slate-200 dark:border-[#2D3342] p-10 text-center">
-              <Swords size={32} className="text-slate-300 dark:text-slate-600 mx-auto mb-3" />
-              <p className="text-slate-400 dark:text-[#6B7280] text-sm">ยังไม่มีคิว · รอคิวแรก!</p>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {(() => {
-                // Actually `queues` is already sorted by `fetchQueues` into 4 active lists + done list.
-                // But we still want the headers. Let's filter the local `queues` array again to put headers.
-                // Or just use the pre-sorted state.
-                const filteredQueues = queues.filter(q => !search || q.name.toLowerCase().includes(search.toLowerCase()));
+          {/* Job Filter Pills */}
+          <div className="flex items-center gap-1.5 mb-4 flex-wrap">
+            <button
+              onClick={() => setSelectedJobs([])}
+              className={`text-xs px-2.5 py-1 rounded-full font-medium transition-colors ${
+                selectedJobs.length === 0
+                  ? "bg-[#0b3d63] dark:bg-[#3B66D1] text-white"
+                  : "bg-white dark:bg-[#272C38] text-slate-600 dark:text-[#8B93A7] border border-slate-200 dark:border-[#2D3342] hover:bg-slate-50 dark:hover:bg-[#2F3547]"
+              }`}
+            >
+              ทั้งหมด ({queues.length})
+            </button>
+            {JOB_LIST.map((job) => {
+              const count = queues.filter((q) => q.job === job).length;
+              if (count === 0) return null;
+              const isSelected = selectedJobs.includes(job);
+              return (
+                <button
+                  key={job}
+                  onClick={() => {
+                    setSelectedJobs(prev =>
+                      prev.includes(job) ? prev.filter(j => j !== job) : [...prev, job]
+                    );
+                  }}
+                  className={`text-xs px-2.5 py-1 rounded-full font-medium transition-colors flex items-center gap-1.5 ${
+                    isSelected
+                      ? "bg-[#0b3d63] dark:bg-[#3B66D1] text-white shadow-xs"
+                      : "bg-white dark:bg-[#272C38] text-slate-600 dark:text-[#8B93A7] border border-slate-200 dark:border-[#2D3342] hover:bg-slate-50 dark:hover:bg-[#2F3547]"
+                  }`}
+                >
+                  <span
+                    className="w-1.5 h-1.5 rounded-full"
+                    style={{ backgroundColor: JOB_COLORS[job] ?? "#94a3b8" }}
+                  />
+                  {job} ({count})
+                </button>
+              );
+            })}
+          </div>
 
-                const waitingR1Priests = filteredQueues.filter(q => q.status !== "done" && !(q.rounds === 2 && q.round1 === true) && q.job === "Priest");
-                const waitingR1Others = filteredQueues.filter(q => q.status !== "done" && !(q.rounds === 2 && q.round1 === true) && q.job !== "Priest");
-                const waitingR2Priests = filteredQueues.filter(q => q.status !== "done" && (q.rounds === 2 && q.round1 === true) && q.job === "Priest");
-                const waitingR2Others = filteredQueues.filter(q => q.status !== "done" && (q.rounds === 2 && q.round1 === true) && q.job !== "Priest");
-                const doneQueuesList = filteredQueues.filter(q => q.status === "done");
-                
-                let currentGlobalIdx = 1;
+          {/* Queue list container */}
+          <div className="bg-white dark:bg-[#232733] rounded-2xl border border-slate-200 dark:border-[#2D3342] p-4">
+            {loading ? (
+              <div className="text-center py-12 text-slate-400 dark:text-[#8B93A7]">
+                <RefreshCw size={24} className="animate-spin mx-auto mb-2" />
+                กำลังโหลดคิว…
+              </div>
+            ) : filteredQueues.length === 0 ? (
+              <div className="text-center py-12 text-slate-400 dark:text-[#8B93A7]">
+                <Swords size={36} className="mx-auto mb-2 opacity-30" />
+                {search || selectedJobs.length > 0 ? "ไม่พบรายการที่ตรงกับตัวกรอง" : "ยังไม่มีคิว"}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {(() => {
+                  let currentGlobalIdx = 1;
 
-                const renderQueue = (q: DungeonQueue, idx: number, isDone: boolean, isR2 = false) => {
-                  const statusBadge = STATUS_BADGE[q.status] ?? STATUS_BADGE.waiting;
-                  const jobColor = JOB_COLORS[q.job] ?? "#888";
-                  const qEst = estimates.estimatesById[q.id] || estimates.estimatesByName[q.name.toLowerCase()];
+                  const waitingR1Priests = filteredQueues.filter(q => q.status !== "done" && !(q.rounds === 2 && q.round1 === true) && q.job === "Priest");
+                  const waitingR1Others = filteredQueues.filter(q => q.status !== "done" && !(q.rounds === 2 && q.round1 === true) && q.job !== "Priest");
+                  const waitingR2Priests = filteredQueues.filter(q => q.status !== "done" && (q.rounds === 2 && q.round1 === true) && q.job === "Priest");
+                  const waitingR2Others = filteredQueues.filter(q => q.status !== "done" && (q.rounds === 2 && q.round1 === true) && q.job !== "Priest");
+                  const doneQueues = filteredQueues.filter(q => q.status === "done");
 
-                  return (
-                    <div
-                      key={q.id}
-                      className={`bg-white dark:bg-[#232733] rounded-2xl shadow-sm border border-slate-200 dark:border-[#2D3342] px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3 ${isDone ? "opacity-60" : ""} ${isR2 && !isDone ? "border-l-4 border-l-purple-500 dark:border-l-purple-400" : ""}`}
-                    >
-                      {/* Number */}
-                      <span className="text-slate-400 dark:text-[#6B7280] font-bold text-sm w-6 shrink-0">
-                        {idx}
-                      </span>
+                  const renderQueue = (q: DungeonQueue, idx: number, isDone: boolean, isR2 = false) => {
+                    const statusBadge = STATUS_BADGE[q.status] ?? STATUS_BADGE.waiting;
+                    const jobColor = JOB_COLORS[q.job] ?? "#888";
+                    const qEst = estimates.estimatesById[q.id] || estimates.estimatesByName[q.name.toLowerCase()];
 
-                      {/* Main info */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-bold text-slate-800 dark:text-white text-sm">{q.name}</span>
+                    return (
+                      <div
+                        key={q.id}
+                        className={`bg-slate-50 dark:bg-[#272C38] rounded-xl p-3 flex items-center justify-between gap-3 border ${
+                          isDone ? "border-slate-100 dark:border-[#2D3342] opacity-50" : "border-slate-200 dark:border-[#2D3342]"
+                        } ${isR2 && !isDone ? "border-l-4 border-l-purple-500" : ""}`}
+                      >
+                        {/* Number */}
+                        <span className="font-mono text-xs font-bold text-slate-400 dark:text-[#8B93A7] w-6 shrink-0 text-center">
+                          {idx}
+                        </span>
 
-                          {/* Job badge */}
-                          <span
-                            className="flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full"
-                            style={{
-                              backgroundColor: jobColor + "22",
-                              color: jobColor,
-                            }}
-                          >
+                        {/* Main info */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-bold text-slate-800 dark:text-white text-sm">{q.name}</span>
+
+                            {/* Job badge */}
                             <span
-                              className="w-1.5 h-1.5 rounded-full shrink-0"
-                              style={{ backgroundColor: jobColor }}
-                            />
-                            {q.job}
-                          </span>
-
-                          {/* 2 rounds badge */}
-                          {q.rounds === 2 && (
-                            <span className="text-xs bg-purple-100 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 font-medium px-2 py-0.5 rounded-full">
-                              ✕ 2 รอบ
+                              className="flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full"
+                              style={{
+                                backgroundColor: jobColor + "22",
+                                color: jobColor,
+                              }}
+                            >
+                              <span
+                                className="w-1.5 h-1.5 rounded-full shrink-0"
+                                style={{ backgroundColor: jobColor }}
+                              />
+                              {q.job}
                             </span>
-                          )}
 
-                          {/* Party Badge */}
-                          {qEst && qEst.partyNumber > 0 && !isDone && (
-                            <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-[#0b3d63]/10 dark:bg-[#3B66D1]/20 text-[#0b3d63] dark:text-[#82A0F5] border border-[#0b3d63]/20 dark:border-[#4D73CD]/30">
-                              ตี้ที่ {qEst.partyNumber} ({qEst.partyMemberCount}/5 คน)
-                            </span>
-                          )}
-
-                          {/* Status badge */}
-                          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusBadge.cls}`}>
-                            {statusBadge.label}
-                          </span>
-                        </div>
-
-                        {/* Estimated time for waiting */}
-                        {qEst && qEst.status === "waiting" && (
-                          <div className="flex items-center gap-2 mt-1.5 flex-wrap text-xs">
-                            {qEst.queuesAhead === 0 ? (
-                              <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800/40 flex items-center gap-1">
-                                🚀 ตี้แรก (พร้อมลงทันทีเมื่อครบ 5 คน)
+                            {/* 2 rounds badge */}
+                            {q.rounds === 2 && (
+                              <span className="text-xs bg-purple-100 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 font-medium px-2 py-0.5 rounded-full">
+                                ✕ 2 รอบ
                               </span>
-                            ) : (
-                              <>
-                                <span className="text-[11px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-800/40 flex items-center gap-1">
-                                  <Clock size={11} />
-                                  อีก {qEst.queuesAhead} คิว (~${qEst.waitMinutesMin}-${qEst.waitMinutesMax} นาที)
-                                </span>
-                                <span className="text-[11px] font-bold text-blue-600 dark:text-[#82A0F5]">
-                                  🕒 คาดว่าได้ลง {qEst.estimatedStartTimeText}
-                                </span>
-                              </>
                             )}
+
+                            {/* Carry Round & Team Badge */}
+                            {qEst && qEst.assignedRound > 0 && !isDone && (
+                              <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-[#0b3d63]/10 dark:bg-[#3B66D1]/20 text-[#0b3d63] dark:text-[#82A0F5] border border-[#0b3d63]/20 dark:border-[#4D73CD]/30">
+                                {qEst.track === "priest"
+                                  ? `โควตาพระ · รอบที่ ${qEst.assignedRound} (ทีม ${qEst.assignedTeam})`
+                                  : `รอบที่ ${qEst.assignedRound} · ทีม ${qEst.assignedTeam} (ช่อง ${qEst.slotInTeam}/2)`}
+                              </span>
+                            )}
+
+                            {/* Status badge */}
+                            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusBadge.cls}`}>
+                              {statusBadge.label}
+                            </span>
                           </div>
-                        )}
+
+                          {/* Estimated time for waiting */}
+                          {qEst && qEst.status === "waiting" && (
+                            <div className="flex items-center gap-2 mt-1.5 flex-wrap text-xs">
+                              {qEst.queuesAhead === 0 ? (
+                                <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800/40 flex items-center gap-1">
+                                  🚀 รอบแรก (ทีมแบก {qEst.assignedTeam} · พร้อมลงทันที)
+                                </span>
+                              ) : (
+                                <>
+                                  <span className="text-[11px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-800/40 flex items-center gap-1">
+                                    <Clock size={11} />
+                                    อีก {qEst.queuesAhead} รอบ (~{qEst.waitMinutesMin}-{qEst.waitMinutesMax} นาที)
+                                  </span>
+                                  <span className="text-[11px] font-bold text-blue-600 dark:text-[#82A0F5]">
+                                    🕒 คาดว่าได้ลง {qEst.estimatedStartTimeText}
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                          )}
 
                         {/* Power + timestamp */}
                         <div className="flex items-center gap-3 mt-1 flex-wrap">
@@ -776,15 +878,16 @@ export default function DungeonPage() {
                     )}
                     {waitingR2Others.map(q => renderQueue(q, currentGlobalIdx++, false, true))}
 
-                    {doneQueuesList.length > 0 && (
+                    {doneQueues.length > 0 && (
                       <div className="text-xs font-bold text-green-600 dark:text-emerald-400 mt-2 px-2 border-t border-slate-200 dark:border-[#2D3342] pt-3">ลงเสร็จแล้ว</div>
                     )}
-                    {doneQueuesList.map(q => renderQueue(q, currentGlobalIdx++, true))}
+                    {doneQueues.map(q => renderQueue(q, currentGlobalIdx++, true))}
                   </>
                 );
               })()}
             </div>
           )}
+          </div>
         </div>
       </div>
     </div>
