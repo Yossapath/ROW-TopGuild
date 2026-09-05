@@ -8,6 +8,7 @@ import {
   attendancePostSchema,
   validateBody,
 } from "../lib/validations";
+import { isBookingOpen } from "../lib/utils";
 
 // Test 1: JWT Secret Fail Fast
 test("JWT Secret Validation - Fail fast on missing or insecure secret", () => {
@@ -190,4 +191,42 @@ test("Zod Validation - Rejects malformed payloads and validates allowed fields",
     records: "not-an-array",
   });
   assert.equal(invalidAttendance.success, false);
+});
+
+test("isBookingOpen - Safe handling of undefined, empty, or partial schedule objects", () => {
+  // Undefined or null schedule -> open
+  assert.equal(isBookingOpen(undefined).open, true);
+  assert.equal(isBookingOpen(null).open, true);
+
+  // Missing or empty openDate -> open (unlimited)
+  assert.equal(isBookingOpen({ carryTeamsCount: 1 } as any).open, true);
+  assert.equal(isBookingOpen({ openDate: "", openTime: "06:00", closeTime: "23:59" }).open, true);
+  assert.equal(isBookingOpen({ openDate: "   " }).open, true);
+
+  // Different date -> closed with reason
+  const resultDiffDate = isBookingOpen({
+    openDate: "2099-01-01",
+    openTime: "06:00",
+    closeTime: "23:59",
+  });
+  assert.equal(resultDiffDate.open, false);
+  assert.match(resultDiffDate.reason || "", /ยังไม่ถึงวันเปิดจอง/);
+
+  // Today with no time limits -> open
+  const nowBkk = new Date(
+    new Date().toLocaleString("en-US", { timeZone: "Asia/Bangkok" })
+  );
+  const todayStr = nowBkk.toLocaleDateString("en-CA");
+  const resultTodayNoTime = isBookingOpen({
+    openDate: todayStr,
+  });
+  assert.equal(resultTodayNoTime.open, true);
+
+  // Today with full day 00:00 to 23:59 -> open
+  const resultTodayAllDay = isBookingOpen({
+    openDate: todayStr,
+    openTime: "00:00",
+    closeTime: "23:59",
+  });
+  assert.equal(resultTodayAllDay.open, true);
 });
