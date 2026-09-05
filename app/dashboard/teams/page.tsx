@@ -490,17 +490,17 @@ export default function TeamsPage() {
             <p className="text-sm text-theme-textSecondary">
               ระบุหรือวางรายชื่อสมาชิก 60 คนสำหรับสนามหลัก (บรรทัดละ 1 ชื่อ) ระบบจะจัดสนามหลักตามรายชื่อนี้ และนำสมาชิกคนที่เหลือทั้งหมดไปจัดลงสนามรองตามกฏกิลด์ให้อัตโนมัติ
             </p>
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-[#0b3d63] flex items-start gap-2">
+            <div className="bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 rounded-lg p-3 text-sm text-[#0b3d63] dark:text-sky-300 flex items-start gap-2">
               <span className="font-bold">✨ คำแนะนำ:</span> จำนวนที่ดึงอัตโนมัติ จะคัดเลือกมี Priest 12 คนสำหรับสนามหลักให้อัตโนมัติ
             </div>
             <div className="flex items-center justify-between">
               <span className="font-bold text-sm text-theme-text">ตรวจพบรายชื่อ: {names.length} / 60 คน</span>
-              <button onClick={handlePullTop60} className="text-[#0b3d63] font-bold text-sm bg-[#0b3d63]/10 px-4 py-1.5 rounded-lg hover:bg-[#0b3d63]/20 transition-colors border border-[#0b3d63]/20 flex items-center gap-1">
+              <button onClick={handlePullTop60} className="text-[#0b3d63] dark:text-sky-400 font-bold text-sm bg-[#0b3d63]/10 dark:bg-sky-500/10 px-4 py-1.5 rounded-lg hover:bg-[#0b3d63]/20 dark:hover:bg-sky-500/20 transition-colors border border-[#0b3d63]/20 dark:border-sky-500/30 flex items-center gap-1">
                 ✨ ดึง 60 พลังสูงสุดมาวางให้ก่อน
               </button>
             </div>
             <textarea 
-              className="w-full h-[250px] bg-theme-bg border border-theme-border rounded-lg p-3 text-sm text-theme-text font-mono resize-none focus:ring-2 focus:ring-[#0b3d63] outline-none"
+              className="w-full h-[250px] bg-theme-bg border border-theme-border rounded-lg p-3 text-sm text-theme-text font-mono resize-none focus:ring-2 focus:ring-[#0b3d63] dark:focus:ring-sky-500 outline-none"
               value={autoModalText}
               onChange={e => setAutoModalText(e.target.value)}
               placeholder="วางรายชื่อที่นี่ (1 บรรทัดต่อ 1 ชื่อ)"
@@ -518,11 +518,11 @@ export default function TeamsPage() {
   };
 
   return (
-    <div className="space-y-6 bg-[#f0f6fc] min-h-screen p-4 lg:py-8 lg:px-12 xl:px-24 2xl:px-32 relative" style={{ zoom: 0.85 }}>
+    <div className="space-y-6 bg-[#f0f6fc] dark:bg-[#0a1420] min-h-screen p-4 lg:py-8 lg:px-12 xl:px-24 2xl:px-32 relative" style={{ zoom: 0.85 }}>
       <AutoMatchModal />
       
       {/* Header Card */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 mb-5 flex flex-col lg:flex-row items-center justify-between gap-4">
+      <div className="bg-white dark:bg-[#112236] rounded-2xl shadow-sm border border-slate-200 dark:border-[#1e3550] p-5 mb-5 flex flex-col lg:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-3 w-full lg:w-auto">
           <div
             className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
@@ -531,8 +531,8 @@ export default function TeamsPage() {
             <Shield className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-slate-800">จัดทีม GVG</h1>
-            <p className="text-sm text-slate-500">
+            <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">จัดทีม GVG</h1>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
               {isAdmin ? "ลากและวางเพื่อจัดทีม หรือใช้ออโต้แมตช์" : "รายชื่อและสมาชิกทีมสำหรับกิลด์วอร์"}
             </p>
           </div>
@@ -540,13 +540,13 @@ export default function TeamsPage() {
         
         {isAdmin && (
           <div className="flex items-center gap-3 w-full lg:w-auto justify-end flex-wrap">
-            <button onClick={handleClearAll} className="flex items-center gap-2 px-4 py-2 bg-white text-red-600 border border-red-200 rounded-xl font-bold hover:bg-red-50 transition-colors text-sm shadow-sm">
+            <button onClick={handleClearAll} className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-[#15263d] text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/50 rounded-xl font-bold hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors text-sm shadow-sm">
               <span>ล้างทั้งหมด</span>
             </button>
-            <button onClick={() => setIsAutoModalOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-white text-[#0b3d63] border border-[#0b3d63] rounded-xl font-bold hover:bg-blue-50 transition-colors text-sm shadow-sm">
+            <button onClick={() => setIsAutoModalOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-[#15263d] text-[#0b3d63] dark:text-sky-400 border border-[#0b3d63] dark:border-sky-500/50 rounded-xl font-bold hover:bg-blue-50 dark:hover:bg-sky-950/30 transition-colors text-sm shadow-sm">
               <Wand2 size={16} /> <span>ออโต้จัดทีม (Auto)</span>
             </button>
-            <button onClick={handleSave} disabled={isSaving} className="flex items-center gap-2 px-5 py-2 bg-[#0b3d63] text-white rounded-xl font-bold hover:bg-[#0f4b7a] transition-colors shadow-sm disabled:opacity-50 text-sm">
+            <button onClick={handleSave} disabled={isSaving} className="flex items-center gap-2 px-5 py-2 bg-[#0b3d63] hover:bg-[#0f4b7a] dark:bg-sky-600 dark:hover:bg-sky-500 text-white rounded-xl font-bold transition-colors shadow-sm disabled:opacity-50 text-sm">
               {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} <span>บันทึกการจัดทีม</span>
             </button>
           </div>
@@ -556,11 +556,11 @@ export default function TeamsPage() {
         <DragDropContext onDragEnd={onDragEnd}>
           <div className="flex gap-4 items-start">
             {isAdmin && !isUnassignedCollapsed && (
-              <div className="w-[300px] flex-shrink-0 bg-white rounded-2xl shadow-sm border border-slate-200 h-[calc(100vh-2rem)] flex flex-col sticky top-4 z-10 transition-all">
-                <div className="p-3 border-b border-slate-100 bg-slate-50/70 rounded-t-2xl">
+              <div className="w-[300px] flex-shrink-0 bg-white dark:bg-[#112236] rounded-2xl shadow-sm border border-slate-200 dark:border-[#1e3550] h-[calc(100vh-2rem)] flex flex-col sticky top-4 z-10 transition-all">
+                <div className="p-3 border-b border-slate-100 dark:border-[#1e3550] bg-slate-50/70 dark:bg-[#15263d]/50 rounded-t-2xl">
                   <div className="flex items-center justify-between mb-3">
-                    <h2 className="font-bold text-slate-800 flex items-center gap-2 text-sm"><Users size={16} /> ยังไม่ได้จัด ({data.columns["unassigned"].memberIds.length})</h2>
-                    <button onClick={() => setIsUnassignedCollapsed(true)} className="text-slate-400 hover:text-slate-700 bg-white border border-slate-200 rounded-lg p-1"><ChevronLeft size={14}/></button>
+                    <h2 className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2 text-sm"><Users size={16} /> ยังไม่ได้จัด ({data.columns["unassigned"].memberIds.length})</h2>
+                    <button onClick={() => setIsUnassignedCollapsed(true)} className="text-slate-400 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 bg-white dark:bg-[#15263d] border border-slate-200 dark:border-[#1e3550] rounded-lg p-1"><ChevronLeft size={14}/></button>
                   </div>
                   <div className="space-y-2">
                     <input
@@ -568,12 +568,12 @@ export default function TeamsPage() {
                       placeholder="ค้นหาชื่อ..."
                       value={unassignedSearch}
                       onChange={e => setUnassignedSearch(e.target.value)}
-                      className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-800 outline-none focus:ring-2 focus:ring-[#0b3d63]"
+                      className="w-full bg-white dark:bg-[#15263d] border border-slate-200 dark:border-[#1e3550] rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-[#0b3d63] dark:focus:ring-sky-500"
                     />
                     <select 
                       value={unassignedFilterJob} 
                       onChange={e => setUnassignedFilterJob(e.target.value)}
-                      className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800 outline-none"
+                      className="w-full bg-white dark:bg-[#15263d] border border-slate-200 dark:border-[#1e3550] rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800 dark:text-slate-100 outline-none"
                     >
                       <option value="All">ทุกอาชีพ</option>
                       {JOB_LIST.map(j => <option key={j} value={j}>{j}</option>)}
@@ -583,7 +583,7 @@ export default function TeamsPage() {
                 
                 <Droppable droppableId="unassigned" type="MEMBER">
                   {(provided, snapshot) => (
-                    <div ref={provided.innerRef} {...provided.droppableProps} className={`flex-1 overflow-y-auto p-2 space-y-1.5 transition-colors ${snapshot.isDraggingOver ? 'bg-blue-50/50' : ''}`}>
+                    <div ref={provided.innerRef} {...provided.droppableProps} className={`flex-1 overflow-y-auto p-2 space-y-1.5 transition-colors ${snapshot.isDraggingOver ? 'bg-blue-50/50 dark:bg-sky-950/30' : ''}`}>
                       {filteredUnassignedIds.map((id, index) => {
                         return <MemberCard key={id} member={data.members[id]} index={index} />;
                       })}
@@ -595,31 +595,31 @@ export default function TeamsPage() {
             )}
             
             {isAdmin && isUnassignedCollapsed && (
-              <div className="flex-shrink-0 bg-white rounded-2xl shadow-sm border border-slate-200 h-[calc(100vh-2rem)] flex flex-col items-center py-4 sticky top-4 z-10 w-12 cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => setIsUnassignedCollapsed(false)}>
+              <div className="flex-shrink-0 bg-white dark:bg-[#112236] rounded-2xl shadow-sm border border-slate-200 dark:border-[#1e3550] h-[calc(100vh-2rem)] flex flex-col items-center py-4 sticky top-4 z-10 w-12 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors" onClick={() => setIsUnassignedCollapsed(false)}>
                 <ChevronRight size={20} className="text-slate-400 mb-4"/>
                 <Users size={18} className="text-slate-400 mb-2"/>
-                <span className="bg-[#0b3d63] text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">{data.columns["unassigned"].memberIds.length}</span>
+                <span className="bg-[#0b3d63] dark:bg-sky-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">{data.columns["unassigned"].memberIds.length}</span>
               </div>
             )}
 
           <div className="flex-1 min-w-0 flex flex-col">
-            <div className="flex gap-2 mb-4 bg-white p-1.5 rounded-xl border border-slate-200 shadow-sm self-start">
+            <div className="flex gap-2 mb-4 bg-white dark:bg-[#112236] p-1.5 rounded-xl border border-slate-200 dark:border-[#1e3550] shadow-sm self-start">
               <button 
                 onClick={() => setActiveTab("main")}
-                className={`px-6 py-2 rounded-lg font-bold text-sm transition-all ${activeTab === 'main' ? 'bg-[#0b3d63] text-white shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'}`}
+                className={`px-6 py-2 rounded-lg font-bold text-sm transition-all ${activeTab === 'main' ? 'bg-[#0b3d63] dark:bg-sky-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}
               >
                 สนามหลัก (60 คน)
               </button>
               <button 
                 onClick={() => setActiveTab("sub")}
-                className={`px-6 py-2 rounded-lg font-bold text-sm transition-all ${activeTab === 'sub' ? 'bg-[#0b3d63] text-white shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'}`}
+                className={`px-6 py-2 rounded-lg font-bold text-sm transition-all ${activeTab === 'sub' ? 'bg-[#0b3d63] dark:bg-sky-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}
               >
                 สนามรอง ({Object.keys(data.members).length - 60 > 0 ? Object.keys(data.members).length - 60 : 0} คน)
               </button>
               {isAdmin && (
                 <button 
                   onClick={() => setActiveTab("leave")}
-                  className={`px-6 py-2 rounded-lg font-bold text-sm transition-all ${activeTab === 'leave' ? 'bg-red-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'}`}
+                  className={`px-6 py-2 rounded-lg font-bold text-sm transition-all ${activeTab === 'leave' ? 'bg-red-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}
                 >
                   ลา/ออฟไลน์
                 </button>
@@ -630,7 +630,7 @@ export default function TeamsPage() {
               {activeTab === "main" ? (
                 <div className="space-y-8 pb-12">
                   <div>
-                    <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2 mb-4"><LayoutGrid size={18} className="text-[#0b3d63]"/> โซน 1 (ทีม 1-6)</h2>
+                    <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2 mb-4"><LayoutGrid size={18} className="text-[#0b3d63] dark:text-sky-400"/> โซน 1 (ทีม 1-6)</h2>
                     <Droppable droppableId="mainZone1" direction="horizontal" type="TEAM" isDropDisabled={!isAdmin}>
                       {(provided) => (
                         <div ref={provided.innerRef} {...provided.droppableProps} className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-4 xl:gap-6">
@@ -643,7 +643,7 @@ export default function TeamsPage() {
                     </Droppable>
                   </div>
                   <div>
-                    <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2 mb-4"><LayoutGrid size={18} className="text-[#0b3d63]"/> โซน 2 (ทีม 7-12)</h2>
+                    <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2 mb-4"><LayoutGrid size={18} className="text-[#0b3d63] dark:text-sky-400"/> โซน 2 (ทีม 7-12)</h2>
                     <Droppable droppableId="mainZone2" direction="horizontal" type="TEAM" isDropDisabled={!isAdmin}>
                       {(provided) => (
                         <div ref={provided.innerRef} {...provided.droppableProps} className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-4 xl:gap-6">
@@ -658,7 +658,7 @@ export default function TeamsPage() {
                 </div>
               ) : activeTab === "sub" ? (
                 <div className="pb-12">
-                   <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2 mb-4"><LayoutGrid size={18} className="text-[#0b3d63]"/> ทีมสนามรอง</h2>
+                   <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2 mb-4"><LayoutGrid size={18} className="text-[#0b3d63] dark:text-sky-400"/> ทีมสนามรอง</h2>
                    <Droppable droppableId="subZone" direction="horizontal" type="TEAM" isDropDisabled={!isAdmin}>
                       {(provided) => (
                         <div ref={provided.innerRef} {...provided.droppableProps} className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-4 xl:gap-6">
@@ -842,7 +842,7 @@ function TeamCard({
   return (
     <Draggable draggableId={column.id} index={index} isDragDisabled={!isAdmin}>
       {(providedTeam, snapshotTeam) => (
-        <div ref={providedTeam.innerRef} {...providedTeam.draggableProps} className={`bg-white rounded-2xl shadow-sm border overflow-hidden ${snapshotTeam.isDragging ? 'shadow-xl ring-2 ring-[#0b3d63] border-[#0b3d63] z-50' : 'border-slate-200'} ${column.locked ? 'opacity-95 border-amber-400' : ''}`}>
+        <div ref={providedTeam.innerRef} {...providedTeam.draggableProps} className={`bg-white dark:bg-[#112236] rounded-2xl shadow-sm border overflow-hidden ${snapshotTeam.isDragging ? 'shadow-xl ring-2 ring-[#0b3d63] dark:ring-sky-500 border-[#0b3d63] dark:border-sky-500 z-50' : 'border-slate-200 dark:border-[#1e3550]'} ${column.locked ? 'opacity-95 border-amber-400 dark:border-amber-500' : ''}`}>
           {/* Header */}
           <div className={`${isSub ? 'bg-[#154a72]' : 'bg-[#0b3d63]'} p-3.5 text-white flex items-center justify-between`} {...(isAdmin ? providedTeam.dragHandleProps : {})}>
             <div className="flex items-center gap-2">
@@ -867,7 +867,7 @@ function TeamCard({
             </div>
           </div>
           
-          <div className="grid grid-cols-[30px_1fr_120px_70px_30px] gap-2 px-3 py-2 bg-slate-50 border-b border-slate-100 text-[11px] font-bold text-slate-500">
+          <div className="grid grid-cols-[30px_1fr_120px_70px_30px] gap-2 px-3 py-2 bg-slate-50 dark:bg-[#15263d]/60 border-b border-slate-100 dark:border-[#1e3550] text-[11px] font-bold text-slate-500 dark:text-slate-400">
             <div></div>
             <div>ชื่อ</div>
             <div className="text-center">อาชีพ</div>
@@ -875,7 +875,7 @@ function TeamCard({
             <div></div>
           </div>
 
-          <div className="p-2 min-h-[220px] flex flex-col gap-1.5 relative z-10 bg-white">
+          <div className="p-2 min-h-[220px] flex flex-col gap-1.5 relative z-10 bg-white dark:bg-[#112236]">
              {Array.from({ length: 5 }).map((_, slotIdx) => {
                 const memberId = column.memberIds[slotIdx];
                 const droppableId = `${column.id}::${slotIdx}`;
@@ -885,11 +885,11 @@ function TeamCard({
                       <div 
                         ref={provided.innerRef} 
                         {...provided.droppableProps} 
-                        className={`h-[34px] rounded-lg border ${snapshot.isDraggingOver ? 'bg-blue-50 border-[#0b3d63]' : 'border-transparent bg-slate-50/70'} flex items-center relative transition-colors`}
+                        className={`h-[34px] rounded-lg border ${snapshot.isDraggingOver ? 'bg-blue-50 dark:bg-sky-950/40 border-[#0b3d63] dark:border-sky-500' : 'border-transparent bg-slate-50/70 dark:bg-[#15263d]/40'} flex items-center relative transition-colors`}
                       >
                          {!memberId && !snapshot.isDraggingOver && (
-                           <div className="absolute inset-0 border border-dashed border-slate-200 rounded-lg flex items-center justify-center bg-transparent pointer-events-none">
-                             <span className="text-[10px] text-slate-400 font-bold tracking-widest">ว่าง {slotIdx + 1}</span>
+                           <div className="absolute inset-0 border border-dashed border-slate-200 dark:border-[#1e3550] rounded-lg flex items-center justify-center bg-transparent pointer-events-none">
+                             <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold tracking-widest">ว่าง {slotIdx + 1}</span>
                            </div>
                          )}
 
@@ -899,18 +899,18 @@ function TeamCard({
                                 const m = members[memberId];
                                 const color = m ? (JOB_COLORS[m.job] || "#475569") : "#475569";
                                 return (
-                                  <div ref={prov.innerRef} {...prov.draggableProps} className={`absolute inset-0 w-full h-full grid grid-cols-[30px_1fr_120px_70px_30px] gap-2 items-center px-1 py-1 rounded-lg bg-white hover:bg-slate-50 group border border-slate-200 ${snap.isDragging ? 'shadow-lg border-blue-400 ring-2 ring-[#0b3d63]/20 z-50' : 'shadow-sm'}`} style={prov.draggableProps.style}>
-                                    <div className="flex items-center justify-center text-slate-400 cursor-grab" {...(isAdmin ? prov.dragHandleProps : {})}>
-                                      {isAdmin ? <GripVertical size={14}/> : <span className="text-[10px] text-slate-400 font-mono">#{slotIdx+1}</span>}
+                                  <div ref={prov.innerRef} {...prov.draggableProps} className={`absolute inset-0 w-full h-full grid grid-cols-[30px_1fr_120px_70px_30px] gap-2 items-center px-1 py-1 rounded-lg bg-white dark:bg-[#15263d] hover:bg-slate-50 dark:hover:bg-slate-800/60 group border border-slate-200 dark:border-[#1e3550] ${snap.isDragging ? 'shadow-lg border-blue-400 dark:border-sky-400 ring-2 ring-[#0b3d63]/20 dark:ring-sky-500/20 z-50' : 'shadow-sm'}`} style={prov.draggableProps.style}>
+                                    <div className="flex items-center justify-center text-slate-400 dark:text-slate-500 cursor-grab" {...(isAdmin ? prov.dragHandleProps : {})}>
+                                      {isAdmin ? <GripVertical size={14}/> : <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">#{slotIdx+1}</span>}
                                     </div>
-                                    <div className="text-xs font-bold text-slate-800 truncate flex items-center gap-2">
-                                      {isAdmin && <span className="text-[#0b3d63] opacity-70 w-3 text-right font-mono">{slotIdx+1}</span>}
+                                    <div className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate flex items-center gap-2">
+                                      {isAdmin && <span className="text-[#0b3d63] dark:text-sky-400 opacity-70 w-3 text-right font-mono">{slotIdx+1}</span>}
                                       {m ? m.name : "Unknown"}
                                     </div>
                                     {m && <div className="text-[10px] font-bold text-white px-2 py-0.5 rounded-full text-center truncate" style={{backgroundColor: color}}>{m.job}</div>}
-                                    {m && <div className="text-[11px] font-bold text-slate-600 text-right tabular-nums">{m.power.toLocaleString()}</div>}
+                                    {m && <div className="text-[11px] font-bold text-slate-600 dark:text-slate-300 text-right tabular-nums">{m.power.toLocaleString()}</div>}
                                     {isAdmin && (
-                                      <button onClick={() => removeMember(column.id, memberId)} disabled={column.locked} className="text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity flex justify-center disabled:hidden"><X size={14}/></button>
+                                      <button onClick={() => removeMember(column.id, memberId)} disabled={column.locked} className="text-slate-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity flex justify-center disabled:hidden"><X size={14}/></button>
                                     )}
                                   </div>
                                 )
@@ -945,17 +945,17 @@ function MemberCard({ member, index }: { member: Member; index: number; }) {
           {...provided.draggableProps}
           {...provided.dragHandleProps}
           className={`flex items-center justify-between p-2 rounded-xl border shadow-sm select-none transition-all ${
-            snapshot.isDragging ? 'shadow-lg border-[#0b3d63] z-50 ring-2 ring-[#0b3d63]/20 bg-white' : 'border-slate-200 hover:border-slate-300'
+            snapshot.isDragging ? 'shadow-lg border-[#0b3d63] dark:border-sky-400 z-50 ring-2 ring-[#0b3d63]/20 dark:ring-sky-500/20 bg-white dark:bg-[#15263d]' : 'border-slate-200 dark:border-[#1e3550] hover:border-slate-300 dark:hover:border-slate-600'
           }`}
           style={{
             ...provided.draggableProps.style,
-            backgroundColor: snapshot.isDragging ? '#ffffff' : hexToRgba(color, 0.05),
+            backgroundColor: snapshot.isDragging ? undefined : hexToRgba(color, 0.05),
             borderLeftWidth: '4px',
             borderLeftColor: color
           }}
         >
           <div className="flex flex-col truncate pr-2 min-w-0">
-            <span className="text-[12px] font-bold text-slate-800 truncate">{member.name}</span>
+            <span className="text-[12px] font-bold text-slate-800 dark:text-slate-100 truncate">{member.name}</span>
             <span className="text-[9px] font-bold truncate opacity-90" style={{ color }}>{member.job}</span>
           </div>
           <div className="text-[11px] font-bold tabular-nums tracking-tight flex-shrink-0" style={{ color }}>

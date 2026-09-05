@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import type { ApiResponse } from "@/types";
 
 export function ok<T>(data: T, status = 200) {
@@ -9,6 +9,12 @@ export function err(message: string, status = 400) {
 }
 export function unauthorized() { return err("Unauthorized", 401); }
 export function forbidden() { return err("Forbidden — Admin only", 403); }
+
+// Safe server error handler to prevent leaking internal stack traces / configs
+export function handleServerError(error: unknown, userMessage = "Internal server error") {
+  console.error("[ServerError]", error);
+  return err(userMessage, 500);
+}
 
 // logAction: fire-and-forget system log writer
 export async function logAction(params: {

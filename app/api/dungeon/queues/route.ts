@@ -1,8 +1,8 @@
 export const dynamic = "force-dynamic";
 import { dungeonsRef, scheduleRef } from "@/lib/firebase-admin";
-import { getCurrentUser } from "@/lib/auth";
-import { ok, err, logAction } from "@/lib/server-utils";
+import { ok, err, handleServerError, logAction } from "@/lib/server-utils";
 import { isBookingOpen } from "@/lib/utils";
+import { dungeonQueueBookingSchema, validateBody } from "@/lib/validations";
 
 export async function GET() {
   try {
@@ -10,14 +10,19 @@ export async function GET() {
     const snap = await dungeonsRef().collection("queues").orderBy("timestamp", "asc").get();
     const queues = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
     return ok(queues);
-  } catch (e: any) {
-    return err(e.message, 500);
+  } catch (e: unknown) {
+    return handleServerError(e, "Failed to load dungeon queues");
   }
 }
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
+    const validation = validateBody(dungeonQueueBookingSchema, body);
+    if (!validation.success) {
+      return err(validation.error, 400);
+    }
+    const validData = validation.data;
     
     // 1. ตรวจสอบเวลาเปิดจอง (Validation on Backend ✅ ป้องกันการโกง 100%)
     const schedSnap = await scheduleRef().get();
@@ -32,7 +37,7 @@ export async function POST(req: Request) {
     // 2. ป้องกันการลงชื่อซ้ำในคิว
     const activeQueues = await dungeonsRef()
       .collection("queues")
-      .where("name", "==", body.name)
+      .where("name", "==", validData.name)
       .get();
       
     if (!activeQueues.empty) {
@@ -47,12 +52,12 @@ export async function POST(req: Request) {
 
     // 3. บันทึกข้อมูลคิว
     const newQueue = {
-      name: body.name,
-      job: body.job,
-      dungeon: body.dungeon,
-      power: Number(body.power) || 0,
+      name: validData.name,
+      job: validData.job,
+      dungeon: validData.dungeon,
+      power: Number(validData.power) || 0,
       status: "waiting", // สถานะเริ่มต้น
-      rounds: body.rounds || 1,
+      rounds: validData.rounds,
       round1: false,
       round2: false,
       timestamp: Date.now(),
@@ -64,15 +69,15 @@ export async function POST(req: Request) {
     logAction({
       module: "DUNGEON",
       action: "BOOK_QUEUE",
-      actor: body.name || "Member",
-      target: body.name,
-      detail: `จองคิวดันเจี้ยน ${body.dungeon || "ดันมายา"} (${body.job}) จำนวน ${body.rounds || 1} รอบ`,
-      extra: { name: body.name, job: body.job, dungeon: body.dungeon, rounds: body.rounds || 1 },
+      actor: validData.name || "Member",
+      target: validData.name,
+      detail: `จองคิวดันเจี้ยน ${validData.dungeon} (${validData.job}) จำนวน ${validData.rounds} รอบ`,
+      extra: { name: validData.name, job: validData.job, dungeon: validData.dungeon, rounds: validData.rounds },
     });
 
     return ok({ id: docRef.id, ...newQueue });
-  } catch (e: any) {
-    return err(e.message, 500);
+  } catch (e: unknown) {
+    return handleServerError(e, "Failed to book dungeon queue");
   }
 }
 

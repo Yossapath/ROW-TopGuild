@@ -1,24 +1,25 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest } from "next/server";
-import { ok, err, logAction } from "@/lib/server-utils";
+import { ok, err, handleServerError, logAction } from "@/lib/server-utils";
 import { dungeonsRef } from "@/lib/firebase-admin";
+import { requireAdmin } from "@/lib/auth";
+import { dungeonQueuePatchSchema, validateBody } from "@/lib/validations";
 
 type Params = { params: { id: string } };
 
 // PATCH /api/dungeon/queues/[id]
-// Body: { round: 1 | 2 }
-// Marks round1 or round2 as done. Auto-sets status="done" when all rounds complete.
+// Body: { round: 1 | 2 } or { action: "updateRounds", rounds: 1 | 2 }
 export async function PATCH(req: NextRequest, { params }: Params) {
   try {
     const { id } = params;
-    const body = await req.json() as { round?: 1 | 2 };
-    const round = body.round;
-
-    const action = (body as any).action;
-    if (action !== "updateRounds" && round !== 1 && round !== 2) {
-      return err("round must be 1 or 2", 400);
+    const body = await req.json();
+    const validation = validateBody(dungeonQueuePatchSchema, body);
+    if (!validation.success) {
+      return err(validation.error, 400);
     }
+
+    const { round, action, rounds: newRounds } = validation.data;
 
     const docRef = dungeonsRef().collection("queues").doc(id);
     const snap = await docRef.get();
@@ -41,7 +42,6 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
     // Check if the action is updating rounds
     if (action === "updateRounds") {
-      const newRounds = (body as any).rounds;
       if (newRounds === 1 || newRounds === 2) {
         update.rounds = newRounds;
         totalRounds = newRounds;
@@ -75,15 +75,17 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     });
 
     return ok({ id, ...update });
-  } catch (e) {
-    console.error("[PATCH /api/dungeon/queues/[id]]", e);
-    return err("Internal server error", 500);
+  } catch (e: unknown) {
+    return handleServerError(e, "Internal server error");
   }
 }
 
 // DELETE /api/dungeon/queues/[id]
 export async function DELETE(_req: NextRequest, { params }: Params) {
   try {
+    const auth = await requireAdmin();
+    if (auth.errorResponse) return auth.errorResponse;
+
     const { id } = params;
     const docRef = dungeonsRef().collection("queues").doc(id);
     const snap = await docRef.get();
@@ -96,15 +98,14 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
     logAction({
       module: "DUNGEON",
       action: "DELETE_QUEUE",
-      actor: "Admin",
+      actor: auth.user.gameUsername || auth.user.discordUsername || "Admin",
       target: qData?.name || id,
       detail: `ลบคิวของ ${qData?.name || id} (${qData?.job || "-"}) ออกจากระบบ`,
       extra: qData || { id },
     });
 
     return ok({ id, deleted: true });
-  } catch (e) {
-    console.error("[DELETE /api/dungeon/queues/[id]]", e);
-    return err("Internal server error", 500);
+  } catch (e: unknown) {
+    return handleServerError(e, "Internal server error");
   }
 }

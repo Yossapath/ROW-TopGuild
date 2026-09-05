@@ -1,14 +1,15 @@
-﻿import { NextResponse } from "next/server";
+export const dynamic = "force-dynamic";
 import { getCurrentUser } from "@/lib/auth";
+import { ok, unauthorized, handleServerError } from "@/lib/server-utils";
 
 export async function GET() {
   try {
     const user = await getCurrentUser();
     if (!user) {
-      return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+      return unauthorized();
     }
-    return NextResponse.json({ ok: true, data: user });
-  } catch (err: any) {
-    return NextResponse.json({ ok: false, error: err.message }, { status: 500 });
+    return ok(user);
+  } catch (err: unknown) {
+    return handleServerError(err, "Failed to get current user");
   }
 }

@@ -1,19 +1,21 @@
-import { NextResponse } from "next/server";
 import { getDb, COLL_USER, rosterRef } from "@/lib/firebase-admin";
-import { getCurrentUser, signToken, authCookie } from "@/lib/auth";
-import { ok, err } from "@/lib/server-utils";
+import { requireAuth, signToken, authCookie } from "@/lib/auth";
+import { ok, err, handleServerError } from "@/lib/server-utils";
+import { completeProfileSchema, validateBody } from "@/lib/validations";
 
 export async function POST(req: Request) {
   try {
-    const user = await getCurrentUser();
-    if (!user) return err("Unauthorized", 401);
+    const auth = await requireAuth();
+    if (auth.errorResponse) return auth.errorResponse;
+    const user = auth.user;
 
     const body = await req.json();
-    const { gameUsername, class: userClass, power } = body;
-
-    if (!gameUsername || !userClass || power === undefined || power === null) {
-      return err("กรุณากรอกข้อมูลให้ครบถ้วน", 400);
+    const validation = validateBody(completeProfileSchema, body);
+    if (!validation.success) {
+      return err(validation.error, 400);
     }
+
+    const { gameUsername, class: userClass, power } = validation.data;
 
     const db = getDb();
     const userRef = db.collection(COLL_USER).doc(user.discordId);
@@ -63,7 +65,7 @@ export async function POST(req: Request) {
     res.cookies.set(authCookie(token));
 
     return res;
-  } catch (e: any) {
-    return err(e.message || "เกิดข้อผิดพลาดในการบันทึกข้อมูล", 500);
+  } catch (e: unknown) {
+    return handleServerError(e, "เกิดข้อผิดพลาดในการบันทึกข้อมูล");
   }
 }

@@ -1,6 +1,9 @@
-﻿export const dynamic = "force-dynamic";
+export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { teamsRef } from "@/lib/firebase-admin";
+import { requireAdmin } from "@/lib/auth";
+import { err, ok, handleServerError, logAction } from "@/lib/server-utils";
+import { teamDataSchema, validateBody } from "@/lib/validations";
 
 export async function GET() {
   try {
@@ -10,16 +13,34 @@ export async function GET() {
     }
     return NextResponse.json(snapshot.data());
   } catch (error) {
-    return NextResponse.json({ error: "Failed to load teams" }, { status: 500 });
+    return handleServerError(error, "Failed to load teams");
   }
 }
 
 export async function PUT(request: Request) {
   try {
+    const auth = await requireAdmin();
+    if (auth.errorResponse) return auth.errorResponse;
+
     const data = await request.json();
-    await teamsRef().set(data);
-    return NextResponse.json({ success: true });
+    const validation = validateBody(teamDataSchema, data);
+    if (!validation.success) {
+      return err(validation.error, 400);
+    }
+
+    await teamsRef().set(validation.data);
+
+    // Audit log
+    logAction({
+      module: "TEAMS",
+      action: "SAVE_TEAMS",
+      actor: auth.user.gameUsername || auth.user.discordUsername || "Admin",
+      target: "GVG Teams",
+      detail: "บันทึกและอัปเดตการจัดทีม GVG ทั้งหมด",
+    });
+
+    return ok({ success: true });
   } catch (error) {
-    return NextResponse.json({ error: "Failed to save teams" }, { status: 500 });
+    return handleServerError(error, "Failed to save teams");
   }
 }

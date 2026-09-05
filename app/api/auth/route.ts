@@ -1,13 +1,13 @@
-﻿export const dynamic = "force-dynamic";
+export const dynamic = "force-dynamic";
 import { clearAuthCookie } from "@/lib/auth";
-import { ok, err } from "@/lib/server-utils";
+import { ok, err, handleServerError } from "@/lib/server-utils";
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
     const { action } = body;
 
-    // ฤฤ Logout ฤฤ
+    // Logout
     if (action === "logout") {
       const res = ok({ message: "Logged out" });
       res.cookies.set(clearAuthCookie());
@@ -15,8 +15,8 @@ export async function POST(req: Request) {
     }
 
     return err("Invalid action", 400);
-  } catch (e: any) {
-    return err(e.message, 500);
+  } catch (e: unknown) {
+    return handleServerError(e, "Internal server error");
   }
 }
 

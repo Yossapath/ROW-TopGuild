@@ -1,18 +1,26 @@
-﻿export const dynamic = "force-dynamic";
+export const dynamic = "force-dynamic";
 import { getDb, COLL_USER, rosterRef } from "@/lib/firebase-admin";
-import { getCurrentUser } from "@/lib/auth";
-import { NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth";
+import { ok, err, forbidden, handleServerError } from "@/lib/server-utils";
+import { rosterMemberUpdateSchema, validateBody } from "@/lib/validations";
 
 export async function PUT(req: Request) {
   try {
-    const user = await getCurrentUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const auth = await requireAuth();
+    if (auth.errorResponse) return auth.errorResponse;
+    const user = auth.user;
 
-    const { targetDiscordId, originalName, originalJob, name, job, power, warRole } = await req.json();
+    const body = await req.json();
+    const validation = validateBody(rosterMemberUpdateSchema, body);
+    if (!validation.success) {
+      return err(validation.error, 400);
+    }
+
+    const { targetDiscordId, originalName, originalJob, name, job, power, warRole } = validation.data;
 
     // Check permission: Admin or Self
-    if (user.role !== "admin" && user.discordId !== targetDiscordId) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if (user.role !== "admin" && user.role !== "owner" && user.discordId !== targetDiscordId) {
+      return forbidden();
     }
 
     const db = getDb();
@@ -22,7 +30,7 @@ export async function PUT(req: Request) {
     const userDoc = await userDocRef.get();
     if (userDoc.exists) {
       const updateData: any = { gameUsername: name, class: job, power: Number(power) };
-      if (user.role === "admin" && warRole) {
+      if ((user.role === "admin" || user.role === "owner") && warRole) {
         updateData.warRole = warRole;
       }
       await userDocRef.update(updateData);
@@ -49,7 +57,7 @@ export async function PUT(req: Request) {
         }
       }
 
-      memberObj.role = user.role === "admin" && warRole ? warRole : existingWarRole;
+      memberObj.role = (user.role === "admin" || user.role === "owner") && warRole ? warRole : existingWarRole;
 
       if (!rosterData[job]) rosterData[job] = [];
       rosterData[job].push(memberObj);
@@ -57,8 +65,8 @@ export async function PUT(req: Request) {
       t.set(rRef, rosterData);
     });
 
-    return NextResponse.json({ success: true });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return ok({ success: true });
+  } catch (err: unknown) {
+    return handleServerError(err, "Failed to update member");
   }
 }

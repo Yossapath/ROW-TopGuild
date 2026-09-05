@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { getDb, COLL_USER } from "@/lib/firebase-admin";
 import { signToken, authCookie } from "@/lib/auth";
 import type { GuildUser, AuthPayload } from "@/types";
@@ -7,9 +8,22 @@ import type { GuildUser, AuthPayload } from "@/types";
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const code = searchParams.get("code");
+  const state = searchParams.get("state");
+
+  // 1. Verify CSRF state
+  const cookieStore = cookies();
+  const savedState = cookieStore.get("oauth_state")?.value;
+
+  if (!state || !savedState || state !== savedState) {
+    const res = NextResponse.redirect(new URL("/login?error=InvalidState", req.url));
+    res.cookies.set({ name: "oauth_state", value: "", maxAge: 0, path: "/" });
+    return res;
+  }
 
   if (!code) {
-    return NextResponse.redirect(new URL("/login?error=NoCode", req.url));
+    const res = NextResponse.redirect(new URL("/login?error=NoCode", req.url));
+    res.cookies.set({ name: "oauth_state", value: "", maxAge: 0, path: "/" });
+    return res;
   }
 
   const clientId = process.env.DISCORD_CLIENT_ID;
@@ -38,7 +52,9 @@ export async function GET(req: Request) {
     const tokenData = await tokenResponse.json();
 
     if (tokenData.error) {
-      return NextResponse.redirect(new URL(`/login?error=${tokenData.error}`, req.url));
+      const res = NextResponse.redirect(new URL(`/login?error=${tokenData.error}`, req.url));
+      res.cookies.set({ name: "oauth_state", value: "", maxAge: 0, path: "/" });
+      return res;
     }
 
     const userResponse = await fetch("https://discord.com/api/users/@me", {
@@ -51,6 +67,13 @@ export async function GET(req: Request) {
     const discordId = userData.id;
     const discordUsername = userData.username;
 
+    // Check if user is configured as an admin via immutable Discord ID
+    const adminIds = (process.env.ADMIN_DISCORD_IDS || "")
+      .split(",")
+      .map((id) => id.trim())
+      .filter(Boolean);
+    const isConfiguredAdmin = adminIds.includes(discordId);
+
     const db = getDb();
     const userRef = db.collection(COLL_USER).doc(discordId);
     const doc = await userRef.get();
@@ -58,11 +81,11 @@ export async function GET(req: Request) {
     let isProfileComplete = false;
     let payload: AuthPayload;
 
-    const defaultRole = discordUsername === "datefourinmonthmay" ? "admin" : "member";
+    const defaultRole = isConfiguredAdmin ? "admin" : "member";
 
     if (doc.exists) {
       const data = doc.data() as GuildUser;
-      const userRole = (discordUsername === "datefourinmonthmay") ? "admin" : (data.role || "member");
+      const userRole = isConfiguredAdmin ? "admin" : (data.role || "member");
 
       isProfileComplete = !!data.gameUsername && !!data.class && data.power !== undefined;
       payload = {
@@ -98,10 +121,14 @@ export async function GET(req: Request) {
     const token = await signToken(payload);
     const res = NextResponse.redirect(new URL("/dashboard/roster", req.url));
     res.cookies.set(authCookie(token));
+    // Clear the OAuth state cookie
+    res.cookies.set({ name: "oauth_state", value: "", maxAge: 0, path: "/" });
     return res;
 
   } catch (err: any) {
     console.error("Discord OAuth Error:", err);
-    return NextResponse.redirect(new URL("/login?error=OAuthFailed", req.url));
+    const res = NextResponse.redirect(new URL("/login?error=OAuthFailed", req.url));
+    res.cookies.set({ name: "oauth_state", value: "", maxAge: 0, path: "/" });
+    return res;
   }
 }

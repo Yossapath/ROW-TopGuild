@@ -144,7 +144,7 @@ export default function RosterPage() {
   if (isLoading) return <div className="flex h-screen items-center justify-center font-bold text-gray-500">กำลังโหลดรายชื่อ...</div>;
 
   return (
-    <div className="space-y-6 bg-[#f0f6fc] min-h-screen p-4 lg:py-8 lg:px-12 xl:px-24 2xl:px-32 relative" style={{ zoom: 0.85 }}>
+    <div className="space-y-6 bg-[#f0f6fc] dark:bg-[#0a1420] min-h-screen p-4 lg:py-8 lg:px-12 xl:px-24 2xl:px-32 relative" style={{ zoom: 0.85 }}>
       
       {/* Top Banner */}
       <div className="bg-[#0b3d63] rounded-2xl p-6 text-white flex items-center justify-between shadow-md">
@@ -172,21 +172,21 @@ export default function RosterPage() {
             <input
               type="text"
               placeholder="ค้นหาชื่อสมาชิก..."
-              className="block w-full rounded-full border border-theme-border bg-theme-bg py-2.5 pl-11 pr-4 text-slate-900 focus:bg-theme-panel focus:ring-2 focus:ring-[#0b3d63] sm:text-sm font-medium transition-colors"
+              className="block w-full rounded-full border border-theme-border bg-theme-bg py-2.5 pl-11 pr-4 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:bg-theme-panel focus:ring-2 focus:ring-[#0b3d63] dark:focus:ring-sky-500 sm:text-sm font-medium transition-colors outline-none"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
           <button 
             onClick={openAddModal}
-            className="w-full sm:w-auto flex-shrink-0 rounded-full bg-[#0b3d63] px-6 py-2.5 text-sm font-bold text-white hover:bg-[#0f4b7a] transition-colors shadow-sm"
+            className="w-full sm:w-auto flex-shrink-0 rounded-full bg-[#0b3d63] hover:bg-[#0f4b7a] dark:bg-sky-600 dark:hover:bg-sky-500 px-6 py-2.5 text-sm font-bold text-white transition-colors shadow-sm"
           >
             เพิ่มสมาชิกใหม่
           </button>
         </div>
         <button 
           onClick={() => alert("ระบบ Import Excel กำลังพัฒนา")}
-          className="w-full md:w-auto rounded-full bg-theme-panel border border-[#0b3d63] px-6 py-2.5 text-sm font-bold text-[#0b3d63] hover:bg-blue-50 transition-colors shadow-sm"
+          className="w-full md:w-auto rounded-full bg-theme-panel border border-[#0b3d63] dark:border-sky-500/50 px-6 py-2.5 text-sm font-bold text-[#0b3d63] dark:text-sky-400 hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors shadow-sm"
         >
           เพิ่มกลุ่ม (Excel)
         </button>
@@ -199,14 +199,14 @@ export default function RosterPage() {
           onClick={() => setSelectedJob("ทั้งหมด")}
           className={`rounded-xl p-3.5 flex items-center justify-between shadow-sm border transition-all ${
             selectedJob === "ทั้งหมด" 
-              ? "bg-[#0b3d63] border-[#0b3d63] text-white ring-2 ring-offset-2 ring-[#0b3d63]" 
-              : "bg-theme-panel border-theme-border hover:border-[#0b3d63] hover:shadow-md"
+              ? "bg-[#0b3d63] dark:bg-sky-600 border-[#0b3d63] dark:border-sky-600 text-white ring-2 ring-offset-2 ring-[#0b3d63] dark:ring-sky-500 dark:ring-offset-[#0a1420]" 
+              : "bg-theme-panel border-theme-border hover:border-[#0b3d63] dark:hover:border-sky-500 hover:shadow-md text-theme-text"
           }`}
         >
           <div className="flex items-center space-x-2 font-bold text-sm lg:text-base">
             <span>ทั้งหมด</span>
           </div>
-          <div className={`px-3 py-1 rounded-lg text-sm font-bold ${selectedJob === "ทั้งหมด" ? "bg-theme-panel/20" : "bg-theme-divider text-theme-text"}`}>
+          <div className={`px-3 py-1 rounded-lg text-sm font-bold ${selectedJob === "ทั้งหมด" ? "bg-white/20 dark:bg-black/20 text-white" : "bg-theme-divider text-theme-text"}`}>
             {totalMembers}
           </div>
         </button>
@@ -224,8 +224,8 @@ export default function RosterPage() {
               className="bg-theme-panel rounded-xl p-3.5 flex items-center justify-between shadow-sm border-y border-r border-theme-border transition-all hover:shadow-md cursor-pointer text-left"
               style={{ 
                 borderLeft: `6px solid ${color}`,
-                boxShadow: isSelected ? `0 0 0 2px ${hexToRgba(color, 0.3)}` : undefined,
-                backgroundColor: isSelected ? hexToRgba(color, 0.05) : "white"
+                boxShadow: isSelected ? `0 0 0 2px ${hexToRgba(color, 0.4)}` : undefined,
+                backgroundColor: isSelected ? hexToRgba(color, 0.12) : undefined
               }}
             >
               <div className="flex items-center space-x-2 font-bold text-sm lg:text-base" style={{ color: color }}>
@@ -313,7 +313,7 @@ export default function RosterPage() {
                           {user?.role === 'admin' && (
                             <button 
                               onClick={() => openEditModal(m, job)}
-                              className="px-3 py-1.5 bg-theme-panel border border-blue-200 rounded-md text-[11px] font-bold text-[#0b3d63] shadow-sm hover:bg-blue-50 transition-colors"
+                              className="px-3 py-1.5 bg-theme-panel border border-blue-200 dark:border-sky-800/60 rounded-md text-[11px] font-bold text-[#0b3d63] dark:text-sky-400 shadow-sm hover:bg-blue-50 dark:hover:bg-sky-950/40 transition-colors"
                             >
                               แก้ไข
                             </button>
@@ -331,11 +331,11 @@ export default function RosterPage() {
 
       {/* Edit/Add Modal */}
       {(editingMember || isAddingNew) && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
-          <div className="bg-theme-panel rounded-2xl shadow-2xl w-full max-w-[420px] overflow-hidden flex flex-col font-prompt animate-in fade-in zoom-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+          <div className="bg-theme-panel rounded-2xl shadow-2xl w-full max-w-[420px] overflow-hidden flex flex-col font-prompt border border-theme-border animate-in fade-in zoom-in duration-200">
             {/* Header */}
             <div className="px-6 py-4 flex items-center justify-between border-b border-theme-border/50">
-              <h2 className="text-xl font-bold text-[#0b3d63]">
+              <h2 className="text-xl font-bold text-[#0b3d63] dark:text-sky-400">
                 {isAddingNew ? "เพิ่มสมาชิกใหม่" : "แก้ไขข้อมูลสมาชิก"}
               </h2>
               <button 
@@ -350,32 +350,32 @@ export default function RosterPage() {
             <div className="p-6 space-y-5">
               {!isAddingNew && editDiscordUsername && (
                 <div>
-                  <label className="block text-sm font-bold text-[#0b3d63] mb-1.5">Discord Username</label>
+                  <label className="block text-sm font-bold text-[#0b3d63] dark:text-sky-400 mb-1.5">Discord Username</label>
                   <input 
                     type="text" 
                     value={editDiscordUsername}
                     disabled
-                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-gray-500 font-medium bg-gray-100 cursor-not-allowed outline-none"
+                    className="w-full border border-gray-200 dark:border-[#1e3550] rounded-xl px-4 py-3 text-gray-500 dark:text-slate-400 font-medium bg-gray-100 dark:bg-[#182d46] cursor-not-allowed outline-none"
                   />
                 </div>
               )}
               <div>
-                <label className="block text-sm font-bold text-[#0b3d63] mb-1.5">ชื่อสมาชิก (ในเกม)</label>
+                <label className="block text-sm font-bold text-[#0b3d63] dark:text-sky-400 mb-1.5">ชื่อสมาชิก (ในเกม)</label>
                 <input 
                   type="text" 
                   value={editName}
                   onChange={e => setEditName(e.target.value)}
-                  className="w-full border border-blue-100 rounded-xl px-4 py-3 text-theme-text font-bold focus:ring-2 focus:ring-[#0b3d63] focus:border-[#0b3d63] bg-blue-50/40 transition-all outline-none"
+                  className="w-full border border-blue-100 dark:border-[#1e3550] rounded-xl px-4 py-3 text-theme-text font-bold focus:ring-2 focus:ring-[#0b3d63] dark:focus:ring-sky-500 focus:border-[#0b3d63] bg-blue-50/40 dark:bg-[#15263d] transition-all outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500"
                   placeholder="กรอกชื่อตัวละคร..."
                 />
               </div>
               
               <div>
-                <label className="block text-sm font-bold text-[#0b3d63] mb-1.5">อาชีพ</label>
+                <label className="block text-sm font-bold text-[#0b3d63] dark:text-sky-400 mb-1.5">อาชีพ</label>
                 <select 
                   value={editJob}
                   onChange={e => setEditJob(e.target.value)}
-                  className="w-full border border-blue-100 rounded-xl px-4 py-3 text-[#0b3d63] font-bold focus:ring-2 focus:ring-[#0b3d63] focus:border-[#0b3d63] bg-blue-50/40 transition-all outline-none appearance-none cursor-pointer"
+                  className="w-full border border-blue-100 dark:border-[#1e3550] rounded-xl px-4 py-3 text-[#0b3d63] dark:text-slate-100 font-bold focus:ring-2 focus:ring-[#0b3d63] dark:focus:ring-sky-500 focus:border-[#0b3d63] bg-blue-50/40 dark:bg-[#15263d] transition-all outline-none appearance-none cursor-pointer"
                 >
                   {JOB_LIST.map(job => (
                     <option key={job} value={job}>{job}</option>
@@ -384,25 +384,25 @@ export default function RosterPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-[#0b3d63] mb-1.5">ค่าพลัง</label>
+                <label className="block text-sm font-bold text-[#0b3d63] dark:text-sky-400 mb-1.5">ค่าพลัง</label>
                 <input 
                   type="number" 
                   value={editPower}
                   onChange={e => setEditPower(e.target.value)}
-                  className="w-full border border-blue-100 rounded-xl px-4 py-3 text-[#0b3d63] font-bold focus:ring-2 focus:ring-[#0b3d63] focus:border-[#0b3d63] bg-blue-50/40 transition-all outline-none"
+                  className="w-full border border-blue-100 dark:border-[#1e3550] rounded-xl px-4 py-3 text-[#0b3d63] dark:text-slate-100 font-bold focus:ring-2 focus:ring-[#0b3d63] dark:focus:ring-sky-500 focus:border-[#0b3d63] bg-blue-50/40 dark:bg-[#15263d] transition-all outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500"
                   placeholder="เช่น 150000"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-[#0b3d63] mb-1.5">
+                <label className="block text-sm font-bold text-[#0b3d63] dark:text-sky-400 mb-1.5">
                   ตำแหน่งวอ (สนามหลัก/สนามรอง) {user?.role !== "admin" && <span className="text-red-500 text-xs ml-2">(แอดมินเท่านั้น)</span>}
                 </label>
                 <select 
                   value={editRole}
                   onChange={e => setEditRole(e.target.value)}
                   disabled={user?.role !== "admin"}
-                  className={`w-full border rounded-xl px-4 py-3 font-bold transition-all outline-none appearance-none ${user?.role === "admin" ? "border-blue-100 text-[#0b3d63] focus:ring-2 focus:ring-[#0b3d63] focus:border-[#0b3d63] bg-blue-50/40 cursor-pointer" : "bg-gray-100 text-gray-500 cursor-not-allowed border-gray-200"}`}
+                  className={`w-full border rounded-xl px-4 py-3 font-bold transition-all outline-none appearance-none ${user?.role === "admin" ? "border-blue-100 dark:border-[#1e3550] text-[#0b3d63] dark:text-slate-100 focus:ring-2 focus:ring-[#0b3d63] dark:focus:ring-sky-500 focus:border-[#0b3d63] bg-blue-50/40 dark:bg-[#15263d] cursor-pointer" : "bg-gray-100 dark:bg-[#182d46] text-gray-500 dark:text-slate-400 cursor-not-allowed border-gray-200 dark:border-[#1e3550]"}`}
                 >
                   <option value="อิสระ (ให้ระบบจัดให้)">อิสระ (ให้ระบบจัดให้)</option>
                   <option value="สนามหลัก">สนามหลัก</option>
@@ -425,14 +425,14 @@ export default function RosterPage() {
               <div className="flex items-center space-x-3">
                 <button 
                   onClick={() => { setEditingMember(null); setIsAddingNew(false); }}
-                  className="bg-theme-panel border border-theme-border text-[#0b3d63] px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-theme-bg transition-all shadow-sm"
+                  className="bg-theme-panel border border-theme-border text-[#0b3d63] dark:text-sky-400 px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-theme-bg transition-all shadow-sm"
                 >
                   ยกเลิก
                 </button>
                 <button 
                   onClick={handleSave}
                   disabled={mutation.isPending}
-                  className="bg-[#0b3d63] text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-[#0f4b7a] transition-all shadow-sm hover:shadow disabled:opacity-70"
+                  className="bg-[#0b3d63] hover:bg-[#0f4b7a] dark:bg-sky-600 dark:hover:bg-sky-500 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm hover:shadow disabled:opacity-70"
                 >
                   {mutation.isPending ? "กำลังบันทึก..." : "บันทึกสมาชิก"}
                 </button>

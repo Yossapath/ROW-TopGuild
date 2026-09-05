@@ -1,16 +1,13 @@
 export const dynamic = "force-dynamic";
 import { dungeonsRef } from "@/lib/firebase-admin";
-import { getCurrentUser } from "@/lib/auth";
-import { ok, err, unauthorized } from "@/lib/server-utils";
+import { requireAdmin } from "@/lib/auth";
+import { ok, err, handleServerError } from "@/lib/server-utils";
 
 // สร้างทีมจัดดันเจี้ยน
 export async function POST(req: Request) {
   try {
-    const user = await getCurrentUser();
-    // ปกติแอดมินหรือคนมีสิทธิ์จัดทีม
-    if (!user || (user.role !== "admin" && user.role !== "owner")) {
-      return unauthorized();
-    }
+    const auth = await requireAdmin();
+    if (auth.errorResponse) return auth.errorResponse;
 
     const body = await req.json();
     const newTeam = {
@@ -23,18 +20,16 @@ export async function POST(req: Request) {
 
     const docRef = await dungeonsRef().collection("teams").add(newTeam);
     return ok({ id: docRef.id, ...newTeam });
-  } catch (e: any) {
-    return err(e.message, 500);
+  } catch (e: unknown) {
+    return handleServerError(e, "Failed to create dungeon team");
   }
 }
 
 // อัปเดตข้อมูลทีมดันเจี้ยน (การจัดคนลงตี้)
 export async function PUT(req: Request, { params }: { params: { id: string } }) {
   try {
-    const user = await getCurrentUser();
-    if (!user || (user.role !== "admin" && user.role !== "owner")) {
-      return unauthorized();
-    }
+    const auth = await requireAdmin();
+    if (auth.errorResponse) return auth.errorResponse;
 
     const body = await req.json();
     const { id } = params;
@@ -42,24 +37,22 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     await dungeonsRef().collection("teams").doc(id).set(body, { merge: true });
     
     return ok({ message: "อัปเดตทีมสำเร็จ" });
-  } catch (e: any) {
-    return err(e.message, 500);
+  } catch (e: unknown) {
+    return handleServerError(e, "Failed to update dungeon team");
   }
 }
 
 export async function DELETE(req: Request, { params }: { params: { id: string } }) {
   try {
-    const user = await getCurrentUser();
-    if (!user || (user.role !== "admin" && user.role !== "owner")) {
-      return unauthorized();
-    }
+    const auth = await requireAdmin();
+    if (auth.errorResponse) return auth.errorResponse;
 
     const { id } = params;
     await dungeonsRef().collection("teams").doc(id).delete();
     
     return ok({ message: "ลบทีมสำเร็จ" });
-  } catch (e: any) {
-    return err(e.message, 500);
+  } catch (e: unknown) {
+    return handleServerError(e, "Failed to delete dungeon team");
   }
 }
 

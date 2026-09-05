@@ -1,32 +1,34 @@
 export const dynamic = "force-dynamic";
 import { leaveRef, teamsRef } from "@/lib/firebase-admin";
-import { getCurrentUser } from "@/lib/auth";
-import { ok, err, unauthorized, logAction } from "@/lib/server-utils";
+import { requireAuth, requireAdmin } from "@/lib/auth";
+import { ok, err, handleServerError, logAction } from "@/lib/server-utils";
+import { leaveSubmitSchema, leaveDeleteSchema, validateBody } from "@/lib/validations";
 
 export async function GET() {
   try {
-    const user = await getCurrentUser();
-    if (!user) return unauthorized();
+    const auth = await requireAuth();
+    if (auth.errorResponse) return auth.errorResponse;
 
     const snap = await leaveRef().collection("records").orderBy("timestamp", "desc").limit(200).get();
-    const records = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const records = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
     return ok(records);
-  } catch (e: any) {
-    return err(e.message, 500);
+  } catch (e: unknown) {
+    return handleServerError(e, "Failed to load leave records");
   }
 }
 
 export async function POST(req: Request) {
   try {
-    const user = await getCurrentUser();
-    if (!user) return unauthorized();
+    const auth = await requireAuth();
+    if (auth.errorResponse) return auth.errorResponse;
 
     const body = await req.json();
-    const { name, job, date, day, reason } = body;
-
-    if (!name || (!date && !day)) {
-      return err("ข้อมูลไม่ครบถ้วน (ต้องมีชื่อ และ วันที่/วันในสัปดาห์)");
+    const validation = validateBody(leaveSubmitSchema, body);
+    if (!validation.success) {
+      return err(validation.error, 400);
     }
+
+    const { name, job, date, day, reason } = validation.data;
 
     const newLeave = {
       name,
@@ -34,8 +36,8 @@ export async function POST(req: Request) {
       date: date || "",
       day: day || "",
       reason: reason || "",
-      submittedBy: user.gameUsername,
-      timestamp: Date.now()
+      submittedBy: auth.user.gameUsername || auth.user.discordUsername || "User",
+      timestamp: Date.now(),
     };
 
     const docRef = await leaveRef().collection("records").add(newLeave);
@@ -73,25 +75,30 @@ export async function POST(req: Request) {
     logAction({
       module: "LEAVE",
       action: "SUBMIT_LEAVE",
-      actor: user.gameUsername || user.discordUsername || "User",
+      actor: auth.user.gameUsername || auth.user.discordUsername || "User",
       target: name,
       detail: `แจ้งลาวอ วัน${day ? ` ${day}` : ""} วันที่ ${date || "-"} (เหตุผล: ${reason || "-"})`,
       extra: { name, job, date, day, reason },
     });
 
     return ok({ id: docRef.id, ...newLeave });
-  } catch (e: any) {
-    return err(e.message, 500);
+  } catch (e: unknown) {
+    return handleServerError(e, "Failed to submit leave request");
   }
 }
 
 export async function DELETE(req: Request) {
   try {
-    const user = await getCurrentUser();
-    if (!user || user.role !== "admin") return unauthorized();
+    const auth = await requireAdmin();
+    if (auth.errorResponse) return auth.errorResponse;
 
-    const { id } = await req.json();
-    if (!id) return err("Missing id");
+    const body = await req.json();
+    const validation = validateBody(leaveDeleteSchema, body);
+    if (!validation.success) {
+      return err(validation.error, 400);
+    }
+
+    const { id } = validation.data;
 
     const snap = await leaveRef().collection("records").doc(id).get();
     const lData = snap.data() as any;
@@ -102,15 +109,15 @@ export async function DELETE(req: Request) {
     logAction({
       module: "LEAVE",
       action: "DELETE_LEAVE",
-      actor: user.gameUsername || user.discordUsername || "Admin",
+      actor: auth.user.gameUsername || auth.user.discordUsername || "Admin",
       target: lData?.name || id,
       detail: `ลบรายการแจ้งลาของ ${lData?.name || id} (วันที่ ${lData?.date || lData?.day || "-"})`,
       extra: lData || { id },
     });
 
     return ok({ success: true });
-  } catch (e: any) {
-    return err(e.message, 500);
+  } catch (e: unknown) {
+    return handleServerError(e, "Failed to delete leave record");
   }
 }
 

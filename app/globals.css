@@ -74,24 +74,44 @@
     --theme-purple: #8b5cf6;
   }
   .dark {
-    --theme-bg: #171D28;
-    --theme-sidebar: #181E29;
-    --theme-sidebar-active: #242A37;
-    --theme-sidebar-text-active: #4F8CFF;
-    --theme-sidebar-text: #9AA6B8;
-    --theme-panel: #1C1F27;
-    --theme-input: #242A37;
-    --theme-border: #303746;
-    --theme-border-hover: #414B5E;
-    --theme-divider: #293140;
-    --theme-text: #E8EDF5;
-    --theme-text-secondary: #9AA6B8;
-    --theme-text-muted: #6F7B8D;
-    --theme-primary: #4F8CFF;
-    --theme-primary-hover: #6B9FFF;
-    --theme-success: #35C98A;
-    --theme-warning: #F5B83D;
-    --theme-danger: #F05D6C;
-    --theme-purple: #9B6DFF;
+    --background: 216 50% 8%;
+    --foreground: 210 40% 98%;
+    --card: 214 52% 14%;
+    --card-foreground: 210 40% 98%;
+    --popover: 214 52% 14%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 207 83% 45%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 215 35% 18%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 215 35% 18%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 215 35% 18%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 215 45% 21%;
+    --input: 215 45% 21%;
+    --ring: 207 83% 45%;
+
+    --theme-bg: #0a1420;
+    --theme-sidebar: #081a2b;
+    --theme-sidebar-active: #182d46;
+    --theme-sidebar-text-active: #38bdf8;
+    --theme-sidebar-text: #94a3b8;
+    --theme-panel: #112236;
+    --theme-input: #15263d;
+    --theme-border: #1e3550;
+    --theme-border-hover: #29496e;
+    --theme-divider: #15273e;
+    --theme-text: #f1f5f9;
+    --theme-text-secondary: #94a3b8;
+    --theme-text-muted: #64748b;
+    --theme-primary: #38bdf8;
+    --theme-primary-hover: #0284c7;
+    --theme-success: #34d399;
+    --theme-warning: #fbbf24;
+    --theme-danger: #f87171;
+    --theme-purple: #a78bfa;
   }
 }

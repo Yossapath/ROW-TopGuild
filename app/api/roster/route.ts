@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 import { rosterRef, getDb, COLL_USER } from "@/lib/firebase-admin";
-import { getCurrentUser } from "@/lib/auth";
-import { ok, err, unauthorized } from "@/lib/server-utils";
+import { requireAdmin } from "@/lib/auth";
+import { ok, err, handleServerError } from "@/lib/server-utils";
 
 export async function GET() {
   try {
@@ -10,40 +10,42 @@ export async function GET() {
       return ok({});
     }
     const docData = doc.data() as any;
-    // The HTML app wraps the roster in a "data" property: { data: { "Lord Knight": [...] } }
     const actualRoster = docData.data ? docData.data : docData;
     return ok(actualRoster);
-  } catch (e: any) {
-    return err(e.message, 500);
+  } catch (e: unknown) {
+    return handleServerError(e, "Failed to load roster");
   }
 }
 
 // Admin only: Update whole roster or add new member
 export async function PUT(req: Request) {
   try {
-    const user = await getCurrentUser();
-    if (!user || (user.role !== "admin" && user.role !== "owner")) {
-      return unauthorized();
-    }
+    const auth = await requireAdmin();
+    if (auth.errorResponse) return auth.errorResponse;
 
     const body = await req.json();
+    if (!body || typeof body !== "object") {
+      return err("ข้อมูลไม่ถูกต้อง", 400);
+    }
+
     await rosterRef().set(body, { merge: true });
     
     return ok({ message: "Roster updated successfully" });
-  } catch (e: any) {
-    return err(e.message, 500);
+  } catch (e: unknown) {
+    return handleServerError(e, "Failed to update roster");
   }
 }
 
 export async function DELETE(req: Request) {
   try {
-    const user = await getCurrentUser();
-    if (!user || (user.role !== "admin" && user.role !== "owner")) {
-      return unauthorized();
-    }
+    const auth = await requireAdmin();
+    if (auth.errorResponse) return auth.errorResponse;
 
     const body = await req.json();
     const { discordId, job, name } = body;
+    if (!discordId && !name) {
+      return err("Missing identifier", 400);
+    }
     
     const db = getDb();
     
@@ -67,8 +69,8 @@ export async function DELETE(req: Request) {
     }
 
     return ok({ message: "Deleted" });
-  } catch (e: any) {
-    return err(e.message, 500);
+  } catch (e: unknown) {
+    return handleServerError(e, "Failed to delete member");
   }
 }
 
