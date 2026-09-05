@@ -497,12 +497,12 @@ export default function TeamsPage() {
               ระบุหรือวางรายชื่อสมาชิก 60 คนสำหรับสนามหลัก (บรรทัดละ 1 ชื่อ) ระบบจะจัดสนามหลักตามรายชื่อนี้ และนำสมาชิกคนที่เหลือทั้งหมดไปจัดลงสนามรองตามกฏกิลด์ให้อัตโนมัติ
             </p>
             <div className="bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 rounded-lg p-3 text-sm text-[#0b3d63] dark:text-white flex items-start gap-2">
-              <span className="font-bold">✨ คำแนะนำ:</span> จำนวนที่ดึงอัตโนมัติ จะคัดเลือกมี Priest 12 คนสำหรับสนามหลักให้อัตโนมัติ
+              <span className="font-bold">คำแนะนำ:</span> จำนวนที่ดึงอัตโนมัติ จะคัดเลือกมี Priest 12 คนสำหรับสนามหลักให้อัตโนมัติ
             </div>
             <div className="flex items-center justify-between">
               <span className="font-bold text-sm text-theme-text">ตรวจพบรายชื่อ: {names.length} / 60 คน</span>
               <button onClick={handlePullTop60} className="text-[#0b3d63] dark:text-white font-bold text-sm bg-[#0b3d63]/10 dark:bg-[#3B66D1]/20 px-4 py-1.5 rounded-lg hover:bg-[#0b3d63]/20 dark:hover:bg-[#4D73CD]/25 transition-colors border border-[#0b3d63]/20 dark:border-[#4D73CD]/40 flex items-center gap-1">
-                ✨ ดึง 60 พลังสูงสุดมาวางให้ก่อน
+                ดึง 60 พลังสูงสุดมาวางให้ก่อน
               </button>
             </div>
             <textarea 
@@ -515,7 +515,7 @@ export default function TeamsPage() {
           <div className="p-4 border-t border-theme-border flex items-center justify-end gap-3 bg-theme-bg/50">
             <button onClick={() => setIsAutoModalOpen(false)} className="px-5 py-2 rounded-lg font-bold text-theme-textSecondary hover:bg-theme-border/50 transition-colors border border-theme-border bg-theme-panel">ยกเลิก</button>
             <button onClick={handleProcessAutoMatch} className="px-5 py-2 rounded-lg font-bold text-white bg-[#10b981] hover:bg-[#059669] transition-colors shadow-sm flex items-center gap-2">
-              🚀 ประมวลผลและจัดทีมทันที
+              ประมวลผลและจัดทีมทันที
             </button>
           </div>
         </div>

@@ -10,6 +10,8 @@ import {
   Copy,
   ClipboardCheck,
   Users,
+  Calendar,
+  CheckCircle,
 } from "lucide-react";
 import { useAuthStore } from "@/stores/useAuthStore";
 import type { LeaveRecord } from "@/types";
@@ -298,7 +300,7 @@ export default function AttendancePage() {
       });
       const json = await res.json();
       if (!json.ok) throw new Error(json.error ?? "ไม่สามารถบันทึกได้");
-      setMsg({ type: "ok", text: "บันทึกเช็คชื่อสำเร็จ ✅" });
+      setMsg({ type: "ok", text: "บันทึกเช็คชื่อสำเร็จ" });
     } catch (e: unknown) {
       setMsg({ type: "err", text: e instanceof Error ? e.message : "เกิดข้อผิดพลาด" });
     } finally {
@@ -312,9 +314,9 @@ export default function AttendancePage() {
     const absent = rows.filter((r) => r.status !== "มา");
     const text = [
       `เช็คชื่อวันที่ ${formatDateTH(selectedDate)} (${getDayName(selectedDate)})`,
-      `✅ มาวอ (${present.length} คน)`,
+      `มาวอ (${present.length} คน)`,
       present.map((r) => r.name).join(", "),
-      `❌ ขาด/ลา (${absent.length} คน)`,
+      `ขาด/ลา (${absent.length} คน)`,
       absent.map((r) => r.name).join(", "),
     ].join("\n");
     navigator.clipboard.writeText(text).then(() => {
@@ -424,12 +426,10 @@ export default function AttendancePage() {
           );
         })}
         {selectedDate && (
-          <div className="ml-auto">
-            <span className="text-sm font-medium text-slate-700 dark:text-white">
-              📅{" "}
-              <span className="font-bold text-[#0b3d63] dark:text-white">
-                {formatDateTH(selectedDate)} ({getDayName(selectedDate)})
-              </span>
+          <div className="ml-auto flex items-center gap-1.5 text-sm font-medium text-slate-700 dark:text-white">
+            <Calendar className="w-4 h-4 text-[#0b3d63] dark:text-[#82A0F5]" />
+            <span className="font-bold text-[#0b3d63] dark:text-white">
+              {formatDateTH(selectedDate)} ({getDayName(selectedDate)})
             </span>
           </div>
         )}
@@ -674,7 +674,9 @@ export default function AttendancePage() {
               {importResult && (
                 <div className={`p-3 rounded-xl border ${importResult.unmatch.length > 0 ? "bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800/60" : "bg-green-50 dark:bg-green-950/40 border-green-200 dark:border-green-800/60"}`}>
                   <p className="text-sm font-bold text-slate-700 dark:text-white">ผลลัพธ์การนำเข้า:</p>
-                  <p className="text-xs text-green-600 dark:text-green-400 mt-1">✅ ค้นพบและติ๊ก &quot;มา&quot; แล้ว: {importResult.match} คน</p>
+                  <p className="text-xs text-green-600 dark:text-green-400 mt-1 flex items-center gap-1">
+                    <CheckCircle className="w-3.5 h-3.5 inline" /> ค้นพบและติ๊ก &quot;มา&quot; แล้ว: {importResult.match} คน
+                  </p>
                   {importResult.unmatch.length > 0 && (
                     <div className="mt-2">
                       <p className="text-xs text-amber-600 dark:text-amber-400 font-bold flex items-center gap-1">

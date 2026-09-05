@@ -4,7 +4,7 @@ import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { JOB_COLORS, JOB_LIST } from "@/lib/utils";
-import { Search, X, Shield, Users } from "lucide-react";
+import { Search, X, Shield, Users, Check } from "lucide-react";
 import { useAuthStore } from "@/stores/useAuthStore";
 
 export default function RosterPage() {
@@ -251,10 +251,10 @@ export default function RosterPage() {
               <div className="flex items-center space-x-2 font-bold text-sm text-slate-700 dark:text-white">
                 {isSelected ? (
                   <span 
-                    className="w-4 h-4 rounded-full flex items-center justify-center text-white shrink-0 text-[10px] font-black shadow-sm" 
+                    className="w-4 h-4 rounded-full flex items-center justify-center text-white shrink-0 shadow-sm" 
                     style={{ backgroundColor: color }}
                   >
-                    ✓
+                    <Check size={10} strokeWidth={3} className="text-white" />
                   </span>
                 ) : (
                   <span className="w-2.5 h-2.5 rounded-full shadow-sm shrink-0" style={{ backgroundColor: color }}></span>

@@ -24,7 +24,7 @@ export async function POST(req: Request) {
     }
     const validData = validation.data;
     
-    // 1. ตรวจสอบเวลาเปิดจอง (Validation on Backend ✅ ป้องกันการโกง 100%)
+    // 1. ตรวจสอบเวลาเปิดจอง (Validation on Backend - ป้องกันการโกง 100%)
     const schedSnap = await scheduleRef().get();
     if (schedSnap.exists) {
       const sched = schedSnap.data() as any;

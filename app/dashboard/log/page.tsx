@@ -188,7 +188,7 @@ export default function LogPage() {
     return Array.from(mods).sort();
   }, [logs]);
 
-  const TABS = ["📋 System Log", "🏖️ ลาออฟไลน์", "⚔️ จองคิวดันเจี้ยน"];
+  const TABS = ["System Log", "ลาออฟไลน์", "จองคิวดันเจี้ยน"];
 
   return (
     <div

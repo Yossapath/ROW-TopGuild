@@ -15,6 +15,8 @@ import {
   Search,
   FastForward,
   RotateCcw,
+  Play,
+  AlertCircle,
 } from "lucide-react";
 import { useAuthStore } from "@/stores/useAuthStore";
 import {
@@ -222,7 +224,7 @@ export default function DungeonPage() {
       });
       const json = await res.json();
       if (json.ok) {
-        setFormMsg({ type: "ok", text: "จองคิวสำเร็จ! 🎉" });
+        setFormMsg({ type: "ok", text: "จองคิวสำเร็จ" });
         if (isAdmin) {
           setFormName("");
           setFormJob(JOB_LIST[0] ?? "");
@@ -460,7 +462,7 @@ export default function DungeonPage() {
                           : "bg-slate-100 dark:bg-[#272C38] text-slate-600 dark:text-white hover:bg-slate-200 dark:hover:bg-[#2F3547]"
                       }`}
                     >
-                      {r === 1 ? "↑ 1 รอบ" : "✕ 2 รอบ"}
+                      {r === 1 ? "1 รอบ" : "2 รอบ"}
                     </button>
                   ))}
                 </div>
@@ -559,7 +561,7 @@ export default function DungeonPage() {
                 {/* Carry Teams setting */}
                 <div className="pt-2 border-t border-slate-200 dark:border-[#2D3342]">
                   <label className="block text-xs font-semibold text-slate-600 dark:text-white mb-1.5 flex items-center justify-between">
-                    <span>🛡️ จำนวนทีมแบก (Carry Teams)</span>
+                    <span>จำนวนทีมแบก (Carry Teams)</span>
                     <span className="text-[#3B66D1] dark:text-[#82A0F5] font-bold">{carryTeamsCount} ทีม</span>
                   </label>
                   <div className="grid grid-cols-4 gap-1.5 mb-2">
@@ -642,11 +644,11 @@ export default function DungeonPage() {
               <span className="bg-[#0b3d63] dark:bg-[#3B66D1] text-white text-xs font-bold px-2.5 py-1 rounded-full">
                 {queues.length} คน
               </span>
-              <span className="text-xs font-bold text-blue-700 dark:text-[#82A0F5] bg-blue-50 dark:bg-[#3B66D1]/20 border border-blue-200 dark:border-[#4D73CD]/30 px-2.5 py-1 rounded-lg">
-                🛡️ ทีมแบก {carryTeamsCount} ทีม (พระ {estimates.capacityPerRound.priest} + อื่นๆ {estimates.capacityPerRound.others}/รอบ)
+              <span className="text-xs font-bold text-blue-700 dark:text-[#82A0F5] bg-blue-50 dark:bg-[#3B66D1]/20 border border-blue-200 dark:border-[#4D73CD]/30 px-2.5 py-1 rounded-lg flex items-center gap-1">
+                <Shield size={12} /> ทีมแบก {carryTeamsCount} ทีม (พระ {estimates.capacityPerRound.priest} + อื่นๆ {estimates.capacityPerRound.others}/รอบ)
               </span>
-              <span className="text-xs font-bold text-slate-600 dark:text-[#8B93A7] bg-white dark:bg-[#232733] border border-slate-200 dark:border-[#2D3342] px-2.5 py-1 rounded-lg">
-                ⏱️ {estimates.totalRoundsCount} รอบ (~11-12 นาที/รอบ)
+              <span className="text-xs font-bold text-slate-600 dark:text-[#8B93A7] bg-white dark:bg-[#232733] border border-slate-200 dark:border-[#2D3342] px-2.5 py-1 rounded-lg flex items-center gap-1">
+                <Clock size={12} /> {estimates.totalRoundsCount} รอบ (~11-12 นาที/รอบ)
               </span>
             </div>
             
@@ -790,7 +792,7 @@ export default function DungeonPage() {
                             {/* 2 rounds badge */}
                             {q.rounds === 2 && (
                               <span className="text-xs bg-purple-100 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 font-medium px-2 py-0.5 rounded-full">
-                                ✕ 2 รอบ
+                                2 รอบ
                               </span>
                             )}
 
@@ -814,7 +816,7 @@ export default function DungeonPage() {
                             <div className="flex items-center gap-2 mt-1.5 flex-wrap text-xs">
                               {qEst.queuesAhead === 0 ? (
                                 <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800/40 flex items-center gap-1">
-                                  🚀 ถึงคิวแล้ว (ทีมแบก {qEst.assignedTeam} · รอเริ่มรัน)
+                                  <Play size={11} className="fill-current" /> ถึงคิวแล้ว (ทีมแบก {qEst.assignedTeam} · รอเริ่มรัน)
                                 </span>
                               ) : (
                                 <>
@@ -822,8 +824,8 @@ export default function DungeonPage() {
                                     <Clock size={11} />
                                     อีก {qEst.queuesAhead} รอบ (~{qEst.waitMinutesMin}-{qEst.waitMinutesMax} นาที)
                                   </span>
-                                  <span className="text-[11px] font-bold text-blue-600 dark:text-[#82A0F5]">
-                                    🕒 คาดว่าได้ลง {qEst.estimatedStartTimeText}
+                                  <span className="text-[11px] font-bold text-blue-600 dark:text-[#82A0F5] flex items-center gap-1">
+                                    <Clock size={11} /> คาดว่าได้ลง {qEst.estimatedStartTimeText}
                                   </span>
                                 </>
                               )}
@@ -844,7 +846,7 @@ export default function DungeonPage() {
                               return (
                                 <div className="flex items-center gap-2 mt-1.5 flex-wrap text-xs">
                                   <span className="text-[11px] font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 rounded-md border border-blue-200 dark:border-blue-800/40 flex items-center gap-1">
-                                    ⏱ กำลังลง {elapsedMin} นาที {String(elapsedSec).padStart(2, "0")} วินาที
+                                    <Clock size={11} /> กำลังลง {elapsedMin} นาที {String(elapsedSec).padStart(2, "0")} วินาที
                                   </span>
                                   <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400">
                                     {etaStr}
@@ -856,7 +858,8 @@ export default function DungeonPage() {
 
                           {isSkipped && (
                             <div className="flex items-center gap-2 mt-1.5 text-xs text-amber-600 dark:text-amber-400 font-medium">
-                              ⚠️ ผู้เล่นไม่อยู่ขณะเรียกคิว (สามารถกดปุ่ม &quot;กลับเข้าคิว&quot; เมื่อผู้เล่นกลับมา)
+                              <AlertCircle size={13} className="shrink-0 text-amber-500" />
+                              ผู้เล่นไม่อยู่ขณะเรียกคิว (สามารถกดปุ่ม &quot;กลับเข้าคิว&quot; เมื่อผู้เล่นกลับมา)
                             </div>
                           )}
 
@@ -908,7 +911,8 @@ export default function DungeonPage() {
                                   className="text-sm font-semibold px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-colors flex items-center gap-1.5 cursor-pointer"
                                   title="กดเพื่อเริ่มรันคิว (ตั้งสถานะกำลังลง)"
                                 >
-                                  🎮 เริ่มรันคิว
+                                  <Play size={14} className="fill-current" />
+                                  เริ่มรันคิว
                                 </button>
                               )}
 

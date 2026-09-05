@@ -12,6 +12,9 @@ import {
   Clock,
   Search,
   Sparkles,
+  Shield,
+  AlertCircle,
+  Play,
 } from "lucide-react";
 import { JOB_LIST, JOB_COLORS, isBookingOpen, formatTimestamp } from "@/lib/utils";
 import { calculateDungeonEstimates, type QueueEstimate } from "@/lib/dungeon-estimator";
@@ -24,14 +27,16 @@ function StatusBadge({ open, reason }: { open: boolean; reason?: string }) {
   if (open) {
     return (
       <span className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-green-500/20 text-green-200 font-bold text-sm border border-green-400/30">
-        🟢 เปิดรับจองตอนนี้
+        <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />
+        เปิดรับจองตอนนี้
       </span>
     );
   }
   return (
     <div className="text-right">
       <span className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-red-500/20 text-red-200 font-bold text-sm border border-red-400/30">
-        🔴 ปิดรับจอง
+        <span className="w-2 h-2 rounded-full bg-red-400 inline-block" />
+        ปิดรับจอง
       </span>
       {reason && (
         <p className="text-blue-200 text-xs mt-1 max-w-xs">{reason}</p>
@@ -272,7 +277,7 @@ export default function BookingPage() {
                 className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-sm font-medium text-blue-100"
               >
                 <Share2 size={14} />
-                {copied ? "คัดลอกแล้ว ✓" : "แชร์ลิงก์"}
+                {copied ? "คัดลอกแล้ว" : "แชร์ลิงก์"}
               </button>
             </div>
           </div>
@@ -282,13 +287,13 @@ export default function BookingPage() {
         <div className="bg-blue-50 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-900/50 rounded-xl p-4 flex flex-wrap gap-4 items-center justify-between">
           <div className="flex items-center gap-2">
             <Info size={18} className="text-blue-500 dark:text-[#82A0F5] flex-shrink-0" />
-            <span className="text-xs font-bold text-blue-800 dark:text-[#82A0F5]">
-              🛡️ ทีมแบกกิลด์ {carryTeamsCount} ทีม (รองรับ พระ {estimates.capacityPerRound.priest} คน + อาชีพอื่น {estimates.capacityPerRound.others} คน/รอบ)
+            <span className="text-xs font-bold text-blue-800 dark:text-[#82A0F5] flex items-center gap-1">
+              <Shield size={14} /> ทีมแบกกิลด์ {carryTeamsCount} ทีม (รองรับ พระ {estimates.capacityPerRound.priest} คน + อาชีพอื่น {estimates.capacityPerRound.others} คน/รอบ)
             </span>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs font-bold text-slate-500 dark:text-[#8B93A7] bg-white dark:bg-[#272C38] px-2.5 py-1 rounded-full border border-slate-200 dark:border-[#2D3342]">
-              ⏱️ ~11-12 นาที/รอบ
+            <span className="text-xs font-bold text-slate-500 dark:text-[#8B93A7] bg-white dark:bg-[#272C38] px-2.5 py-1 rounded-full border border-slate-200 dark:border-[#2D3342] flex items-center gap-1">
+              <Clock size={12} /> ~11-12 นาที/รอบ
             </span>
             <span className="text-xs font-bold text-slate-500 dark:text-[#8B93A7] bg-white dark:bg-[#272C38] px-2.5 py-1 rounded-full border border-slate-200 dark:border-[#2D3342]">
               จองได้ 1-2 รอบ/คน
@@ -314,7 +319,7 @@ export default function BookingPage() {
                 <div className="space-y-4">
                   <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800/40 rounded-xl p-6 text-center">
                     <CheckCircle size={48} className="text-green-500 mx-auto mb-3" />
-                    <h3 className="text-xl font-bold text-green-700 dark:text-green-400 mb-1">จองสำเร็จ! 🎉</h3>
+                    <h3 className="text-xl font-bold text-green-700 dark:text-green-400 mb-1">จองสำเร็จ!</h3>
                     <p className="text-green-600 dark:text-green-300 font-medium text-lg">{success.name}</p>
                     
                     {myEst && (
@@ -324,7 +329,7 @@ export default function BookingPage() {
                           <span className="text-[#3B66D1] dark:text-[#82A0F5] text-sm font-extrabold">
                             {myEst.track === "priest"
                               ? `โควตาพระ · รอบที่ ${myEst.assignedRound} (ทีม ${myEst.assignedTeam})`
-                              : `รอบที่ ${myEst.assignedRound} · ทีม ${myEst.assignedTeam} (ช่อง ${myEst.slotInTeam}/2)`}
+                              : `รอบที่ ${myEst.assignedRound} · ทีม ${myEst.assignedTeam}`}
                           </span>
                         </div>
                         <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-white">
@@ -477,7 +482,7 @@ export default function BookingPage() {
                         : "bg-white dark:bg-[#272C38] text-slate-500 dark:text-[#8B93A7] hover:bg-slate-50 dark:hover:bg-[#2A2F3E]"
                     }`}
                   >
-                    ↑ รอบ 1
+                    รอบ 1
                   </button>
                   <button
                     type="button"
@@ -488,7 +493,7 @@ export default function BookingPage() {
                         : "bg-white dark:bg-[#272C38] text-slate-500 dark:text-[#8B93A7] hover:bg-slate-50 dark:hover:bg-[#2A2F3E]"
                     }`}
                   >
-                    ✕ รอบ 1 + 2
+                    รอบ 1 + 2
                   </button>
                 </div>
               </div>
@@ -579,16 +584,16 @@ export default function BookingPage() {
 
                   <p className="text-xs font-medium text-slate-600 dark:text-slate-300 mt-1">
                     {myQueueEstimate.status === "active" ? (
-                      <span className="text-blue-600 dark:text-blue-400 font-bold">⚔️ กำลังลงดันเจี้ยนอยู่ในขณะนี้!</span>
+                      <span className="text-blue-600 dark:text-blue-400 font-bold">กำลังลงดันเจี้ยนอยู่ในขณะนี้!</span>
                     ) : myQueueEstimate.status === "done" ? (
-                      <span className="text-green-600 dark:text-emerald-400 font-bold">🎉 ลงดันเจี้ยนเสร็จสิ้นเรียบร้อยแล้ว</span>
+                      <span className="text-green-600 dark:text-emerald-400 font-bold">ลงดันเจี้ยนเสร็จสิ้นเรียบร้อยแล้ว</span>
                     ) : myQueueEstimate.status === "skipped" ? (
-                      <span className="text-amber-600 dark:text-amber-400 font-bold">⚠️ คิวของคุณถูกข้ามเนื่องจากไม่อยู่ขณะเรียกคิว (กรุณาแจ้งแอดมินหรือหัวตี้เพื่อนำกลับเข้าคิว)</span>
+                      <span className="text-amber-600 dark:text-amber-400 font-bold">คิวของคุณถูกข้ามเนื่องจากไม่อยู่ขณะเรียกคิว (กรุณาแจ้งแอดมินหรือหัวตี้เพื่อนำกลับเข้าคิว)</span>
                     ) : myQueueEstimate.queuesAhead === 0 ? (
                       <span className="text-emerald-600 dark:text-emerald-400 font-bold">
                         {myQueueEstimate.track === "priest"
-                          ? `✨ ถึงคิวของคุณแล้ว! คุณอยู่ใน โควตาพระ · รอบที่ ${myQueueEstimate.assignedRound} (ทีมแบก ${myQueueEstimate.assignedTeam})`
-                          : `✨ ถึงคิวของคุณแล้ว! คุณอยู่ใน รอบที่ ${myQueueEstimate.assignedRound} · ทีมแบก ${myQueueEstimate.assignedTeam} (ช่อง ${myQueueEstimate.slotInTeam}/2)`}
+                          ? `ถึงคิวของคุณแล้ว! คุณอยู่ใน โควตาพระ · รอบที่ ${myQueueEstimate.assignedRound} (ทีมแบก ${myQueueEstimate.assignedTeam})`
+                          : `ถึงคิวของคุณแล้ว! คุณอยู่ใน รอบที่ ${myQueueEstimate.assignedRound} · ทีมแบก ${myQueueEstimate.assignedTeam}`}
                       </span>
                     ) : (
                       <>
@@ -596,7 +601,7 @@ export default function BookingPage() {
                         <span className="font-bold text-[#0b3d63] dark:text-[#82A0F5]">
                           {myQueueEstimate.track === "priest"
                             ? `โควตาพระ · รอบที่ ${myQueueEstimate.assignedRound} (ทีมแบก ${myQueueEstimate.assignedTeam})`
-                            : `รอบที่ ${myQueueEstimate.assignedRound} · ทีมแบก ${myQueueEstimate.assignedTeam} (ช่อง ${myQueueEstimate.slotInTeam}/2)`}
+                            : `รอบที่ ${myQueueEstimate.assignedRound} · ทีมแบก ${myQueueEstimate.assignedTeam}`}
                         </span>
                         {" · "}
                         เหลืออีก <span className="font-bold text-amber-600 dark:text-amber-400">{myQueueEstimate.queuesAhead} รอบ</span> จะถึงคุณ
@@ -743,7 +748,7 @@ export default function BookingPage() {
                           {/* 2 rounds badge */}
                           {q.rounds === 2 && (
                             <span className="text-xs bg-purple-100 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 font-medium px-2 py-0.5 rounded-full border border-purple-200 dark:border-purple-800/40">
-                              ✕ 2 รอบ
+                              2 รอบ
                             </span>
                           )}
 
@@ -767,7 +772,7 @@ export default function BookingPage() {
                           <div className="flex items-center gap-2 mt-1.5 flex-wrap text-xs">
                             {qEst.queuesAhead === 0 ? (
                               <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800/40 flex items-center gap-1">
-                                🚀 รอบแรก (ทีมแบก {qEst.assignedTeam} · พร้อมลงทันที)
+                                <Play size={11} className="fill-current" /> รอบแรก (ทีมแบก {qEst.assignedTeam} · พร้อมลงทันที)
                               </span>
                             ) : (
                               <>
@@ -775,8 +780,8 @@ export default function BookingPage() {
                                   <Clock size={11} />
                                   อีก {qEst.queuesAhead} รอบ (~{qEst.waitMinutesMin}-{qEst.waitMinutesMax} นาที)
                                 </span>
-                                <span className="text-[11px] font-bold text-blue-600 dark:text-[#82A0F5]">
-                                  🕒 คาดว่าได้ลง {qEst.estimatedStartTimeText}
+                                <span className="text-[11px] font-bold text-blue-600 dark:text-[#82A0F5] flex items-center gap-1">
+                                  <Clock size={11} /> คาดว่าได้ลง {qEst.estimatedStartTimeText}
                                 </span>
                               </>
                             )}
@@ -796,7 +801,7 @@ export default function BookingPage() {
                             return (
                               <div className="flex items-center gap-2 mt-1.5 flex-wrap text-xs">
                                 <span className="text-[11px] font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 rounded-md border border-blue-200 dark:border-blue-800/40 flex items-center gap-1">
-                                  ⏱ กำลังลง {elapsedMin} นาที {String(elapsedSec).padStart(2, "0")} วินาที
+                                  <Clock size={11} /> กำลังลง {elapsedMin} นาที {String(elapsedSec).padStart(2, "0")} วินาที
                                 </span>
                                 <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400">
                                   {etaStr}
@@ -808,7 +813,8 @@ export default function BookingPage() {
 
                         {isSkipped && (
                           <div className="flex items-center gap-2 mt-1.5 text-xs text-amber-600 dark:text-amber-400 font-medium">
-                            ⚠️ คิวถูกข้ามเนื่องจากไม่อยู่ขณะเรียกคิว (ติดต่อแอดมินหรือหัวตี้เพื่อนำกลับเข้าคิว)
+                            <AlertCircle size={13} className="shrink-0 text-amber-500" />
+                            คิวถูกข้ามเนื่องจากไม่อยู่ขณะเรียกคิว (ติดต่อแอดมินหรือหัวตี้เพื่อนำกลับเข้าคิว)
                           </div>
                         )}
                       </div>

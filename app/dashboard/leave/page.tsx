@@ -93,7 +93,7 @@ export default function LeavePage() {
       });
       const json = await res.json();
       if (!json.ok) throw new Error(json.error ?? "ไม่สามารถแจ้งลาได้");
-      setFormMsg({ type: "ok", text: "แจ้งลาสำเร็จ ✅" });
+      setFormMsg({ type: "ok", text: "แจ้งลาสำเร็จ" });
       setLeaveDate(""); setReason("");
       if (isAdmin) { setName(""); setJob("Priest"); }
       await fetchLeaves();
