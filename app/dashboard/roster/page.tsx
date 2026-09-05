@@ -10,6 +10,7 @@ import { useAuthStore } from "@/stores/useAuthStore";
 export default function RosterPage() {
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
+  const isAdmin = user?.role === "admin" || user?.role === "owner";
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedJob, setSelectedJob] = useState("ทั้งหมด");
   const [editingMember, setEditingMember] = useState<any>(null);
@@ -221,20 +222,18 @@ export default function RosterPage() {
             <button 
               key={`pill-${job}`} 
               onClick={() => setSelectedJob(isSelected ? "ทั้งหมด" : job)}
-              className="bg-theme-panel rounded-xl p-3.5 flex items-center justify-between shadow-sm border-y border-r border-theme-border transition-all hover:shadow-md cursor-pointer text-left"
-              style={{ 
-                borderLeft: `6px solid ${color}`,
-                boxShadow: isSelected ? `0 0 0 2px ${hexToRgba(color, 0.4)}` : undefined,
-                backgroundColor: isSelected ? hexToRgba(color, 0.12) : undefined
-              }}
+              className={`bg-theme-panel rounded-xl p-3.5 flex items-center justify-between shadow-sm border transition-all hover:shadow-md cursor-pointer text-left ${
+                isSelected 
+                  ? "border-[#4D73CD] ring-2 ring-[#4D73CD]/30 dark:ring-[#4D73CD]/40" 
+                  : "border-theme-border hover:border-[#4D73CD]/50"
+              }`}
             >
-              <div className="flex items-center space-x-2 font-bold text-sm lg:text-base" style={{ color: color }}>
+              <div className="flex items-center space-x-2 font-bold text-sm lg:text-base text-theme-text">
                 <span className="w-2.5 h-2.5 rounded-full shadow-sm" style={{ backgroundColor: color }}></span>
                 <span>{job}</span>
               </div>
               <div 
-                className="px-3 py-1 rounded-lg text-sm font-bold"
-                style={{ backgroundColor: hexToRgba(color, 0.15), color: color }}
+                className="px-3 py-1 rounded-lg text-sm font-bold bg-theme-input text-theme-text"
               >
                 {count}
               </div>
@@ -265,20 +264,15 @@ export default function RosterPage() {
             <div 
               key={`col-${job}`} 
               className="bg-theme-panel rounded-2xl shadow-sm border border-theme-border overflow-hidden flex flex-col transition-all hover:shadow-md"
-              style={{ borderTop: `4px solid ${color}` }}
             >
-              {/* Header - Styled like old repo */}
-              <div 
-                className="px-5 py-4 flex items-center justify-between border-b border-theme-border/50"
-                style={{ backgroundColor: hexToRgba(color, 0.08) }}
-              >
-                <div className="flex items-center space-x-2 font-bold text-lg" style={{ color: color }}>
+              {/* Header */}
+              <div className="px-5 py-4 flex items-center justify-between border-b border-theme-border/50 bg-theme-panel">
+                <div className="flex items-center space-x-2 font-bold text-base lg:text-lg text-theme-text">
                   <span className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: color }}></span>
                   <span>{job}</span>
                 </div>
                 <div 
-                  className="px-3 py-1.5 rounded-xl text-xs font-bold text-white shadow-sm tracking-wide"
-                  style={{ backgroundColor: color }}
+                  className="px-3 py-1.5 rounded-xl text-xs font-bold text-theme-text shadow-sm tracking-wide bg-theme-input border border-theme-border"
                 >
                   {members.length} คน
                 </div>
@@ -287,9 +281,9 @@ export default function RosterPage() {
               {/* Table Column Headers */}
               <div className="grid grid-cols-12 gap-2 px-4 py-3 bg-theme-panel border-b border-theme-border/50 text-[11px] font-bold text-theme-textSecondary text-center">
                 <div className="col-span-2 text-left">#</div>
-                <div className="col-span-4 text-left">ชื่อ</div>
-                <div className="col-span-3">ค่าพลัง</div>
-                <div className="col-span-3">การจัดการ</div>
+                <div className={isAdmin ? "col-span-4 text-left" : "col-span-6 text-left"}>ชื่อ</div>
+                <div className={isAdmin ? "col-span-3 text-center" : "col-span-4 text-center"}>ค่าพลัง</div>
+                {isAdmin && <div className="col-span-3 text-center">การจัดการ</div>}
               </div>
 
               {/* List */}
@@ -303,22 +297,22 @@ export default function RosterPage() {
                     {members.map((m: any, idx: number) => (
                       <li key={m.name || idx} className="grid grid-cols-12 gap-2 px-4 py-3.5 items-center hover:bg-theme-bg transition-colors text-[13px] group">
                         <div className="col-span-2 text-theme-textSecondary text-left">{idx + 1}</div>
-                        <div className="col-span-4 text-left truncate text-theme-text font-semibold text-[13.5px]">
+                        <div className={`${isAdmin ? "col-span-4" : "col-span-6"} text-left truncate text-theme-text font-semibold text-[13.5px]`}>
                           {m.name || "Unknown"}
                         </div>
-                        <div className="col-span-3 text-center font-medium tracking-tight" style={{ color: color }}>
+                        <div className={`${isAdmin ? "col-span-3" : "col-span-4"} text-center font-medium tracking-tight text-theme-text`}>
                           {m.power != null ? Number(m.power).toLocaleString('en-US') : '-'}
                         </div>
-                        <div className="col-span-3 flex justify-center opacity-90 group-hover:opacity-100 transition-opacity">
-                          {user?.role === 'admin' && (
+                        {isAdmin && (
+                          <div className="col-span-3 flex justify-center opacity-90 group-hover:opacity-100 transition-opacity">
                             <button 
                               onClick={() => openEditModal(m, job)}
-                              className="px-3 py-1.5 bg-theme-panel border border-blue-200 dark:border-[#4D73CD]/40 rounded-md text-[11px] font-bold text-[#0b3d63] dark:text-white shadow-sm hover:bg-blue-50 dark:hover:bg-sky-950/40 transition-colors"
+                              className="px-3 py-1.5 bg-theme-panel border border-[#2D3342] hover:border-[#4D73CD] rounded-md text-[11px] font-bold text-white shadow-sm hover:bg-[#3B66D1] transition-colors"
                             >
                               แก้ไข
                             </button>
-                          )}
-                        </div>
+                          </div>
+                        )}
                       </li>
                     ))}
                   </ul>

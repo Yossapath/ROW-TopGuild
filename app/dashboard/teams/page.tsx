@@ -518,7 +518,7 @@ export default function TeamsPage() {
   };
 
   return (
-    <div className="space-y-6 bg-[#f0f6fc] dark:bg-[#1C1F27] min-h-screen p-4 lg:py-8 lg:px-12 xl:px-24 2xl:px-32 relative" style={{ zoom: 0.85 }}>
+    <div className="space-y-6 bg-[#f0f6fc] dark:bg-[#1C1F27] min-h-screen p-4 lg:py-6 lg:px-6 2xl:px-8 relative" style={{ zoom: 0.85 }}>
       <AutoMatchModal />
       
       {/* Header Card */}
@@ -555,7 +555,7 @@ export default function TeamsPage() {
         <DragDropContext onDragEnd={onDragEnd}>
           <div className="flex gap-4 items-start">
             {isAdmin && !isUnassignedCollapsed && (
-              <div className="w-[300px] flex-shrink-0 bg-white dark:bg-[#232733] rounded-2xl shadow-sm border border-slate-200 dark:border-[#2D3342] h-[calc(100vh-2rem)] flex flex-col sticky top-4 z-10 transition-all">
+              <div className="w-[260px] 2xl:w-[280px] flex-shrink-0 bg-white dark:bg-[#232733] rounded-2xl shadow-sm border border-slate-200 dark:border-[#2D3342] h-[calc(100vh-2rem)] flex flex-col sticky top-4 z-10 transition-all">
                 <div className="p-3 border-b border-slate-100 dark:border-[#2D3342] bg-slate-50/70 dark:bg-[#272C38]/50 rounded-t-2xl">
                   <div className="flex items-center justify-between mb-3">
                     <h2 className="font-bold text-slate-800 dark:text-white flex items-center gap-2 text-sm"><Users size={16} /> ยังไม่ได้จัด ({data.columns["unassigned"].memberIds.length})</h2>
@@ -866,12 +866,12 @@ function TeamCard({
             </div>
           </div>
           
-          <div className="grid grid-cols-[30px_1fr_120px_70px_30px] gap-2 px-3 py-2 bg-slate-50 dark:bg-[#272C38]/60 border-b border-slate-100 dark:border-[#2D3342] text-[11px] font-bold text-slate-500 dark:text-[#8B93A7]">
+          <div className={`grid ${isAdmin ? 'grid-cols-[20px_minmax(0,1fr)_72px_54px_20px]' : 'grid-cols-[24px_minmax(0,1fr)_72px_54px]'} gap-1.5 px-2.5 py-1.5 bg-slate-50 dark:bg-[#272C38]/60 border-b border-slate-100 dark:border-[#2D3342] text-[11px] font-bold text-slate-500 dark:text-[#8B93A7]`}>
             <div></div>
             <div>ชื่อ</div>
             <div className="text-center">อาชีพ</div>
             <div className="text-right">ค่าพลัง</div>
-            <div></div>
+            {isAdmin && <div></div>}
           </div>
 
           <div className="p-2 min-h-[220px] flex flex-col gap-1.5 relative z-10 bg-white dark:bg-[#232733]">
@@ -898,16 +898,16 @@ function TeamCard({
                                 const m = members[memberId];
                                 const color = m ? (JOB_COLORS[m.job] || "#475569") : "#475569";
                                 return (
-                                  <div ref={prov.innerRef} {...prov.draggableProps} className={`absolute inset-0 w-full h-full grid grid-cols-[30px_1fr_120px_70px_30px] gap-2 items-center px-1 py-1 rounded-lg bg-white dark:bg-[#272C38] hover:bg-slate-50 dark:hover:bg-[#2A2F3E] group border border-slate-200 dark:border-[#2D3342] ${snap.isDragging ? 'shadow-lg border-blue-400 dark:border-[#4D73CD] ring-2 ring-[#0b3d63]/20 dark:ring-[#4D73CD]/20 z-50' : 'shadow-sm'}`} style={prov.draggableProps.style}>
+                                  <div ref={prov.innerRef} {...prov.draggableProps} className={`absolute inset-0 w-full h-full grid ${isAdmin ? 'grid-cols-[20px_minmax(0,1fr)_72px_54px_20px]' : 'grid-cols-[24px_minmax(0,1fr)_72px_54px]'} gap-1.5 items-center px-2 py-1 rounded-lg bg-white dark:bg-[#272C38] hover:bg-slate-50 dark:hover:bg-[#2A2F3E] group border border-slate-200 dark:border-[#2D3342] ${snap.isDragging ? 'shadow-lg border-blue-400 dark:border-[#4D73CD] ring-2 ring-[#0b3d63]/20 dark:ring-[#4D73CD]/20 z-50' : 'shadow-sm'}`} style={prov.draggableProps.style}>
                                     <div className="flex items-center justify-center text-slate-400 dark:text-[#6B7280] cursor-grab" {...(isAdmin ? prov.dragHandleProps : {})}>
                                       {isAdmin ? <GripVertical size={14}/> : <span className="text-[10px] text-slate-400 dark:text-[#6B7280] font-mono">#{slotIdx+1}</span>}
                                     </div>
-                                    <div className="text-xs font-bold text-slate-800 dark:text-white truncate flex items-center gap-2">
-                                      {isAdmin && <span className="text-[#0b3d63] dark:text-white opacity-70 w-3 text-right font-mono">{slotIdx+1}</span>}
-                                      {m ? m.name : "Unknown"}
+                                    <div className="min-w-0 flex items-center gap-1.5 overflow-hidden">
+                                      {isAdmin && <span className="text-[#0b3d63] dark:text-[#8B93A7] text-[11px] font-mono shrink-0">{slotIdx+1}</span>}
+                                      <span className="text-xs font-bold text-slate-800 dark:text-white truncate" title={m?.name}>{m ? m.name : "Unknown"}</span>
                                     </div>
-                                    {m && <div className="text-[10px] font-bold text-white px-2 py-0.5 rounded-full text-center truncate" style={{backgroundColor: color}}>{m.job}</div>}
-                                    {m && <div className="text-[11px] font-bold text-slate-600 dark:text-white text-right tabular-nums">{m.power.toLocaleString()}</div>}
+                                    {m && <div className="text-[10px] font-bold text-white px-1.5 py-0.5 rounded-full text-center truncate" style={{backgroundColor: color}}>{m.job}</div>}
+                                    {m && <div className="text-[11px] font-bold text-slate-600 dark:text-white text-right tabular-nums truncate">{m.power.toLocaleString()}</div>}
                                     {isAdmin && (
                                       <button onClick={() => removeMember(column.id, memberId)} disabled={column.locked} className="text-slate-400 dark:text-[#6B7280] hover:text-red-500 dark:hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity flex justify-center disabled:hidden"><X size={14}/></button>
                                     )}
