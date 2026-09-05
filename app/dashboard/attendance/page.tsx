@@ -15,7 +15,7 @@ import { useAuthStore } from "@/stores/useAuthStore";
 import type { LeaveRecord } from "@/types";
 
 type WarDay = "อังคาร" | "พฤหัสบดี" | "อาทิตย์";
-type Status = "มา" | "ขาด" | "ลา";
+type Status = "มา" | "ขาด" | "ลา" | null;
 
 interface AttendanceRow {
   name: string;
@@ -34,53 +34,39 @@ const JOB_COLORS: Record<string, string> = {
   Sniper: "#d4a015", Priest: "#25ae62", Champion: "#15a083",
   "Assassin Cross": "#8b46af", Merchant: "#c2185d", Gunslinger: "#894517", Druid: "#41b388",
 };
-const STATUS_CONFIG: Record<Status, { emoji: string; bg: string; text: string }> = {
+const STATUS_CONFIG: Record<NonNullable<Status>, { emoji: string; bg: string; text: string }> = {
   มา:  { emoji: "✅", bg: "bg-green-100",  text: "text-green-700"  },
   ขาด: { emoji: "❌", bg: "bg-red-100",    text: "text-red-700"    },
   ลา:  { emoji: "🟡", bg: "bg-yellow-100", text: "text-yellow-700" },
 };
 
-// Helper: Get upcoming war date for a given offset (0 = this week, -1 = last week, etc.)
-// Or just current week's dates
-function getWeekDates(offsetWeeks: number): Record<WarDay, string> {
-  const now = new Date();
-  now.setDate(now.getDate() + offsetWeeks * 7);
-  const currentDay = now.getDay();
-  // Find Sunday of this week (0)
-  const sunday = new Date(now);
-  sunday.setDate(now.getDate() - currentDay);
+const BASE_DATE = new Date("2026-09-06T00:00:00+07:00"); // Sunday 6 Sep 2026
+
+function getWeekDates(weeksSinceBase: number): Record<WarDay, string> {
+  const sunday = new Date(BASE_DATE);
+  sunday.setDate(sunday.getDate() + weeksSinceBase * 7);
   
   const fmt = (d: Date) => d.toISOString().split("T")[0];
   
   const t = new Date(sunday); t.setDate(sunday.getDate() + 2);
   const th = new Date(sunday); th.setDate(sunday.getDate() + 4);
   const su = new Date(sunday); // Sunday is index 0
+  // Note: For Sunday war, is it the Sunday *at the start* of the week or *end* of the week? 
+  // Base date is Sunday 06/09. If war is Sunday, it's that day.
   
   return {
+    "อาทิตย์": fmt(su),
     "อังคาร": fmt(t),
-    "พฤหัสบดี": fmt(th),
-    "อาทิตย์": fmt(su)
+    "พฤหัสบดี": fmt(th)
   };
 }
 
-function getUpcomingWarDay(): { date: string; day: WarDay } {
+function getCurrentWeekIndex(): number {
   const now = new Date();
-  const todayStr = now.toISOString().split("T")[0];
-  const dates = getWeekDates(0);
-  
-  // If today is past Tuesday but <= Thursday, next is Thursday.
-  if (todayStr <= dates["อังคาร"]) return { date: dates["อังคาร"], day: "อังคาร" };
-  if (todayStr <= dates["พฤหัสบดี"]) return { date: dates["พฤหัสบดี"], day: "พฤหัสบดี" };
-  // Wait, Sunday is start of week in JS, so it's ALREADY PAST if we do this logic?
-  // Let's just use the basic logic: find next day.
-  const day = now.getDay();
-  if (day === 0) return { date: dates["อาทิตย์"], day: "อาทิตย์" };
-  if (day <= 2) return { date: dates["อังคาร"], day: "อังคาร" };
-  if (day <= 4) return { date: dates["พฤหัสบดี"], day: "พฤหัสบดี" };
-  
-  // Friday/Sat -> next Sunday (which is next week's Sunday)
-  const nextDates = getWeekDates(1);
-  return { date: nextDates["อาทิตย์"], day: "อาทิตย์" };
+  const diffTime = now.getTime() - BASE_DATE.getTime();
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  const weekIdx = Math.floor(diffDays / 7);
+  return Math.max(0, weekIdx);
 }
 
 function formatDateTH(dateStr: string): string {
@@ -98,7 +84,7 @@ function flattenRoster(roster: Record<string, { name: string; power?: number }[]
   const rows: AttendanceRow[] = [];
   for (const [job, members] of Object.entries(roster)) {
     for (const m of members) {
-      rows.push({ name: m.name, job, status: "ขาด" }); // Default to ขาด
+      rows.push({ name: m.name, job, status: null });
     }
   }
   return rows.sort((a, b) => a.job.localeCompare(b.job) || a.name.localeCompare(b.name));
@@ -127,33 +113,54 @@ export default function AttendancePage() {
   const [loadingRoster, setLoadingRoster] = useState(true);
 
   useEffect(() => {
-    // Initial date setup
+    const curWeek = getCurrentWeekIndex();
+    setWeekOffset(curWeek);
+    const dates = getWeekDates(curWeek);
+    const now = new Date();
+    const todayStr = now.toISOString().split("T")[0];
+    
+    // Default to the first day of the week, or the current/upcoming day
+    let initialDay: WarDay = "อาทิตย์";
+    if (todayStr >= dates["พฤหัสบดี"]) initialDay = "พฤหัสบดี";
+    else if (todayStr >= dates["อังคาร"]) initialDay = "อังคาร";
+
     const savedDate = localStorage.getItem("att_date");
     if (savedDate) {
       setSelectedDate(savedDate);
       const dayIdx = new Date(savedDate + "T00:00:00").getDay();
       setSelectedDay(WAR_DAYS.find((d) => DAY_ISO[d] === dayIdx) ?? "");
+      // Calculate week offset based on saved date to sync the dropdown
+      const d = new Date(savedDate + "T00:00:00");
+      const diffTime = d.getTime() - BASE_DATE.getTime();
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      const wIdx = Math.floor(diffDays / 7);
+      if (wIdx >= 0) setWeekOffset(wIdx);
     } else {
-      const up = getUpcomingWarDay();
-      setSelectedDate(up.date);
-      setSelectedDay(up.day);
+      setSelectedDate(dates[initialDay]);
+      setSelectedDay(initialDay);
     }
   }, []);
+
+  const [attendanceRecords, setAttendanceRecords] = useState<any[]>([]);
 
   useEffect(() => {
     async function fetchData() {
       setLoadingRoster(true);
       try {
-        const [rRes, lRes] = await Promise.all([
+        const [rRes, lRes, aRes] = await Promise.all([
           fetch("/api/roster"),
           fetch("/api/leave"),
+          fetch("/api/attendance"),
         ]);
         const rJson = rRes.ok ? await rRes.json() : { data: {} };
         const lJson = lRes.ok ? await lRes.json() : { data: [] };
+        const aJson = aRes.ok ? await aRes.json() : { data: [] };
         const rData = rJson.data ?? rJson;
         const lData = lJson.data ?? lJson;
+        const aData = aJson.data ?? aJson;
         setRoster(typeof rData === "object" && !Array.isArray(rData) ? rData : {});
         setLeaveRecords(Array.isArray(lData) ? lData : []);
+        setAttendanceRecords(Array.isArray(aData) ? aData : []);
       } catch { /* silently fail */ } finally {
         setLoadingRoster(false);
       }
@@ -166,19 +173,34 @@ export default function AttendancePage() {
     localStorage.setItem("att_date", selectedDate);
     const dayName = getDayName(selectedDate);
     const baseRows = flattenRoster(roster);
+    
+    // Map existing attendance for this date
+    const attMap = new Map<string, Status>();
+    for (const ar of attendanceRecords) {
+      if (ar.date === selectedDate && ar.status) {
+        attMap.set(ar.name, ar.status as Status);
+      }
+    }
+
     const leaveNames = new Set<string>();
     for (const lr of leaveRecords) {
       if (lr.date === selectedDate || lr.day === dayName) {
         leaveNames.add(lr.name);
       }
     }
+
     setRows(
-      baseRows.map((r) => ({
-        ...r,
-        status: leaveNames.has(r.name) ? ("ลา" as Status) : ("ขาด" as Status),
-      }))
+      baseRows.map((r) => {
+        if (attMap.has(r.name)) {
+          return { ...r, status: attMap.get(r.name)! };
+        }
+        if (leaveNames.has(r.name)) {
+          return { ...r, status: "ลา" as Status };
+        }
+        return { ...r, status: null };
+      })
     );
-  }, [selectedDate, roster, leaveRecords]);
+  }, [selectedDate, roster, leaveRecords, attendanceRecords]);
 
   const handleDayBtn = (day: WarDay) => {
     setSelectedDay(day);
@@ -328,17 +350,29 @@ export default function AttendancePage() {
           onChange={(e) => {
             const offset = Number(e.target.value);
             setWeekOffset(offset);
-            if (selectedDay) {
-              const dates = getWeekDates(offset);
-              setSelectedDate(dates[selectedDay]);
+            const dates = getWeekDates(offset);
+            const day = selectedDay as WarDay | "";
+            if (day && dates[day as WarDay]) {
+              setSelectedDate(dates[day as WarDay]);
+            } else {
+              setSelectedDate(dates["อาทิตย์"]);
+              setSelectedDay("อาทิตย์");
             }
           }}
           className="border border-slate-200 rounded-lg px-2 py-1.5 text-sm font-semibold text-slate-700 bg-white"
         >
-          <option value={0}>สัปดาห์นี้</option>
-          <option value={-1}>สัปดาห์ที่แล้ว</option>
-          <option value={-2}>2 สัปดาห์ก่อน</option>
-          <option value={-3}>3 สัปดาห์ก่อน</option>
+          {Array.from({ length: getCurrentWeekIndex() + 1 }, (_, i) => {
+            const wIdx = getCurrentWeekIndex() - i;
+            const dates = getWeekDates(wIdx);
+            const sunDate = formatDateTH(dates["อาทิตย์"]);
+            const thuDate = formatDateTH(dates["พฤหัสบดี"]);
+            const label = i === 0 ? `สัปดาห์นี้ (${sunDate} – ${thuDate})`
+                        : i === 1 ? `สัปดาห์ที่แล้ว (${sunDate} – ${thuDate})`
+                        : `${i} สัปดาห์ที่แล้ว (${sunDate} – ${thuDate})`;
+            return (
+              <option key={wIdx} value={wIdx}>{label}</option>
+            );
+          })}
         </select>
 
         <div className="w-[1px] h-6 bg-slate-200 mx-1"></div>
@@ -346,33 +380,29 @@ export default function AttendancePage() {
         <span className="text-sm font-semibold text-slate-600 flex items-center gap-1.5">
           วัน:
         </span>
-        {WAR_DAYS.map((day) => (
-          <button
-            key={day}
-            onClick={() => handleDayBtn(day)}
-            className="px-4 py-2 rounded-xl text-sm font-semibold border transition-all"
-            style={
-              selectedDay === day
-                ? { backgroundColor: "#0b3d63", color: "white", borderColor: "#0b3d63" }
-                : { backgroundColor: "white", color: "#0b3d63", borderColor: "#0b3d63" }
-            }
-          >
-            {day}
-          </button>
-        ))}
-        <div className="flex items-center gap-2 ml-auto">
-          <label className="text-sm text-slate-500">หรือระบุวันที่:</label>
-          <input
-            type="date"
-            value={selectedDate}
-            onChange={handleDateChange}
-            className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-300"
-          />
-        </div>
+        {(["อาทิตย์", "อังคาร", "พฤหัสบดี"] as WarDay[]).map((day) => {
+          const dates = getWeekDates(weekOffset);
+          const dateStr = dates[day];
+          return (
+            <button
+              key={day}
+              onClick={() => handleDayBtn(day)}
+              className="px-4 py-2 rounded-xl text-sm font-semibold border transition-all flex flex-col items-center"
+              style={
+                selectedDay === day
+                  ? { backgroundColor: "#0b3d63", color: "white", borderColor: "#0b3d63" }
+                  : { backgroundColor: "white", color: "#0b3d63", borderColor: "#0b3d63" }
+              }
+            >
+              <span>{day}</span>
+              <span className="text-[10px] opacity-70">{formatDateTH(dateStr)}</span>
+            </button>
+          );
+        })}
         {selectedDate && (
-          <div className="w-full mt-1">
+          <div className="ml-auto">
             <span className="text-sm font-medium text-slate-700">
-              📅 วันที่เลือก:{" "}
+              📅{" "}
               <span className="font-bold" style={{ color: "#0b3d63" }}>
                 {formatDateTH(selectedDate)} ({getDayName(selectedDate)})
               </span>
@@ -456,17 +486,18 @@ export default function AttendancePage() {
                             {r.job}
                           </span>
                         </td>
-                        <td className="px-3 py-2.5 text-center">
+                        <td className="px-3 py-3 text-center">
                           {isAdmin ? (
-                            <div className="flex items-center justify-center gap-1">
+                            <div className="flex items-center justify-center gap-2">
                               {(["มา", "ลา", "ขาด"] as Status[]).map(st => {
+                                if (!st) return null;
                                 const sc = STATUS_CONFIG[st];
                                 const active = r.status === st;
                                 return (
                                   <button
                                     key={st}
                                     onClick={() => setStatus(i, st)}
-                                    className={`px-2 py-1 rounded-md text-xs font-bold transition-all border ${
+                                    className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all border min-w-[60px] ${
                                       active ? `${sc.bg} ${sc.text} border-transparent shadow-sm` : "bg-white text-slate-400 border-slate-200 hover:bg-slate-50"
                                     }`}
                                   >
@@ -474,12 +505,25 @@ export default function AttendancePage() {
                                   </button>
                                 );
                               })}
+                              <button
+                                onClick={() => setStatus(i, null)}
+                                className={`px-2 py-1.5 rounded-lg text-xs font-bold transition-all border ml-1 ${
+                                  r.status === null ? "bg-slate-200 text-slate-600 border-transparent shadow-sm" : "bg-white text-slate-300 border-slate-200 hover:bg-slate-50"
+                                }`}
+                                title="ล้างสถานะ"
+                              >
+                                ✖
+                              </button>
                             </div>
                           ) : (
                             <span
-                              className={`inline-flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-bold ${STATUS_CONFIG[r.status].bg} ${STATUS_CONFIG[r.status].text}`}
+                              className={`inline-flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-bold ${r.status ? `${STATUS_CONFIG[r.status].bg} ${STATUS_CONFIG[r.status].text}` : "bg-slate-100 text-slate-400"}`}
                             >
-                              {STATUS_CONFIG[r.status].emoji} {r.status}
+                              {r.status ? (
+                                <>
+                                  {STATUS_CONFIG[r.status].emoji} {r.status}
+                                </>
+                              ) : "ยังไม่เช็ค"}
                             </span>
                           )}
                         </td>

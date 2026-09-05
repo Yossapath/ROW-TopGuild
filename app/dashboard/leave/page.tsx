@@ -53,9 +53,9 @@ export default function LeavePage() {
   const isAdmin = user?.role === "admin" || user?.role === "owner";
 
   const [name, setName] = useState<string>("");
-  const [leaveMode, setLeaveMode] = useState<LeaveMode>("date");
-  const [leaveDate, setLeaveDate] = useState<string>("");
+  const [job, setJob] = useState<string>("Priest");
   const [leaveDay, setLeaveDay] = useState<WarDay>("อังคาร");
+  const [leaveDate, setLeaveDate] = useState<string>("");
   const [reason, setReason] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
   const [formMsg, setFormMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
@@ -65,8 +65,20 @@ export default function LeavePage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (user?.gameUsername) setName(user.gameUsername);
-  }, [user]);
+    if (!isAdmin && user?.gameUsername) {
+      setName(user.gameUsername);
+      // Auto fetch job
+      fetch("/api/roster").then(r => r.json()).then(json => {
+        if (json.ok && json.data) {
+          for (const [j, arr] of Object.entries(json.data as Record<string, {name:string}[]>)) {
+            if (arr.some(m => m.name === user.gameUsername)) {
+              setJob(j); break;
+            }
+          }
+        }
+      }).catch(()=>{});
+    }
+  }, [user, isAdmin]);
 
   const fetchLeaves = useCallback(async () => {
     setLoading(true);
@@ -117,19 +129,25 @@ export default function LeavePage() {
       setFormMsg({ type: "err", text: "กรุณาระบุชื่อตัวละคร" });
       return;
     }
-    if (leaveMode === "date" && !leaveDate) {
-      setFormMsg({ type: "err", text: "กรุณาเลือกวันที่ลา" });
+    if (!leaveDate) {
+      setFormMsg({ type: "err", text: "กรุณาเลือกวันที่ลา (ปฏิทิน)" });
       return;
     }
+    if (!reason.trim()) {
+      setFormMsg({ type: "err", text: "กรุณาระบุเหตุผลที่ขอลา" });
+      return;
+    }
+    
     setSubmitting(true);
     setFormMsg(null);
     try {
-      const body: Record<string, unknown> = {
+      const body = {
         name: name.trim(),
-        reason: reason.trim() || undefined,
+        job: job,
+        date: leaveDate,
+        day: leaveDay,
+        reason: reason.trim(),
       };
-      if (leaveMode === "date") body.date = leaveDate;
-      else body.day = leaveDay;
 
       const res = await fetch("/api/leave", {
         method: "POST",
@@ -192,149 +210,115 @@ export default function LeavePage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         {/* Left: Form */}
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-3">
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
             <div className="flex items-center gap-2 mb-5">
-              <Calendar className="w-5 h-5" style={{ color: "#0b3d63" }} />
-              <h2 className="font-semibold text-slate-700">แจ้งลางาน</h2>
+              <h2 className="font-bold text-[#0b3d63] text-lg">แบบฟอร์มแจ้งลาวอ</h2>
             </div>
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-              {/* Name */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1.5 flex items-center gap-1">
-                  <User className="w-3.5 h-3.5" /> ชื่อตัวละคร
-                </label>
-                <div className="relative">
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                {/* Name */}
+                <div>
+                  <label className="block text-xs text-slate-500 mb-1.5">ชื่อตัวละคร</label>
                   <input
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    readOnly={!isAdmin && !!user?.gameUsername}
-                    placeholder="ชื่อตัวละครในเกม"
-                    className={`w-full border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 pr-20 ${
-                      !isAdmin && !!user?.gameUsername
-                        ? "bg-slate-100 border-slate-200 text-slate-500 cursor-not-allowed"
-                        : "border-slate-200 text-slate-700 bg-white"
+                    readOnly={!isAdmin}
+                    placeholder="ชื่อตัวละคร"
+                    className={`w-full border rounded-lg px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-1 focus:ring-blue-300 ${
+                      !isAdmin ? "bg-slate-50 border-slate-200 text-slate-600 cursor-not-allowed" : "border-blue-200 text-[#0b3d63] bg-white"
                     }`}
                   />
-                  {user?.gameUsername && name === user.gameUsername && (
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">
-                      (ล็อกชื่อ)
-                    </span>
+                </div>
+
+                {/* Job */}
+                <div>
+                  <label className="block text-xs text-slate-500 mb-1.5">อาชีพ</label>
+                  {!isAdmin ? (
+                    <div className="w-full border border-slate-200 bg-slate-50 rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 cursor-not-allowed">
+                      {job || "ไม่ระบุ"}
+                    </div>
+                  ) : (
+                    <select
+                      value={job}
+                      onChange={(e) => setJob(e.target.value)}
+                      className="w-full border border-blue-200 rounded-lg px-3 py-2 text-sm font-semibold text-[#0b3d63] bg-white focus:outline-none focus:ring-1 focus:ring-blue-300 appearance-none"
+                    >
+                      {["Priest", "Lord Knight", "Paladin", "High Wizard", "Sniper", "Champion", "Assassin Cross", "Merchant", "Gunslinger", "Druid"].map(j => (
+                        <option key={j} value={j}>{j}</option>
+                      ))}
+                    </select>
                   )}
                 </div>
-              </div>
 
-              {/* Leave mode toggle */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1.5">
-                  ประเภทการลา
-                </label>
-                <div className="flex rounded-xl border border-slate-200 overflow-hidden">
-                  {(["date", "day"] as LeaveMode[]).map((mode) => (
-                    <button
-                      key={mode}
-                      type="button"
-                      onClick={() => setLeaveMode(mode)}
-                      className="flex-1 py-2 text-sm font-semibold transition-all"
-                      style={
-                        leaveMode === mode
-                          ? { backgroundColor: "#0b3d63", color: "white" }
-                          : { backgroundColor: "white", color: "#475569" }
-                      }
-                    >
-                      {mode === "date" ? "ลาวันที่" : "ลาวันในสัปดาห์"}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Date or day picker */}
-              {leaveMode === "date" ? (
+                {/* Event Day */}
                 <div>
-                  <label className="block text-xs font-semibold text-slate-500 mb-1.5">
-                    วันที่ลา <span className="text-blue-500 font-normal">(เฉพาะ อังคาร, พฤหัส, อาทิตย์)</span>
-                  </label>
-                  <input
-                    type="date"
-                    value={leaveDate}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      if (!val) {
-                        setLeaveDate("");
-                        return;
-                      }
-                      const d = new Date(val);
-                      const day = d.getDay();
-                      if (day !== 0 && day !== 2 && day !== 4) {
-                        setFormMsg({ type: "err", text: "กรุณาเลือกเฉพาะ วันอังคาร, พฤหัสบดี หรือ อาทิตย์ เท่านั้น" });
-                        // Clear error after 3s
-                        setTimeout(() => setFormMsg(null), 3000);
-                        return;
-                      }
-                      setLeaveDate(val);
-                      setFormMsg(null);
-                    }}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-300"
-                  />
-                </div>
-              ) : (
-                <div>
-                  <label className="block text-xs font-semibold text-slate-500 mb-1.5">
-                    วันวอร์ที่ลา
-                  </label>
+                  <label className="block text-xs text-slate-500 mb-1.5">วันที่มีกิจกรรม</label>
                   <select
                     value={leaveDay}
                     onChange={(e) => setLeaveDay(e.target.value as WarDay)}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
+                    className="w-full border border-blue-200 rounded-lg px-3 py-2 text-sm font-semibold text-[#0b3d63] bg-white focus:outline-none focus:ring-1 focus:ring-blue-300 appearance-none"
                   >
                     {WAR_DAYS.map((d) => (
                       <option key={d} value={d}>{d}</option>
                     ))}
                   </select>
                 </div>
-              )}
+
+                {/* Leave Date */}
+                <div>
+                  <label className="block text-xs text-slate-500 mb-1.5">วันที่ลา (ปฏิทิน)</label>
+                  <input
+                    type="date"
+                    required
+                    value={leaveDate}
+                    onChange={(e) => {
+                      setLeaveDate(e.target.value);
+                      const d = new Date(e.target.value);
+                      if (!isNaN(d.getTime())) {
+                        const day = DAY_LABEL[d.getDay()];
+                        if (WAR_DAYS.includes(day as WarDay)) {
+                          setLeaveDay(day as WarDay);
+                        }
+                      }
+                    }}
+                    className="w-full border border-blue-200 rounded-lg px-3 py-2 text-sm font-semibold text-[#0b3d63] bg-white focus:outline-none focus:ring-1 focus:ring-blue-300"
+                  />
+                </div>
+              </div>
 
               {/* Reason */}
               <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1.5">
-                  เหตุผล{" "}
-                  <span className="font-normal text-slate-400">(ไม่บังคับ)</span>
-                </label>
-                <textarea
+                <label className="block text-xs text-slate-500 mb-1.5">เหตุผลการลา <span className="text-red-500">*</span></label>
+                <input
+                  type="text"
+                  required
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
-                  placeholder="ระบุเหตุผล..."
-                  rows={3}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-300 resize-none"
+                  placeholder="ระบุเหตุผลที่ขอลา (บังคับใส่)"
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 bg-white focus:outline-none focus:ring-1 focus:ring-blue-300"
                 />
               </div>
 
               {/* Submit */}
-              <button
-                type="submit"
-                disabled={submitting}
-                className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-50"
-                style={{ backgroundColor: "#0b3d63" }}
-              >
-                {submitting ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                    กำลังแจ้งลา...
-                  </>
-                ) : (
-                  <>
-                    <Send className="w-4 h-4" /> แจ้งลา
-                  </>
-                )}
-              </button>
+              <div className="mt-2">
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="px-6 py-2.5 bg-[#0b3d63] text-white rounded-lg font-bold text-sm hover:bg-[#0f4b7a] transition-all disabled:opacity-50"
+                >
+                  {submitting ? "กำลังบันทึก..." : "บันทึกการลา"}
+                </button>
+              </div>
 
               {formMsg && (
                 <div
-                  className={`text-sm font-medium text-center px-3 py-2 rounded-xl ${
+                  className={`mt-2 text-sm p-3 rounded-xl border ${
                     formMsg.type === "ok"
-                      ? "bg-green-50 text-green-700 border border-green-200"
-                      : "bg-red-50 text-red-600 border border-red-200"
+                      ? "bg-green-50 text-green-700 border-green-200"
+                      : "bg-red-50 text-red-700 border-red-200"
                   }`}
                 >
                   {formMsg.text}
@@ -345,7 +329,7 @@ export default function LeavePage() {
         </div>
 
         {/* Right: Leave List */}
-        <div className="lg:col-span-3">
+        <div className="lg:col-span-2">
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
             <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-2">
@@ -384,7 +368,7 @@ export default function LeavePage() {
                 <p className="text-sm">ไม่มีรายการแจ้งลา</p>
               </div>
             ) : (
-              <div className="divide-y divide-slate-100">
+              <div className="divide-y divide-slate-100 h-[600px] overflow-y-auto">
                 {filteredRecords.map((rec) => {
                   const leaveLabel = rec.date
                     ? `วันที่ ${formatDateTH(rec.date)} (${getDayName(rec.date)})`
@@ -404,7 +388,14 @@ export default function LeavePage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2">
                           <div>
-                            <p className="font-bold text-slate-800 text-sm">{rec.name}</p>
+                            <div className="flex items-center gap-2">
+                              <p className="font-bold text-slate-800 text-sm">{rec.name}</p>
+                              {rec.job && (
+                                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                                  {rec.job}
+                               </span>
+                              )}
+                            </div>
                             <div className="flex items-center gap-1.5 mt-0.5">
                               <Calendar className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
                               <span className="text-xs text-blue-600 font-medium">

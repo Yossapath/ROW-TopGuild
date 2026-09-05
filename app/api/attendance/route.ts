@@ -36,15 +36,22 @@ export async function POST(req: Request) {
     const batch = attendanceRef().firestore.batch();
 
     records.forEach((rec) => {
-      const docRef = attendanceRef().collection("records").doc();
-      batch.set(docRef, {
-        name: rec.name,
-        date: date,
-        present: rec.present,
-        note: rec.note || "",
-        timestamp: Date.now(),
-        recordedBy: user.gameUsername
-      });
+      // Use date_name as ID to prevent duplicates
+      const safeName = rec.name.replace(/\//g, "-");
+      const docId = `${date}_${safeName}`;
+      const docRef = attendanceRef().collection("records").doc(docId);
+      
+      if (rec.status === null) {
+        batch.delete(docRef);
+      } else {
+        batch.set(docRef, {
+          name: rec.name,
+          date: date,
+          status: rec.status,
+          timestamp: Date.now(),
+          recordedBy: user.gameUsername
+        }, { merge: true });
+      }
     });
 
     await batch.commit();

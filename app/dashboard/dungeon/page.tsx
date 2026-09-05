@@ -266,10 +266,14 @@ export default function DungeonPage() {
   const bookingStatus = isBookingOpen(schedule);
   const isUnlimited = !schedule.openTime && !schedule.closeTime;
 
+  // Collapsible panels
+  const [formCollapsed, setFormCollapsed] = useState(false);
+  const [schedCollapsed, setSchedCollapsed] = useState(false);
+
   // ────────────────────────────────────────────────────────────
   return (
-    <div style={{ zoom: 0.85 }} className="min-h-screen bg-[#f0f6fc] p-4 md:p-6">
-      <div className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-5">
+    <div style={{ zoom: 0.85 }} className="min-h-screen bg-[#f0f6fc] p-4 lg:py-8 lg:px-12 xl:px-24 2xl:px-32">
+      <div className="flex flex-col lg:flex-row gap-5">
 
         {/* ═══════════════════════════════════════════════════
             LEFT PANEL
@@ -278,15 +282,20 @@ export default function DungeonPage() {
 
           {/* Booking Form Card */}
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-            <div className="bg-[#0b3d63] px-5 py-4">
-              <div className="flex items-center gap-2 mb-1">
+            <button
+              type="button"
+              onClick={() => setFormCollapsed(c => !c)}
+              className="w-full bg-[#0b3d63] px-5 py-4 flex items-center justify-between"
+            >
+              <div className="flex items-center gap-2">
                 <Swords className="text-white" size={20} />
                 <h2 className="text-white font-bold text-base">ระบบจองคิว ดันมายา (Maya)</h2>
               </div>
-              <p className="text-blue-200 text-xs">5 คนต่อทีม · จองได้ 1-2 รอบต่อรอบ</p>
-            </div>
+              <span className="text-blue-200 text-lg">{formCollapsed ? "▸" : "▾"}</span>
+            </button>
+            {!formCollapsed && <p className="text-[#0b3d63] text-xs px-5 pt-2 pb-1 font-medium">5 คนต่อทีม · จองได้ 1-2 รอบต่อรอบ</p>}
 
-            <div className="p-5 flex flex-col gap-4">
+            {!formCollapsed && <div className="p-5 flex flex-col gap-4">
               {/* Name */}
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">ชื่อตัวละคร</label>
@@ -365,18 +374,25 @@ export default function DungeonPage() {
                   {formMsg.text}
                 </p>
               )}
-            </div>
+            </div>}
           </div>
 
           {/* Schedule Settings Card (admin/owner only) */}
           {isAdmin && (
             <div className="bg-[#eef3f8] rounded-2xl border border-slate-200 overflow-hidden">
-              <div className="px-5 py-4 border-b border-slate-200 flex items-center gap-2">
-                <Clock size={16} className="text-[#0b3d63]" />
-                <h3 className="font-bold text-sm text-[#0b3d63]">ตั้งค่าช่วงเวลาเปิดจอง</h3>
-              </div>
+              <button
+                type="button"
+                onClick={() => setSchedCollapsed(c => !c)}
+                className="w-full px-5 py-4 border-b border-slate-200 flex items-center justify-between hover:bg-[#e5edf5] transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <Clock size={16} className="text-[#0b3d63]" />
+                  <h3 className="font-bold text-sm text-[#0b3d63]">ตั้งค่าช่วงเวลาเปิดจอง</h3>
+                </div>
+                <span className="text-[#0b3d63] text-lg">{schedCollapsed ? "▸" : "▾"}</span>
+              </button>
 
-              <div className="p-5 flex flex-col gap-3">
+              {!schedCollapsed && <div className="p-5 flex flex-col gap-3">
                 {/* Open date */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1">
@@ -464,7 +480,7 @@ export default function DungeonPage() {
                     </span>
                   )}
                 </div>
-              </div>
+              </div>}
             </div>
           )}
         </div>

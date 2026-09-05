@@ -22,7 +22,7 @@ export async function POST(req: Request) {
     if (!user) return unauthorized();
 
     const body = await req.json();
-    const { name, date, day, reason } = body;
+    const { name, job, date, day, reason } = body;
 
     if (!name || (!date && !day)) {
       return err("ข้อมูลไม่ครบถ้วน (ต้องมีชื่อ และ วันที่/วันในสัปดาห์)");
@@ -30,6 +30,7 @@ export async function POST(req: Request) {
 
     const newLeave = {
       name,
+      job: job || "",
       date: date || "",
       day: day || "",
       reason: reason || "",

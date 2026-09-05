@@ -105,6 +105,7 @@ export interface DungeonSchedule {
 export interface AttendanceRecord {
   id: string;
   name: string;
+  job?: string;
   date: string;       // "YYYY-MM-DD"
   present: boolean;
   note?: string;
@@ -115,6 +116,7 @@ export interface AttendanceRecord {
 export interface LeaveRecord {
   id: string;
   name: string;
+  job?: string;
   date?: string;
   day?: string;
   reason?: string;
