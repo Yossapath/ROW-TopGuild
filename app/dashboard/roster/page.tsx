@@ -263,7 +263,7 @@ export default function RosterPage() {
           return (
             <div 
               key={`col-${job}`} 
-              className="bg-[#14161D] rounded-2xl shadow-sm border border-[#262A35] overflow-hidden flex flex-col transition-all hover:shadow-md"
+              className="bg-[#14161D] rounded-2xl shadow-sm border border-[#262A35] overflow-hidden flex flex-col transition-all hover:shadow-md min-h-[380px]"
               style={{ borderTop: `3px solid ${color}` }}
             >
               {/* Header */}
@@ -281,46 +281,30 @@ export default function RosterPage() {
 
               {/* Table Column Headers */}
               <div className="flex items-center justify-between gap-2 px-5 py-2.5 border-b border-[#232938] text-[11px] font-medium text-slate-500">
-                <div className="w-7 text-left flex-shrink-0">#</div>
+                <div className="w-6 text-left flex-shrink-0">#</div>
                 <div className="flex-1 min-w-0 text-left">ชื่อ</div>
                 <div className="flex-shrink-0 text-right whitespace-nowrap">คะแนน</div>
                 {isAdmin && <div className="w-12 text-center flex-shrink-0 ml-1">จัดการ</div>}
               </div>
 
               {/* List */}
-              <div className="flex-1 p-0 bg-[#14161D]">
+              <div className="flex-1 p-0 bg-[#14161D] flex flex-col">
                 {members.length === 0 ? (
-                  <div className="py-12 flex flex-col items-center justify-center">
+                  <div className="flex-1 flex flex-col items-center justify-center p-8">
                     <div className="w-10 h-10 rounded-full border border-dashed border-[#262A35] flex items-center justify-center mb-2.5">
                       <span className="text-slate-600 text-sm font-bold">—</span>
                     </div>
                     <p className="text-xs text-slate-500 font-medium">ไม่มีข้อมูลสมาชิก</p>
                   </div>
                 ) : (
-                  <ul className="divide-y divide-[#232938]/60">
+                  <ul className="divide-y divide-[#232938]/60 flex-1">
                     {members.map((m: any, idx: number) => {
                       const rank = idx + 1;
                       return (
                         <li key={m.name || idx} className="flex items-center justify-between gap-2 px-5 py-3.5 hover:bg-[#1A1F2C] transition-colors text-[13px] group">
-                          {/* Rank Badge */}
-                          <div className="w-7 flex-shrink-0 flex items-center">
-                            {rank === 1 ? (
-                              <div className="w-6 h-6 rounded-md bg-[#C9A15C]/20 border border-[#C9A15C]/60 text-[#E5B555] font-bold text-xs flex items-center justify-center shadow-sm">
-                                1
-                              </div>
-                            ) : rank === 2 ? (
-                              <div className="w-6 h-6 rounded-md bg-slate-500/20 border border-slate-400/50 text-slate-300 font-bold text-xs flex items-center justify-center shadow-sm">
-                                2
-                              </div>
-                            ) : rank === 3 ? (
-                              <div className="w-6 h-6 rounded-md bg-amber-800/25 border border-amber-600/50 text-amber-400 font-bold text-xs flex items-center justify-center shadow-sm">
-                                3
-                              </div>
-                            ) : (
-                              <div className="w-6 h-6 text-slate-500 font-mono text-xs flex items-center justify-center">
-                                {rank}
-                              </div>
-                            )}
+                          {/* Rank Number without border/frame */}
+                          <div className="w-6 text-left flex-shrink-0 text-slate-400 font-mono text-sm font-medium">
+                            {rank}
                           </div>
 
                           {/* Member Name */}
@@ -328,13 +312,10 @@ export default function RosterPage() {
                             {m.name || "Unknown"}
                           </div>
 
-                          {/* Score / Power */}
+                          {/* Score / Power without 'หน่วย' */}
                           <div className="flex-shrink-0 text-right tabular-nums whitespace-nowrap pl-2">
                             <span className="font-bold text-white text-sm">
                               {m.power != null ? Number(m.power).toLocaleString('en-US') : '-'}
-                            </span>
-                            <span className="text-[11px] text-slate-400 font-normal ml-1">
-                              หน่วย
                             </span>
                           </div>
 
