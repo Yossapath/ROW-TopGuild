@@ -31,7 +31,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       .finally(() => setLoadingAuth(false));
   }, []);
 
-  if (!mounted || loadingAuth) return <div className="flex h-screen items-center justify-center">Loading...</div>;
+  if (!mounted || loadingAuth) return (
+    <div className="flex h-screen items-center justify-center bg-theme-bg text-theme-text font-bold">
+      Loading...
+    </div>
+  );
   if (!isAuthenticated) return null;
 
   return (

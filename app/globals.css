@@ -6,27 +6,47 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 207 83% 32%;
+    --background: 216 50% 8%;
+    --foreground: 210 40% 98%;
+    --card: 214 52% 14%;
+    --card-foreground: 210 40% 98%;
+    --popover: 214 52% 14%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 207 83% 45%;
     --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
+    --secondary: 215 35% 18%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 215 35% 18%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 215 35% 18%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 207 83% 32%;
+    --border: 215 45% 21%;
+    --input: 215 45% 21%;
+    --ring: 207 83% 45%;
     --radius: 0.75rem;
     --font-prompt: 'Prompt', sans-serif;
+
+    --theme-bg: #0a1420;
+    --theme-sidebar: #081a2b;
+    --theme-sidebar-active: #182d46;
+    --theme-sidebar-text-active: #38bdf8;
+    --theme-sidebar-text: #94a3b8;
+    --theme-panel: #112236;
+    --theme-input: #15263d;
+    --theme-border: #1e3550;
+    --theme-border-hover: #29496e;
+    --theme-divider: #15273e;
+    --theme-text: #f1f5f9;
+    --theme-text-secondary: #94a3b8;
+    --theme-text-muted: #64748b;
+    --theme-primary: #38bdf8;
+    --theme-primary-hover: #0284c7;
+    --theme-success: #34d399;
+    --theme-warning: #fbbf24;
+    --theme-danger: #f87171;
+    --theme-purple: #a78bfa;
   }
 }
 
@@ -35,7 +55,6 @@
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-prompt), sans-serif;
-    /* Force cache invalidation */
   }
 }
 
@@ -52,27 +71,6 @@
 .job-druid   { color: #41b388; }
 
 @layer base {
-  :root {
-    --theme-bg: #f0f6fc;
-    --theme-sidebar: #0b3d63;
-    --theme-sidebar-active: #ffffff;
-    --theme-sidebar-text-active: #0b3d63;
-    --theme-sidebar-text: #bfdbfe;
-    --theme-panel: #ffffff;
-    --theme-input: #ffffff;
-    --theme-border: #e2e8f0;
-    --theme-border-hover: #cbd5e1;
-    --theme-divider: #f1f5f9;
-    --theme-text: #1e293b;
-    --theme-text-secondary: #64748b;
-    --theme-text-muted: #94a3b8;
-    --theme-primary: #0b3d63;
-    --theme-primary-hover: #0f4b7a;
-    --theme-success: #10b981;
-    --theme-warning: #f59e0b;
-    --theme-danger: #ef4444;
-    --theme-purple: #8b5cf6;
-  }
   .dark {
     --background: 216 50% 8%;
     --foreground: 210 40% 98%;
@@ -113,5 +111,47 @@
     --theme-warning: #fbbf24;
     --theme-danger: #f87171;
     --theme-purple: #a78bfa;
+  }
+
+  .light {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 207 83% 32%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 207 83% 32%;
+
+    --theme-bg: #f0f6fc;
+    --theme-sidebar: #0b3d63;
+    --theme-sidebar-active: #ffffff;
+    --theme-sidebar-text-active: #0b3d63;
+    --theme-sidebar-text: #bfdbfe;
+    --theme-panel: #ffffff;
+    --theme-input: #ffffff;
+    --theme-border: #e2e8f0;
+    --theme-border-hover: #cbd5e1;
+    --theme-divider: #f1f5f9;
+    --theme-text: #1e293b;
+    --theme-text-secondary: #64748b;
+    --theme-text-muted: #94a3b8;
+    --theme-primary: #0b3d63;
+    --theme-primary-hover: #0f4b7a;
+    --theme-success: #10b981;
+    --theme-warning: #f59e0b;
+    --theme-danger: #ef4444;
+    --theme-purple: #8b5cf6;
   }
 }

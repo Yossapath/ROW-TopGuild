@@ -1,6 +1,6 @@
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useRouter, usePathname } from "next/navigation";
-import { Bell, Menu as MenuIcon, User as UserIcon, LifeBuoy, LogOut, Moon, Sun, Settings, X, Save, Loader2 } from "lucide-react";
+import { Menu as MenuIcon, User as UserIcon, LifeBuoy, LogOut, Moon, Sun, Settings, X, Save, Loader2 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import axios from "axios";
 import { useTheme } from "next-themes";
@@ -126,14 +126,6 @@ export default function TopHeader({
             {theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
           </button>
         )}
-
-        {/* Notification Bell */}
-        <button className="relative p-2 text-theme-textSecondary hover:text-theme-text rounded-full hover:bg-theme-bg transition-colors">
-          <Bell size={20} />
-          <span className="absolute top-1.5 right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-theme-danger text-[9px] font-bold text-white">
-            2
-          </span>
-        </button>
 
         {/* Profile Dropdown */}
         <div className="relative" ref={dropdownRef}>

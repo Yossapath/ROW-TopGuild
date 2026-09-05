@@ -20,8 +20,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="th">
-      <body className={`min-h-screen bg-background antialiased ${prompt.variable} font-sans`}>
+    <html lang="th" className="dark" suppressHydrationWarning>
+      <body className={`min-h-screen bg-background text-foreground antialiased ${prompt.variable} font-sans`}>
         <Providers>{children}</Providers>
       </body>
     </html>
