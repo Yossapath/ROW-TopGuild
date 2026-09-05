@@ -178,19 +178,23 @@ export default function RosterPage() {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <button 
-            onClick={openAddModal}
-            className="w-full sm:w-auto flex-shrink-0 rounded-full bg-[#3B66D1] hover:bg-[#4D73CD] px-6 py-2.5 text-sm font-bold text-white transition-colors shadow-sm"
-          >
-            เพิ่มสมาชิกใหม่
-          </button>
+          {isAdmin && (
+            <button 
+              onClick={openAddModal}
+              className="w-full sm:w-auto flex-shrink-0 rounded-full bg-[#3B66D1] hover:bg-[#4D73CD] px-6 py-2.5 text-sm font-bold text-white transition-colors shadow-sm"
+            >
+              เพิ่มสมาชิกใหม่
+            </button>
+          )}
         </div>
-        <button 
-          onClick={() => alert("ระบบ Import Excel กำลังพัฒนา")}
-          className="w-full md:w-auto rounded-full bg-theme-panel border border-[#0b3d63] dark:border-[#4D73CD] px-6 py-2.5 text-sm font-bold text-[#0b3d63] dark:text-white hover:bg-blue-50 dark:hover:bg-[#2A2F3E] transition-colors shadow-sm"
-        >
-          เพิ่มกลุ่ม (Excel)
-        </button>
+        {isAdmin && (
+          <button 
+            onClick={() => alert("ระบบ Import Excel กำลังพัฒนา")}
+            className="w-full md:w-auto rounded-full bg-theme-panel border border-[#0b3d63] dark:border-[#4D73CD] px-6 py-2.5 text-sm font-bold text-[#0b3d63] dark:text-white hover:bg-blue-50 dark:hover:bg-[#2A2F3E] transition-colors shadow-sm"
+          >
+            เพิ่มกลุ่ม (Excel)
+          </button>
+        )}
       </div>
 
       {/* Summary Pills (Wrap naturally without horizontal scrollbar) */}
@@ -242,8 +246,8 @@ export default function RosterPage() {
         })}
       </div>
 
-      {/* Tables Grid (Auto-fit Cards with comfortable min-width) */}
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-5">
+      {/* Tables Grid (Auto-fit Cards with comfortable min-width and auto-fit height) */}
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-5 items-start">
         {displayJobs.map(job => {
           const rawMembers = roster?.[job] || [];
           
@@ -263,7 +267,7 @@ export default function RosterPage() {
           return (
             <div 
               key={`col-${job}`} 
-              className="bg-[#14161D] rounded-2xl shadow-sm border border-[#262A35] overflow-hidden flex flex-col transition-all hover:shadow-md min-h-[380px]"
+              className="bg-[#14161D] rounded-2xl shadow-sm border border-[#262A35] overflow-hidden flex flex-col transition-all hover:shadow-md h-fit"
               style={{ borderTop: `3px solid ${color}` }}
             >
               {/* Header */}
@@ -288,16 +292,16 @@ export default function RosterPage() {
               </div>
 
               {/* List */}
-              <div className="flex-1 p-0 bg-[#14161D] flex flex-col">
+              <div className="p-0 bg-[#14161D] flex flex-col">
                 {members.length === 0 ? (
-                  <div className="flex-1 flex flex-col items-center justify-center p-8">
+                  <div className="flex flex-col items-center justify-center py-6 px-4">
                     <div className="w-10 h-10 rounded-full border border-dashed border-[#262A35] flex items-center justify-center mb-2.5">
                       <span className="text-slate-600 text-sm font-bold">—</span>
                     </div>
                     <p className="text-xs text-slate-500 font-medium">ไม่มีข้อมูลสมาชิก</p>
                   </div>
                 ) : (
-                  <ul className="divide-y divide-[#232938]/60 flex-1">
+                  <ul className="divide-y divide-[#232938]/60">
                     {members.map((m: any, idx: number) => {
                       const rank = idx + 1;
                       return (
