@@ -192,18 +192,18 @@ export default function LogPage() {
 
   return (
     <div
-      className="space-y-6 bg-[#f0f6fc] dark:bg-[#0a1420] min-h-screen p-4 lg:py-8 lg:px-12 xl:px-24 2xl:px-32 relative"
+      className="space-y-6 bg-[#f0f6fc] dark:bg-[#1c1c1c] min-h-screen p-4 lg:py-8 lg:px-12 xl:px-24 2xl:px-32 relative"
       style={{ zoom: 0.85 }}
     >
       {/* ── Header Card ──────────────────────────────────────── */}
-      <div className="bg-white dark:bg-[#112236] rounded-2xl shadow-sm border border-slate-200 dark:border-[#1e3550] p-5 mb-5 flex flex-col md:flex-row items-center justify-between gap-4">
+      <div className="bg-white dark:bg-[#242424] rounded-2xl shadow-sm border border-slate-200 dark:border-[#333333] p-5 mb-5 flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="w-11 h-11 rounded-xl bg-[#0b3d63] flex items-center justify-center flex-shrink-0">
             <ScrollText className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">ประวัติระบบ</h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400">ดูประวัติการทำรายการทั้งหมด</p>
+            <h1 className="text-xl font-bold text-slate-800 dark:text-white">ประวัติระบบ</h1>
+            <p className="text-sm text-slate-500 dark:text-gray-400">ดูประวัติการทำรายการทั้งหมด</p>
           </div>
         </div>
         <div className="relative w-full md:w-auto">
@@ -213,7 +213,7 @@ export default function LogPage() {
             placeholder="ค้นหา..."
             value={search}
             onChange={(e) => { setSearch(e.target.value); setLogPage(1); }}
-            className="pl-10 pr-4 py-2 rounded-xl border border-slate-200 dark:border-[#1e3550] bg-white dark:bg-[#15263d] text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0b3d63] dark:focus:ring-sky-500 font-medium w-full md:w-72 text-sm placeholder:text-slate-400 dark:placeholder:text-slate-500"
+            className="pl-10 pr-4 py-2 rounded-xl border border-slate-200 dark:border-[#333333] bg-white dark:bg-[#2a2a2a] text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0b3d63] dark:focus:ring-[#0b3d63] font-medium w-full md:w-72 text-sm placeholder:text-slate-400 dark:placeholder:text-gray-500"
           />
         </div>
       </div>
@@ -226,8 +226,8 @@ export default function LogPage() {
             onClick={() => setActiveTab(i as 0 | 1 | 2)}
             className={`px-5 py-2.5 rounded-full font-bold text-sm transition-all ${
               activeTab === i
-                ? "bg-[#0b3d63] dark:bg-[#182d46] text-white dark:text-sky-300 dark:border dark:border-sky-400/30 shadow-md"
-                : "bg-white dark:bg-[#112236] text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-[#1e3550] hover:bg-slate-50 dark:hover:bg-slate-800/40"
+                ? "bg-[#0b3d63] dark:bg-[#2a2a2a] text-white dark:text-white dark:border dark:border-[#0b3d63]/30 shadow-md"
+                : "bg-white dark:bg-[#242424] text-slate-600 dark:text-gray-400 border border-slate-200 dark:border-[#333333] hover:bg-slate-50 dark:hover:bg-[#2e2e2e]"
             }`}
           >
             {tab}
@@ -237,7 +237,7 @@ export default function LogPage() {
 
       {/* ── Tab 0: System Log ────────────────────────────────── */}
       {activeTab === 0 && (
-        <div className="bg-white dark:bg-[#112236] rounded-2xl shadow-sm border border-slate-200 dark:border-[#1e3550] overflow-hidden">
+        <div className="bg-white dark:bg-[#242424] rounded-2xl shadow-sm border border-slate-200 dark:border-[#333333] overflow-hidden">
           {!isAdmin ? (
             <div className="flex flex-col items-center justify-center py-20 gap-3 text-slate-400">
               <ShieldOff size={48} className="opacity-30" />
@@ -249,12 +249,12 @@ export default function LogPage() {
           ) : (
             <>
               {/* Filter bar */}
-              <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-100 dark:border-[#1e3550]">
+              <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-100 dark:border-[#333333]">
                 <Filter size={16} className="text-slate-400" />
                 <select
                   value={moduleFilter}
                   onChange={(e) => { setModuleFilter(e.target.value); setLogPage(1); }}
-                  className="text-sm border border-slate-200 dark:border-[#1e3550] bg-white dark:bg-[#15263d] text-slate-800 dark:text-slate-200 rounded-lg px-3 py-1.5 font-medium focus:outline-none focus:ring-2 focus:ring-[#0b3d63] dark:focus:ring-sky-500"
+                  className="text-sm border border-slate-200 dark:border-[#333333] bg-white dark:bg-[#2a2a2a] text-slate-800 dark:text-white rounded-lg px-3 py-1.5 font-medium focus:outline-none focus:ring-2 focus:ring-[#0b3d63] dark:focus:ring-[#0b3d63]"
                 >
                   <option value="all">ทุก Module</option>
                   {moduleOptions.map((m) => (
@@ -272,7 +272,7 @@ export default function LogPage() {
                 <>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
-                      <thead className="bg-slate-50 dark:bg-[#15263d] text-slate-500 dark:text-slate-400 font-bold text-xs uppercase tracking-wide">
+                      <thead className="bg-slate-50 dark:bg-[#2a2a2a] text-slate-500 dark:text-gray-400 font-bold text-xs uppercase tracking-wide">
                         <tr>
                           <th className="px-4 py-3 text-left whitespace-nowrap">วันเวลา</th>
                           <th className="px-4 py-3 text-left">Module</th>
@@ -284,8 +284,8 @@ export default function LogPage() {
                       </thead>
                       <tbody className="divide-y divide-slate-100 dark:divide-[#1e3550]">
                         {pagedLogs.map((log) => (
-                          <tr key={log.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-                            <td className="px-4 py-3 whitespace-nowrap text-slate-500 dark:text-slate-400 font-mono text-xs">
+                          <tr key={log.id} className="hover:bg-slate-50 dark:hover:bg-[#2e2e2e] transition-colors">
+                            <td className="px-4 py-3 whitespace-nowrap text-slate-500 dark:text-gray-400 font-mono text-xs">
                               {formatTimestamp(log.timestamp)}
                             </td>
                             <td className="px-4 py-3">
@@ -293,12 +293,12 @@ export default function LogPage() {
                                 {log.module}
                               </span>
                             </td>
-                            <td className="px-4 py-3 font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                            <td className="px-4 py-3 font-semibold text-slate-700 dark:text-white whitespace-nowrap">
                               {log.action}
                             </td>
-                            <td className="px-4 py-3 text-slate-600 dark:text-slate-300 whitespace-nowrap">{log.actor}</td>
-                            <td className="px-4 py-3 text-slate-600 dark:text-slate-300 whitespace-nowrap">{log.target}</td>
-                            <td className="px-4 py-3 text-slate-500 dark:text-slate-400 max-w-xs truncate" title={log.detail}>
+                            <td className="px-4 py-3 text-slate-600 dark:text-white whitespace-nowrap">{log.actor}</td>
+                            <td className="px-4 py-3 text-slate-600 dark:text-white whitespace-nowrap">{log.target}</td>
+                            <td className="px-4 py-3 text-slate-500 dark:text-gray-400 max-w-xs truncate" title={log.detail}>
                               {log.detail}
                             </td>
                           </tr>
@@ -308,7 +308,7 @@ export default function LogPage() {
                   </div>
 
                   {totalLogPages > 1 && (
-                    <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 dark:border-[#1e3550]">
+                    <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 dark:border-[#333333]">
                       <span className="text-sm text-slate-400">
                         หน้า {logPage} / {totalLogPages}
                       </span>
@@ -316,14 +316,14 @@ export default function LogPage() {
                         <button
                           disabled={logPage <= 1}
                           onClick={() => setLogPage((p) => p - 1)}
-                          className="p-2 rounded-lg border border-slate-200 dark:border-[#1e3550] hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed"
+                          className="p-2 rounded-lg border border-slate-200 dark:border-[#333333] hover:bg-slate-50 dark:hover:bg-[#2e2e2e] text-slate-600 dark:text-white disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                           <ChevronLeft size={16} />
                         </button>
                         <button
                           disabled={logPage >= totalLogPages}
                           onClick={() => setLogPage((p) => p + 1)}
-                          className="p-2 rounded-lg border border-slate-200 dark:border-[#1e3550] hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed"
+                          className="p-2 rounded-lg border border-slate-200 dark:border-[#333333] hover:bg-slate-50 dark:hover:bg-[#2e2e2e] text-slate-600 dark:text-white disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                           <ChevronRight size={16} />
                         </button>
@@ -339,10 +339,10 @@ export default function LogPage() {
 
       {/* ── Tab 1: ลาออฟไลน์ ─────────────────────────────────── */}
       {activeTab === 1 && (
-        <div className="bg-white dark:bg-[#112236] rounded-2xl shadow-sm border border-slate-200 dark:border-[#1e3550] overflow-hidden">
-          <div className="flex items-center gap-2 px-6 py-4 border-b border-slate-100 dark:border-[#1e3550]">
+        <div className="bg-white dark:bg-[#242424] rounded-2xl shadow-sm border border-slate-200 dark:border-[#333333] overflow-hidden">
+          <div className="flex items-center gap-2 px-6 py-4 border-b border-slate-100 dark:border-[#333333]">
             <CalendarOff size={18} className="text-yellow-500" />
-            <span className="font-bold text-slate-700 dark:text-slate-200">รายการแจ้งลา</span>
+            <span className="font-bold text-slate-700 dark:text-white">รายการแจ้งลา</span>
             <span className="text-sm text-slate-400 ml-auto">{filteredLeaves.length} รายการ</span>
           </div>
 
@@ -353,7 +353,7 @@ export default function LogPage() {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-slate-50 dark:bg-[#15263d] text-slate-500 dark:text-slate-400 font-bold text-xs uppercase tracking-wide">
+                <thead className="bg-slate-50 dark:bg-[#2a2a2a] text-slate-500 dark:text-gray-400 font-bold text-xs uppercase tracking-wide">
                   <tr>
                     <th className="px-4 py-3 text-center w-10">#</th>
                     <th className="px-4 py-3 text-left">ชื่อ</th>
@@ -366,12 +366,12 @@ export default function LogPage() {
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-[#1e3550]">
                   {filteredLeaves.map((leave, idx) => (
-                    <tr key={leave.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                    <tr key={leave.id} className="hover:bg-slate-50 dark:hover:bg-[#2e2e2e] transition-colors">
                       <td className="px-4 py-3 text-center text-slate-400 font-mono text-xs">{idx + 1}</td>
-                      <td className="px-4 py-3 font-semibold text-slate-700 dark:text-slate-200">{leave.name}</td>
-                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{leave.date ?? "—"}</td>
-                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{leave.day ?? "—"}</td>
-                      <td className="px-4 py-3 text-slate-500 dark:text-slate-400 max-w-xs truncate" title={leave.reason}>
+                      <td className="px-4 py-3 font-semibold text-slate-700 dark:text-white">{leave.name}</td>
+                      <td className="px-4 py-3 text-slate-600 dark:text-white">{leave.date ?? "—"}</td>
+                      <td className="px-4 py-3 text-slate-600 dark:text-white">{leave.day ?? "—"}</td>
+                      <td className="px-4 py-3 text-slate-500 dark:text-gray-400 max-w-xs truncate" title={leave.reason}>
                         {leave.reason ?? "—"}
                       </td>
                       <td className="px-4 py-3 text-slate-400 font-mono text-xs whitespace-nowrap">
@@ -399,10 +399,10 @@ export default function LogPage() {
 
       {/* ── Tab 2: จองคิวดันเจี้ยน ───────────────────────────── */}
       {activeTab === 2 && (
-        <div className="bg-white dark:bg-[#112236] rounded-2xl shadow-sm border border-slate-200 dark:border-[#1e3550] overflow-hidden">
-          <div className="flex items-center gap-2 px-6 py-4 border-b border-slate-100 dark:border-[#1e3550]">
+        <div className="bg-white dark:bg-[#242424] rounded-2xl shadow-sm border border-slate-200 dark:border-[#333333] overflow-hidden">
+          <div className="flex items-center gap-2 px-6 py-4 border-b border-slate-100 dark:border-[#333333]">
             <Swords size={18} className="text-purple-500" />
-            <span className="font-bold text-slate-700 dark:text-slate-200">ประวัติการจองคิวดันเจี้ยน</span>
+            <span className="font-bold text-slate-700 dark:text-white">ประวัติการจองคิวดันเจี้ยน</span>
             <span className="text-sm text-slate-400 ml-auto">{filteredQueues.length} รายการ</span>
           </div>
 
@@ -413,7 +413,7 @@ export default function LogPage() {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-slate-50 dark:bg-[#15263d] text-slate-500 dark:text-slate-400 font-bold text-xs uppercase tracking-wide">
+                <thead className="bg-slate-50 dark:bg-[#2a2a2a] text-slate-500 dark:text-gray-400 font-bold text-xs uppercase tracking-wide">
                   <tr>
                     <th className="px-4 py-3 text-center w-10">#</th>
                     <th className="px-4 py-3 text-left">ชื่อ</th>
@@ -426,26 +426,26 @@ export default function LogPage() {
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-[#1e3550]">
                   {filteredQueues.map((qr, idx) => (
-                    <tr key={qr.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                    <tr key={qr.id} className="hover:bg-slate-50 dark:hover:bg-[#2e2e2e] transition-colors">
                       <td className="px-4 py-3 text-center text-slate-400 font-mono text-xs">{idx + 1}</td>
-                      <td className="px-4 py-3 font-semibold text-slate-700 dark:text-slate-200">{qr.name}</td>
+                      <td className="px-4 py-3 font-semibold text-slate-700 dark:text-white">{qr.name}</td>
                       <td className="px-4 py-3">
                         <span className="flex items-center gap-1.5">
                           <span
                             className="w-2.5 h-2.5 rounded-full inline-block flex-shrink-0"
                             style={{ backgroundColor: JOB_COLORS[qr.job] ?? "#94a3b8" }}
                           />
-                          <span className="text-slate-600 dark:text-slate-300 font-medium">{qr.job}</span>
+                          <span className="text-slate-600 dark:text-white font-medium">{qr.job}</span>
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-right text-slate-600 dark:text-slate-300 font-mono tabular-nums">
+                      <td className="px-4 py-3 text-right text-slate-600 dark:text-white font-mono tabular-nums">
                         {qr.power.toLocaleString()}
                       </td>
                       <td className="px-4 py-3 text-center">
                         <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
                           qr.rounds === 2
                             ? "bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300"
-                            : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
+                            : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-white"
                         }`}>
                           {qr.rounds === 2 ? "รอบ 1+2" : "รอบ 1"}
                         </span>

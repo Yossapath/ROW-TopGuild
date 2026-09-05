@@ -28,16 +28,16 @@ export default function Sidebar({ isExpanded }: { isExpanded: boolean }) {
 
   return (
     <aside 
-      className={`flex-shrink-0 bg-[#0b3d63] dark:bg-[#081a2b] h-screen flex flex-col transition-all duration-300 shadow-xl border-r border-[#082e4b] dark:border-[#1d334d] z-30 ${
+      className={`flex-shrink-0 bg-[#0b3d63] dark:bg-[#141414] h-screen flex flex-col transition-all duration-300 shadow-xl border-r border-[#082e4b] dark:border-[#262626] z-30 ${
         isExpanded ? "w-64" : "w-20"
       }`}
     >
-      <div className={`p-5 flex flex-col justify-center min-h-[64px] border-b border-white/10 dark:border-white/5 ${isExpanded ? "items-start" : "items-center"}`}>
+      <div className={`p-5 flex flex-col justify-center min-h-[64px] border-b border-white/10 dark:border-white/10 ${isExpanded ? "items-start" : "items-center"}`}>
         <div className="flex items-center space-x-2">
-          <Settings size={22} className="text-blue-200 dark:text-sky-400 flex-shrink-0" />
+          <Settings size={22} className="text-white flex-shrink-0" />
           {isExpanded && <h2 className="font-extrabold text-xl tracking-tight text-white uppercase whitespace-nowrap">TOPGUILD OS</h2>}
         </div>
-        {isExpanded && <p className="text-blue-200 dark:text-slate-400 opacity-80 text-xs mt-1 ml-8 whitespace-nowrap font-medium">Guild Management</p>}
+        {isExpanded && <p className="text-blue-200 dark:text-gray-300 opacity-90 text-xs mt-1 ml-8 whitespace-nowrap font-medium">Guild Management</p>}
       </div>
 
       <nav className="flex-1 px-3 py-6 space-y-1.5 overflow-y-auto overflow-x-hidden">
@@ -53,8 +53,8 @@ export default function Sidebar({ isExpanded }: { isExpanded: boolean }) {
                 isExpanded ? "px-4 py-3 space-x-3 rounded-xl" : "px-0 py-3 justify-center rounded-xl"
               } ${
                 isActive
-                  ? "bg-white text-[#0b3d63] font-bold shadow-md dark:bg-[#182d46] dark:text-[#38bdf8] dark:border dark:border-[#38bdf8]/30"
-                  : "text-blue-100 hover:bg-white/10 hover:text-white dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-slate-200 font-medium"
+                  ? "bg-white text-[#0b3d63] font-bold shadow-md dark:bg-[#0b3d63] dark:text-white"
+                  : "text-blue-100 hover:bg-white/10 hover:text-white dark:text-[#cccccc] dark:hover:bg-white/10 dark:hover:text-white font-medium"
               }`}
             >
               <Icon size={isExpanded ? 20 : 22} className="flex-shrink-0" strokeWidth={isActive ? 2.5 : 2} />

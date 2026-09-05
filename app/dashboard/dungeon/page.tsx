@@ -27,7 +27,7 @@ import type { DungeonQueue, DungeonSchedule } from "@/types";
 // ────────────────────────────────────────────────────────────
 const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
   waiting: { label: "รอคิว", cls: "bg-yellow-100 dark:bg-yellow-950/40 text-yellow-700 dark:text-yellow-400" },
-  active:  { label: "กำลังลง", cls: "bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-sky-400" },
+  active:  { label: "กำลังลง", cls: "bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-white" },
   done:    { label: "เสร็จแล้ว", cls: "bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400" },
 };
 
@@ -295,16 +295,16 @@ export default function DungeonPage() {
 
   // ────────────────────────────────────────────────────────────
   return (
-    <div style={{ zoom: 0.85 }} className="min-h-screen bg-[#f0f6fc] dark:bg-[#0a1420] p-4 lg:py-8 lg:px-12 xl:px-24 2xl:px-32">
+    <div style={{ zoom: 0.85 }} className="min-h-screen bg-[#f0f6fc] dark:bg-[#1c1c1c] p-4 lg:py-8 lg:px-12 xl:px-24 2xl:px-32">
 
       {/* Header Card */}
-      <div className="bg-white dark:bg-[#112236] rounded-2xl shadow-sm border border-slate-200 dark:border-[#1e3550] p-5 mb-5 flex items-center gap-3">
+      <div className="bg-white dark:bg-[#242424] rounded-2xl shadow-sm border border-slate-200 dark:border-[#333333] p-5 mb-5 flex items-center gap-3">
         <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: "#0b3d63" }}>
           <Swords className="w-6 h-6 text-white" />
         </div>
         <div>
-          <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">ระบบจองดันมายา</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">จองคิวดันเจี้ยนมายา · 5 คนต่อทีม · 1-2 รอบต่อรอบ</p>
+          <h1 className="text-xl font-bold text-slate-800 dark:text-white">ระบบจองดันมายา</h1>
+          <p className="text-sm text-slate-500 dark:text-gray-400">จองคิวดันเจี้ยนมายา · 5 คนต่อทีม · 1-2 รอบต่อรอบ</p>
         </div>
       </div>
 
@@ -316,7 +316,7 @@ export default function DungeonPage() {
         <div className="lg:max-w-sm w-full flex flex-col gap-4 lg:sticky lg:top-6 lg:self-start">
 
           {/* Booking Form Card */}
-          <div className="bg-white dark:bg-[#112236] rounded-2xl shadow-sm border border-slate-200 dark:border-[#1e3550] overflow-hidden">
+          <div className="bg-white dark:bg-[#242424] rounded-2xl shadow-sm border border-slate-200 dark:border-[#333333] overflow-hidden">
             <button
               type="button"
               onClick={() => setFormCollapsed(c => !c)}
@@ -328,12 +328,12 @@ export default function DungeonPage() {
               </div>
               <span className="text-blue-200 text-lg">{formCollapsed ? "▸" : "▾"}</span>
             </button>
-            {!formCollapsed && <p className="text-[#0b3d63] dark:text-sky-400 text-xs px-5 pt-2 pb-1 font-medium">5 คนต่อทีม · จองได้ 1-2 รอบต่อรอบ</p>}
+            {!formCollapsed && <p className="text-[#0b3d63] dark:text-white text-xs px-5 pt-2 pb-1 font-medium">5 คนต่อทีม · จองได้ 1-2 รอบต่อรอบ</p>}
 
             {!formCollapsed && <div className="p-5 flex flex-col gap-4">
               {/* Name */}
               <div>
-                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
+                <label className="block text-xs font-semibold text-slate-600 dark:text-white mb-1">
                   ชื่อตัวละคร <span className="text-red-500">*</span>
                 </label>
                 {isAdmin ? (
@@ -350,7 +350,7 @@ export default function DungeonPage() {
                         }
                       }}
                       placeholder="พิมพ์หรือเลือกชื่อ…"
-                      className="w-full border border-slate-200 dark:border-[#1e3550] rounded-lg px-3 py-2 text-sm bg-white dark:bg-[#15263d] text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[#0b3d63]/30 dark:focus:ring-sky-500/30"
+                      className="w-full border border-slate-200 dark:border-[#333333] rounded-lg px-3 py-2 text-sm bg-white dark:bg-[#2a2a2a] text-slate-800 dark:text-white placeholder:text-slate-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#0b3d63] dark:focus:ring-[#0b3d63]"
                     />
                     <datalist id="roster-names">
                       {rosterMembers.map((m) => (
@@ -365,30 +365,30 @@ export default function DungeonPage() {
                       readOnly
                       value={formName}
                       placeholder="ใส่ชื่อตัวละคร..."
-                      className="w-full border border-slate-200 dark:border-[#1e3550] rounded-lg px-3 py-2 text-sm bg-slate-100 dark:bg-[#182d46] text-slate-500 dark:text-slate-400 cursor-not-allowed font-medium"
+                      className="w-full border border-slate-200 dark:border-[#333333] rounded-lg px-3 py-2 text-sm bg-slate-100 dark:bg-[#2a2a2a] text-slate-500 dark:text-gray-400 cursor-not-allowed font-medium"
                     />
-                    <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">ชื่อและอาชีพถูกดึงจากโปรไฟล์ของคุณ</p>
+                    <p className="text-[11px] text-slate-400 dark:text-gray-500 mt-1">ชื่อและอาชีพถูกดึงจากโปรไฟล์ของคุณ</p>
                   </div>
                 )}
               </div>
 
               {/* Job */}
               <div>
-                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
+                <label className="block text-xs font-semibold text-slate-600 dark:text-white mb-1">
                   อาชีพ <span className="text-red-500">*</span>
                 </label>
                 {isAdmin ? (
                   <select
                     value={formJob}
                     onChange={(e) => setFormJob(e.target.value)}
-                    className="w-full border border-slate-200 dark:border-[#1e3550] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0b3d63]/30 dark:focus:ring-sky-500/30 bg-white dark:bg-[#15263d] text-slate-800 dark:text-slate-100"
+                    className="w-full border border-slate-200 dark:border-[#333333] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0b3d63] dark:focus:ring-[#0b3d63] bg-white dark:bg-[#2a2a2a] text-slate-800 dark:text-white"
                   >
                     {JOB_LIST.map((j) => (
                       <option key={j} value={j}>{j}</option>
                     ))}
                   </select>
                 ) : (
-                  <div className="w-full border border-slate-200 dark:border-[#1e3550] rounded-lg px-3 py-2 text-sm bg-slate-100 dark:bg-[#182d46] text-slate-500 dark:text-slate-400 cursor-not-allowed font-medium flex items-center gap-2">
+                  <div className="w-full border border-slate-200 dark:border-[#333333] rounded-lg px-3 py-2 text-sm bg-slate-100 dark:bg-[#2a2a2a] text-slate-500 dark:text-gray-400 cursor-not-allowed font-medium flex items-center gap-2">
                     <span
                       className="w-2.5 h-2.5 rounded-full inline-block"
                       style={{ backgroundColor: JOB_COLORS[formJob] ?? "#94a3b8" }}
@@ -400,7 +400,7 @@ export default function DungeonPage() {
 
               {/* Rounds toggle */}
               <div>
-                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-2">จำนวนรอบ</label>
+                <label className="block text-xs font-semibold text-slate-600 dark:text-white mb-2">จำนวนรอบ</label>
                 <div className="flex gap-2">
                   {([1, 2] as const).map((r) => (
                     <button
@@ -408,8 +408,8 @@ export default function DungeonPage() {
                       onClick={() => setFormRounds(r)}
                       className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
                         formRounds === r
-                          ? "bg-[#0b3d63] dark:bg-sky-600 text-white"
-                          : "bg-slate-100 dark:bg-[#15263d] text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
+                          ? "bg-[#0b3d63] dark:bg-[#0b3d63] text-white"
+                          : "bg-slate-100 dark:bg-[#2a2a2a] text-slate-600 dark:text-white hover:bg-slate-200 dark:hover:bg-[#383838]"
                       }`}
                     >
                       {r === 1 ? "↑ 1 รอบ" : "✕ 2 รอบ"}
@@ -422,7 +422,7 @@ export default function DungeonPage() {
               <button
                 onClick={handleSubmit}
                 disabled={submitting}
-                className="w-full flex items-center justify-center gap-2 bg-[#0b3d63] hover:bg-[#0f4b7a] dark:bg-sky-600 dark:hover:bg-sky-500 text-white rounded-lg py-2.5 text-sm font-semibold transition-colors disabled:opacity-50"
+                className="w-full flex items-center justify-center gap-2 bg-[#0b3d63] hover:bg-[#0f4b7a] text-white rounded-lg py-2.5 text-sm font-semibold transition-colors disabled:opacity-50"
               >
                 <ListPlus size={16} />
                 {submitting ? "กำลังจอง…" : "จองคิวดันมายา"}
@@ -443,23 +443,23 @@ export default function DungeonPage() {
 
           {/* Schedule Settings Card (admin/owner only) */}
           {isAdmin && (
-            <div className="bg-[#eef3f8] dark:bg-[#112236] rounded-2xl border border-slate-200 dark:border-[#1e3550] overflow-hidden">
+            <div className="bg-[#eef3f8] dark:bg-[#242424] rounded-2xl border border-slate-200 dark:border-[#333333] overflow-hidden">
               <button
                 type="button"
                 onClick={() => setSchedCollapsed(c => !c)}
-                className="w-full px-5 py-4 border-b border-slate-200 dark:border-[#1e3550] flex items-center justify-between hover:bg-[#e5edf5] dark:hover:bg-[#15263d]/50 transition-colors"
+                className="w-full px-5 py-4 border-b border-slate-200 dark:border-[#333333] flex items-center justify-between hover:bg-[#e5edf5] dark:hover:bg-[#2e2e2e] transition-colors"
               >
                 <div className="flex items-center gap-2">
-                  <Clock size={16} className="text-[#0b3d63] dark:text-sky-400" />
-                  <h3 className="font-bold text-sm text-[#0b3d63] dark:text-sky-400">ตั้งค่าช่วงเวลาเปิดจอง</h3>
+                  <Clock size={16} className="text-[#0b3d63] dark:text-white" />
+                  <h3 className="font-bold text-sm text-[#0b3d63] dark:text-white">ตั้งค่าช่วงเวลาเปิดจอง</h3>
                 </div>
-                <span className="text-[#0b3d63] dark:text-sky-400 text-lg">{schedCollapsed ? "▸" : "▾"}</span>
+                <span className="text-[#0b3d63] dark:text-white text-lg">{schedCollapsed ? "▸" : "▾"}</span>
               </button>
 
               {!schedCollapsed && <div className="p-5 flex flex-col gap-3">
                 {/* Open date */}
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-slate-600 dark:text-white mb-1">
                     <Calendar size={12} className="inline mr-1" />วันที่เปิดจอง
                   </label>
                   <input
@@ -467,32 +467,32 @@ export default function DungeonPage() {
                     value={schedDate}
                     onChange={(e) => setSchedDate(e.target.value)}
                     disabled={schedUnlimited}
-                    className="w-full border border-slate-200 dark:border-[#1e3550] rounded-lg px-3 py-2 text-sm bg-white dark:bg-[#15263d] text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0b3d63]/30 dark:focus:ring-sky-500/30 disabled:opacity-40"
+                    className="w-full border border-slate-200 dark:border-[#333333] rounded-lg px-3 py-2 text-sm bg-white dark:bg-[#2a2a2a] text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0b3d63] dark:focus:ring-[#0b3d63] disabled:opacity-40"
                   />
                 </div>
 
                 {/* Open / Close time */}
                 <div className="flex gap-2">
                   <div className="flex-1">
-                    <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">เวลาเปิด</label>
+                    <label className="block text-xs font-semibold text-slate-600 dark:text-white mb-1">เวลาเปิด</label>
                     <input
                       type="time"
                       lang="en-GB"
                       value={schedOpen}
                       onChange={(e) => setSchedOpen(e.target.value)}
                       disabled={schedUnlimited}
-                      className="w-full border border-slate-200 dark:border-[#1e3550] rounded-lg px-3 py-2 text-sm bg-white dark:bg-[#15263d] text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0b3d63]/30 dark:focus:ring-sky-500/30 disabled:opacity-40"
+                      className="w-full border border-slate-200 dark:border-[#333333] rounded-lg px-3 py-2 text-sm bg-white dark:bg-[#2a2a2a] text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0b3d63] dark:focus:ring-[#0b3d63] disabled:opacity-40"
                     />
                   </div>
                   <div className="flex-1">
-                    <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">เวลาปิด</label>
+                    <label className="block text-xs font-semibold text-slate-600 dark:text-white mb-1">เวลาปิด</label>
                     <input
                       type="time"
                       lang="en-GB"
                       value={schedClose}
                       onChange={(e) => setSchedClose(e.target.value)}
                       disabled={schedUnlimited}
-                      className="w-full border border-slate-200 dark:border-[#1e3550] rounded-lg px-3 py-2 text-sm bg-white dark:bg-[#15263d] text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0b3d63]/30 dark:focus:ring-sky-500/30 disabled:opacity-40"
+                      className="w-full border border-slate-200 dark:border-[#333333] rounded-lg px-3 py-2 text-sm bg-white dark:bg-[#2a2a2a] text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0b3d63] dark:focus:ring-[#0b3d63] disabled:opacity-40"
                     />
                   </div>
                 </div>
@@ -505,14 +505,14 @@ export default function DungeonPage() {
                     onChange={(e) => setSchedUnlimited(e.target.checked)}
                     className="w-4 h-4 accent-[#0b3d63] dark:accent-sky-500"
                   />
-                  <span className="text-xs text-slate-600 dark:text-slate-300">เปิดจองไม่จำกัดเวลา</span>
+                  <span className="text-xs text-slate-600 dark:text-white">เปิดจองไม่จำกัดเวลา</span>
                 </label>
 
                 {/* Save button */}
                 <button
                   onClick={handleSaveSchedule}
                   disabled={schedSaving}
-                  className="flex items-center justify-center gap-2 bg-[#0b3d63] hover:bg-[#0f4b7a] dark:bg-sky-600 dark:hover:bg-sky-500 text-white rounded-lg py-2 text-sm font-semibold transition-colors disabled:opacity-50"
+                  className="flex items-center justify-center gap-2 bg-[#0b3d63] hover:bg-[#0f4b7a] text-white rounded-lg py-2 text-sm font-semibold transition-colors disabled:opacity-50"
                 >
                   <CheckCircle size={14} />
                   {schedSaving ? "กำลังบันทึก…" : "บันทึกตั้งค่า"}
@@ -529,7 +529,7 @@ export default function DungeonPage() {
 
                 {/* Booking status badge */}
                 <div className="flex items-center gap-2 pt-1">
-                  <span className="text-xs text-slate-500 dark:text-slate-400">สถานะ:</span>
+                  <span className="text-xs text-slate-500 dark:text-gray-400">สถานะ:</span>
                   {isUnlimited ? (
                     <span className="text-xs bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400 rounded-full px-2 py-0.5 font-medium">
                       เปิดจองไม่จำกัดเวลา
@@ -556,8 +556,8 @@ export default function DungeonPage() {
           {/* Header */}
           <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
             <div className="flex items-center gap-2">
-              <span className="font-semibold text-slate-700 dark:text-slate-200">รายชื่อคิว</span>
-              <span className="bg-[#0b3d63] dark:bg-sky-600 text-white text-xs font-bold px-2.5 py-1 rounded-full">
+              <span className="font-semibold text-slate-700 dark:text-white">รายชื่อคิว</span>
+              <span className="bg-[#0b3d63] dark:bg-[#0b3d63] text-white text-xs font-bold px-2.5 py-1 rounded-full">
                 {queues.length} คน
               </span>
             </div>
@@ -568,20 +568,20 @@ export default function DungeonPage() {
                 placeholder="ค้นหาชื่อ..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full sm:w-40 border border-slate-200 dark:border-[#1e3550] bg-white dark:bg-[#15263d] text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0b3d63]/30 dark:focus:ring-sky-500/30"
+                className="w-full sm:w-40 border border-slate-200 dark:border-[#333333] bg-white dark:bg-[#2a2a2a] text-slate-800 dark:text-white placeholder:text-slate-400 dark:placeholder:text-gray-500 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0b3d63] dark:focus:ring-[#0b3d63]"
               />
             </div>
             <div className="flex items-center gap-2">
               <button
                 onClick={fetchQueues}
-                className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 hover:text-[#0b3d63] dark:hover:text-sky-400 transition-colors px-2 py-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+                className="flex items-center gap-1 text-xs text-slate-500 dark:text-gray-400 hover:text-[#0b3d63] dark:hover:text-sky-400 transition-colors px-2 py-1 rounded-lg hover:bg-slate-100 dark:hover:bg-[#2e2e2e]"
               >
                 <RefreshCw size={13} />
                 รีเฟรช
               </button>
               <button
                 onClick={handleCopyLink}
-                className="flex items-center gap-1.5 bg-white dark:bg-[#15263d] border border-slate-200 dark:border-[#1e3550] hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors shadow-sm"
+                className="flex items-center gap-1.5 bg-white dark:bg-[#2a2a2a] border border-slate-200 dark:border-[#333333] hover:bg-slate-50 dark:hover:bg-[#2e2e2e] text-slate-700 dark:text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors shadow-sm"
               >
                 {copied ? <CheckCircle size={13} className="text-green-600 dark:text-green-400" /> : <Share2 size={13} />}
                 {copied ? "คัดลอกแล้ว!" : "แชร์ลิงก์จองตัว"}
@@ -591,13 +591,13 @@ export default function DungeonPage() {
 
           {/* Queue list */}
           {loading ? (
-            <div className="bg-white dark:bg-[#112236] rounded-2xl shadow-sm border border-slate-200 dark:border-[#1e3550] p-10 text-center text-slate-400 dark:text-slate-500 text-sm">
+            <div className="bg-white dark:bg-[#242424] rounded-2xl shadow-sm border border-slate-200 dark:border-[#333333] p-10 text-center text-slate-400 dark:text-gray-500 text-sm">
               กำลังโหลด…
             </div>
           ) : queues.length === 0 ? (
-            <div className="bg-white dark:bg-[#112236] rounded-2xl shadow-sm border border-slate-200 dark:border-[#1e3550] p-10 text-center">
+            <div className="bg-white dark:bg-[#242424] rounded-2xl shadow-sm border border-slate-200 dark:border-[#333333] p-10 text-center">
               <Swords size={32} className="text-slate-300 dark:text-slate-600 mx-auto mb-3" />
-              <p className="text-slate-400 dark:text-slate-500 text-sm">ยังไม่มีคิว · รอคิวแรก!</p>
+              <p className="text-slate-400 dark:text-gray-500 text-sm">ยังไม่มีคิว · รอคิวแรก!</p>
             </div>
           ) : (
             <div className="flex flex-col gap-2">
@@ -622,17 +622,17 @@ export default function DungeonPage() {
                   return (
                     <div
                       key={q.id}
-                      className={`bg-white dark:bg-[#112236] rounded-2xl shadow-sm border border-slate-200 dark:border-[#1e3550] px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3 ${isDone ? "opacity-60" : ""} ${isR2 && !isDone ? "border-l-4 border-l-purple-500 dark:border-l-purple-400" : ""}`}
+                      className={`bg-white dark:bg-[#242424] rounded-2xl shadow-sm border border-slate-200 dark:border-[#333333] px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3 ${isDone ? "opacity-60" : ""} ${isR2 && !isDone ? "border-l-4 border-l-purple-500 dark:border-l-purple-400" : ""}`}
                     >
                       {/* Number */}
-                      <span className="text-slate-400 dark:text-slate-500 font-bold text-sm w-6 shrink-0">
+                      <span className="text-slate-400 dark:text-gray-500 font-bold text-sm w-6 shrink-0">
                         {idx}
                       </span>
 
                       {/* Main info */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-bold text-slate-800 dark:text-slate-100 text-sm">{q.name}</span>
+                          <span className="font-bold text-slate-800 dark:text-white text-sm">{q.name}</span>
 
                           {/* Job badge */}
                           <span
@@ -665,12 +665,12 @@ export default function DungeonPage() {
                         {/* Power + timestamp */}
                         <div className="flex items-center gap-3 mt-1 flex-wrap">
                           {q.power > 0 && (
-                            <span className="text-xs text-slate-500 dark:text-slate-400">
+                            <span className="text-xs text-slate-500 dark:text-gray-400">
                               <Shield size={11} className="inline mr-0.5" />
                               {q.power.toLocaleString()}
                             </span>
                           )}
-                          <span className="text-xs text-slate-400 dark:text-slate-500">{formatTimestamp(q.timestamp)}</span>
+                          <span className="text-xs text-slate-400 dark:text-gray-500">{formatTimestamp(q.timestamp)}</span>
                         </div>
                       </div>
 
@@ -682,7 +682,7 @@ export default function DungeonPage() {
                           className={`text-xs font-medium px-2.5 py-1 rounded-lg transition-colors ${
                             q.round1
                               ? "bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400"
-                              : "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 " + (isAdmin ? "hover:bg-green-50 dark:hover:bg-green-950/30 hover:text-green-600 dark:hover:text-green-400 cursor-pointer" : "cursor-default")
+                              : "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-gray-500 " + (isAdmin ? "hover:bg-green-50 dark:hover:bg-green-950/30 hover:text-green-600 dark:hover:text-green-400 cursor-pointer" : "cursor-default")
                           }`}
                           title={isAdmin ? "คลิกเพื่อทำเครื่องหมายรอบ 1" : undefined}
                         >
@@ -696,7 +696,7 @@ export default function DungeonPage() {
                             className={`text-xs font-medium px-2.5 py-1 rounded-lg transition-colors ${
                               q.round2
                                 ? "bg-orange-100 dark:bg-orange-950/40 text-orange-700 dark:text-orange-400"
-                                : "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 " + (isAdmin ? "hover:bg-orange-50 dark:hover:bg-orange-950/30 hover:text-orange-600 dark:hover:text-orange-400 cursor-pointer" : "cursor-default")
+                                : "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-gray-500 " + (isAdmin ? "hover:bg-orange-50 dark:hover:bg-orange-950/30 hover:text-orange-600 dark:hover:text-orange-400 cursor-pointer" : "cursor-default")
                             }`}
                             title={isAdmin ? "คลิกเพื่อทำเครื่องหมายรอบ 2" : undefined}
                           >
@@ -722,27 +722,27 @@ export default function DungeonPage() {
                 return (
                   <>
                     {waitingR1Priests.length > 0 && (
-                      <div className="text-xs font-bold text-blue-700 dark:text-sky-400 mt-2 px-2">พระ (Priest) - รอคิวรอบ 1</div>
+                      <div className="text-xs font-bold text-blue-700 dark:text-white mt-2 px-2">พระ (Priest) - รอคิวรอบ 1</div>
                     )}
                     {waitingR1Priests.map(q => renderQueue(q, currentGlobalIdx++, false))}
                     
                     {waitingR1Others.length > 0 && (
-                      <div className="text-xs font-bold text-slate-500 dark:text-slate-400 mt-2 px-2">อาชีพอื่นๆ - รอคิวรอบ 1</div>
+                      <div className="text-xs font-bold text-slate-500 dark:text-gray-400 mt-2 px-2">อาชีพอื่นๆ - รอคิวรอบ 1</div>
                     )}
                     {waitingR1Others.map(q => renderQueue(q, currentGlobalIdx++, false))}
 
                     {waitingR2Priests.length > 0 && (
-                      <div className="text-xs font-bold text-purple-700 dark:text-purple-400 mt-2 px-2 border-t border-slate-200 dark:border-[#1e3550] pt-3">พระ (Priest) - รอคิวรอบ 2</div>
+                      <div className="text-xs font-bold text-purple-700 dark:text-purple-400 mt-2 px-2 border-t border-slate-200 dark:border-[#333333] pt-3">พระ (Priest) - รอคิวรอบ 2</div>
                     )}
                     {waitingR2Priests.map(q => renderQueue(q, currentGlobalIdx++, false, true))}
                     
                     {waitingR2Others.length > 0 && (
-                      <div className="text-xs font-bold text-purple-700 dark:text-purple-400 mt-2 px-2 border-t border-slate-200 dark:border-[#1e3550] pt-3">อาชีพอื่นๆ - รอคิวรอบ 2</div>
+                      <div className="text-xs font-bold text-purple-700 dark:text-purple-400 mt-2 px-2 border-t border-slate-200 dark:border-[#333333] pt-3">อาชีพอื่นๆ - รอคิวรอบ 2</div>
                     )}
                     {waitingR2Others.map(q => renderQueue(q, currentGlobalIdx++, false, true))}
 
                     {doneQueuesList.length > 0 && (
-                      <div className="text-xs font-bold text-green-600 dark:text-emerald-400 mt-2 px-2 border-t border-slate-200 dark:border-[#1e3550] pt-3">ลงเสร็จแล้ว</div>
+                      <div className="text-xs font-bold text-green-600 dark:text-emerald-400 mt-2 px-2 border-t border-slate-200 dark:border-[#333333] pt-3">ลงเสร็จแล้ว</div>
                     )}
                     {doneQueuesList.map(q => renderQueue(q, currentGlobalIdx++, true))}
                   </>

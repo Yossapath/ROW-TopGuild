@@ -102,9 +102,9 @@ export default function UsersPage() {
   });
 
   return (
-    <div className="space-y-6 bg-[#f0f6fc] dark:bg-[#0a1420] min-h-screen p-4 lg:py-8 lg:px-12 xl:px-24 2xl:px-32 relative" style={{ zoom: 0.85 }}>
+    <div className="space-y-6 bg-[#f0f6fc] dark:bg-[#1c1c1c] min-h-screen p-4 lg:py-8 lg:px-12 xl:px-24 2xl:px-32 relative" style={{ zoom: 0.85 }}>
       {/* Header Card */}
-      <div className="bg-white dark:bg-[#112236] rounded-2xl shadow-sm border border-slate-200 dark:border-[#1e3550] p-5 mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="bg-white dark:bg-[#242424] rounded-2xl shadow-sm border border-slate-200 dark:border-[#333333] p-5 mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
           <div
             className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 bg-[#0b3d63]"
@@ -112,8 +112,8 @@ export default function UsersPage() {
             <UserCog className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">จัดการผู้ใช้ (User Management)</h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400">ตั้งค่าและจัดการสิทธิ์สมาชิกในกิลด์</p>
+            <h1 className="text-xl font-bold text-slate-800 dark:text-white">จัดการผู้ใช้ (User Management)</h1>
+            <p className="text-sm text-slate-500 dark:text-gray-400">ตั้งค่าและจัดการสิทธิ์สมาชิกในกิลด์</p>
           </div>
         </div>
         
@@ -124,7 +124,7 @@ export default function UsersPage() {
             placeholder="ค้นหาชื่อในเกม หรือ Discord..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-4 pr-10 py-2.5 rounded-xl border border-slate-200 dark:border-[#1e3550] bg-white dark:bg-[#15263d] text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:ring-2 focus:ring-[#0b3d63] dark:focus:ring-sky-500 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500"
+            className="w-full pl-4 pr-10 py-2.5 rounded-xl border border-slate-200 dark:border-[#333333] bg-white dark:bg-[#2a2a2a] text-slate-800 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-[#0b3d63] transition-all placeholder:text-slate-400 dark:placeholder:text-gray-500"
           />
           <svg className="w-5 h-5 absolute right-3 top-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
@@ -132,11 +132,11 @@ export default function UsersPage() {
         </div>
       </div>
 
-      <div className="bg-white dark:bg-[#112236] p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-[#1e3550] min-h-[400px]">
+      <div className="bg-white dark:bg-[#242424] p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-[#333333] min-h-[400px]">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center h-64">
-            <Loader2 size={48} className="text-[#0b3d63] dark:text-sky-400 animate-spin mb-4" />
-            <p className="text-slate-500 dark:text-slate-400 font-bold text-lg animate-pulse">กำลังโหลดข้อมูลผู้ใช้...</p>
+            <Loader2 size={48} className="text-[#0b3d63] dark:text-white animate-spin mb-4" />
+            <p className="text-slate-500 dark:text-gray-400 font-bold text-lg animate-pulse">กำลังโหลดข้อมูลผู้ใช้...</p>
           </div>
         ) : isError ? (
           <div className="flex flex-col items-center justify-center h-64 text-center p-4">
@@ -148,39 +148,39 @@ export default function UsersPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse min-w-[600px]">
               <thead>
-                <tr className="border-b border-slate-100 dark:border-[#1e3550]">
-                  <th className="py-3 px-4 font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider text-xs">Discord</th>
-                  <th className="py-3 px-4 font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider text-xs">Game Name</th>
-                  <th className="py-3 px-4 font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider text-xs">Class / Power</th>
-                  <th className="py-3 px-4 font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider text-xs text-center">Role</th>
-                  <th className="py-3 px-4 font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider text-xs text-center">จัดการ</th>
+                <tr className="border-b border-slate-100 dark:border-[#333333]">
+                  <th className="py-3 px-4 font-bold text-slate-400 dark:text-gray-400 uppercase tracking-wider text-xs">Discord</th>
+                  <th className="py-3 px-4 font-bold text-slate-400 dark:text-gray-400 uppercase tracking-wider text-xs">Game Name</th>
+                  <th className="py-3 px-4 font-bold text-slate-400 dark:text-gray-400 uppercase tracking-wider text-xs">Class / Power</th>
+                  <th className="py-3 px-4 font-bold text-slate-400 dark:text-gray-400 uppercase tracking-wider text-xs text-center">Role</th>
+                  <th className="py-3 px-4 font-bold text-slate-400 dark:text-gray-400 uppercase tracking-wider text-xs text-center">จัดการ</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-[#1e3550]">
+              <tbody className="divide-y divide-slate-100 dark:divide-[#333333]">
                 {sortedUsers.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="py-12 text-center text-slate-400 dark:text-slate-500 font-medium">
+                    <td colSpan={5} className="py-12 text-center text-slate-400 dark:text-gray-500 font-medium">
                       {searchQuery ? "ไม่พบผู้ใช้ที่ตรงกับคำค้นหา" : "ไม่มีข้อมูลผู้ใช้ในระบบ"}
                     </td>
                   </tr>
                 ) : (
                   sortedUsers.map((u, index) => (
-                    <tr key={u.discordId || `user-${index}`} className={`hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors ${u.role === 'admin' ? 'bg-blue-50/50 dark:bg-blue-950/20' : ''}`}>
+                    <tr key={u.discordId || `user-${index}`} className={`hover:bg-slate-50/70 dark:hover:bg-[#2e2e2e] transition-colors ${u.role === 'admin' ? 'bg-blue-50/50 dark:bg-[#0b3d63]/20' : ''}`}>
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-3">
                           <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm text-white ${u.role === 'admin' ? 'bg-theme-warning' : 'bg-slate-400'}`}>
                             {u.discordUsername ? u.discordUsername.charAt(0).toUpperCase() : "U"}
                           </div>
-                          <span className="font-bold text-theme-text">{u.discordUsername || "Unknown"}</span>
+                          <span className="font-bold text-slate-800 dark:text-white">{u.discordUsername || "Unknown"}</span>
                         </div>
                       </td>
                       <td className="py-3 px-4">
-                        <span className="font-semibold text-theme-text">{u.gameUsername || "-"}</span>
+                        <span className="font-semibold text-slate-800 dark:text-white">{u.gameUsername || "-"}</span>
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex flex-col">
-                          <span className="text-sm font-bold text-theme-text">{u.class || "-"}</span>
-                          <span className="text-xs text-theme-textSecondary">{u.power ? u.power.toLocaleString() : "0"} CP</span>
+                          <span className="text-sm font-bold text-slate-800 dark:text-white">{u.class || "-"}</span>
+                          <span className="text-xs text-slate-500 dark:text-gray-400">{u.power ? u.power.toLocaleString() : "0"} CP</span>
                         </div>
                       </td>
                       <td className="py-3 px-4 text-center">
@@ -196,7 +196,7 @@ export default function UsersPage() {
                             className={`px-3 py-1.5 rounded-lg font-bold text-sm border-2 outline-none cursor-pointer transition-colors ${
                               u.role === 'admin' 
                                 ? 'bg-theme-warning/10 text-theme-warning border-theme-warning/30 hover:border-theme-warning' 
-                                : 'bg-slate-100 text-slate-600 border-slate-200 hover:border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
+                                : 'bg-slate-100 text-slate-600 border-slate-200 hover:border-slate-300 dark:bg-[#2a2a2a] dark:text-white dark:border-[#333333]'
                             }`}
                           >
                             <option value="admin">Admin</option>
@@ -207,7 +207,7 @@ export default function UsersPage() {
                       <td className="py-3 px-4 text-center">
                         {isAdmin && (
                           u.discordId === user?.discordId ? (
-                            <span className="text-xs font-semibold text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-[#15263d] px-2.5 py-1 rounded-md">
+                            <span className="text-xs font-semibold text-slate-400 dark:text-gray-400 bg-slate-100 dark:bg-[#2a2a2a] px-2.5 py-1 rounded-md">
                               คุณเอง
                             </span>
                           ) : (
@@ -238,7 +238,7 @@ export default function UsersPage() {
       {/* Modal ยืนยันการลบผู้ใช้ */}
       {userToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white dark:bg-[#112236] border border-slate-200 dark:border-[#1e3550] rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4 relative">
+          <div className="bg-white dark:bg-[#242424] border border-slate-200 dark:border-[#333333] rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4 relative">
             {/* Close button */}
             <button
               type="button"
@@ -248,7 +248,7 @@ export default function UsersPage() {
                   setConfirmInput("");
                 }
               }}
-              className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-[#15263d] transition-colors"
+              className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-[#2a2a2a] transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
@@ -259,30 +259,30 @@ export default function UsersPage() {
                 <AlertTriangle className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">ยืนยันการลบผู้ใช้</h3>
+                <h3 className="text-lg font-bold text-slate-800 dark:text-white">ยืนยันการลบผู้ใช้</h3>
                 <p className="text-xs text-red-500 font-medium">การกระทำนี้จะลบผู้ใช้และไม่สามารถย้อนกลับได้</p>
               </div>
             </div>
 
             {/* Target User Info */}
-            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#15263d] border border-slate-200 dark:border-[#1e3550] space-y-1.5 text-sm">
+            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#2a2a2a] border border-slate-200 dark:border-[#333333] space-y-1.5 text-sm">
               <div className="flex justify-between items-center">
                 <span className="text-slate-400 text-xs font-semibold">ชื่อตัวละคร:</span>
-                <span className="font-bold text-slate-800 dark:text-slate-100">{userToDelete.gameUsername || "-"}</span>
+                <span className="font-bold text-slate-800 dark:text-white">{userToDelete.gameUsername || "-"}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-slate-400 text-xs font-semibold">Discord:</span>
-                <span className="font-semibold text-slate-700 dark:text-slate-200">{userToDelete.discordUsername}</span>
+                <span className="font-semibold text-slate-700 dark:text-white">{userToDelete.discordUsername}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-slate-400 text-xs font-semibold">ตำแหน่ง / ยศ:</span>
-                <span className="text-xs font-bold uppercase text-slate-600 dark:text-slate-300">{userToDelete.role}</span>
+                <span className="text-xs font-bold uppercase text-slate-600 dark:text-gray-300">{userToDelete.role}</span>
               </div>
             </div>
 
             {/* Instruction & Input */}
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+              <label className="block text-sm font-medium text-slate-700 dark:text-gray-200">
                 พิมพ์คำว่า <span className="font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/50 px-1.5 py-0.5 rounded">ยืนยัน</span> ในช่องด้านล่างเพื่อดำเนินการลบ:
               </label>
               <input
@@ -292,7 +292,7 @@ export default function UsersPage() {
                 placeholder="พิมพ์ ยืนยัน"
                 disabled={deleteUserMutation.isPending}
                 autoFocus
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-[#1e3550] bg-white dark:bg-[#0a1420] text-slate-800 dark:text-slate-100 font-semibold focus:outline-none focus:ring-2 focus:ring-red-500 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                className="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-[#333333] bg-white dark:bg-[#1c1c1c] text-slate-800 dark:text-white font-semibold focus:outline-none focus:ring-2 focus:ring-red-500 transition-all placeholder:text-slate-400 dark:placeholder:text-gray-500"
               />
             </div>
 
@@ -305,7 +305,7 @@ export default function UsersPage() {
                   setConfirmInput("");
                 }}
                 disabled={deleteUserMutation.isPending}
-                className="px-4 py-2.5 rounded-xl text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#15263d] transition-colors"
+                className="px-4 py-2.5 rounded-xl text-sm font-bold text-slate-600 dark:text-white hover:bg-slate-100 dark:hover:bg-[#2a2a2a] transition-colors"
               >
                 ยกเลิก
               </button>

@@ -9,13 +9,13 @@ function LoginForm() {
   const error = searchParams.get("error");
 
   return (
-    <div className="relative rounded-2xl bg-white dark:bg-[#112236] p-8 shadow-2xl overflow-hidden border border-slate-100 dark:border-[#1e3550] text-center">
+    <div className="relative rounded-2xl bg-white dark:bg-[#242424] p-8 shadow-2xl overflow-hidden border border-slate-100 dark:border-[#333333] text-center">
       {/* Top blue border effect */}
-      <div className="absolute top-0 left-0 w-full h-1.5 bg-[#0b3d63] dark:bg-sky-500"></div>
+      <div className="absolute top-0 left-0 w-full h-1.5 bg-[#0b3d63]"></div>
 
       <div className="mb-8 mt-2 flex flex-col items-center">
-        <h2 className="text-2xl font-black italic text-slate-800 dark:text-slate-100 tracking-wider uppercase mb-2">LOGIN</h2>
-        <p className="text-gray-500 dark:text-slate-400 text-sm">เข้าสู่ระบบด้วยบัญชี Discord ของคุณ</p>
+        <h2 className="text-2xl font-black italic text-slate-800 dark:text-white tracking-wider uppercase mb-2">LOGIN</h2>
+        <p className="text-gray-500 dark:text-gray-400 text-sm">เข้าสู่ระบบด้วยบัญชี Discord ของคุณ</p>
       </div>
 
       {error && (
@@ -39,20 +39,20 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <div className="flex min-h-screen bg-slate-50 dark:bg-[#0a1420]">
+    <div className="flex min-h-screen bg-slate-50 dark:bg-[#1c1c1c]">
       <div className="flex w-full max-w-5xl mx-auto items-center justify-center p-4 lg:p-8">
         
         {/* Left Side (Branding) */}
         <div className="hidden lg:flex w-1/2 flex-col justify-center pr-12">
-          <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-[#0b3d63] dark:bg-sky-600 text-white shadow-lg">
+          <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-[#0b3d63] text-white shadow-lg">
             <Layers size={40} />
           </div>
-          <h1 className="text-5xl font-black tracking-tight text-slate-900 dark:text-slate-100 mb-2">TOPGUILD</h1>
-          <h2 className="text-4xl font-black text-blue-600 dark:text-sky-400 leading-tight">
+          <h1 className="text-5xl font-black tracking-tight text-slate-900 dark:text-white mb-2">TOPGUILD</h1>
+          <h2 className="text-4xl font-black text-blue-600 dark:text-white leading-tight">
             RAGNAROK <br />
             THE NEW WORLD
           </h2>
-          <p className="mt-6 text-sm font-bold tracking-widest text-slate-500 dark:text-slate-400 uppercase">
+          <p className="mt-6 text-sm font-bold tracking-widest text-slate-500 dark:text-gray-400 uppercase">
             Guild Data Management System
           </p>
         </div>

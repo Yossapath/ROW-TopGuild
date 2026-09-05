@@ -114,26 +114,26 @@ export default function LeavePage() {
     } catch { /* silent */ } finally { setDeletingId(null); }
   };
 
-  const inputCls = "w-full border border-slate-200 dark:border-[#1e3550] rounded-lg px-3 py-2.5 text-sm font-semibold text-slate-700 dark:text-slate-100 bg-white dark:bg-[#15263d] focus:outline-none focus:ring-2 focus:ring-[#0b3d63] dark:focus:ring-sky-500 placeholder:text-slate-400 dark:placeholder:text-slate-500";
-  const lockedCls = "w-full border border-slate-200 dark:border-[#1e3550] rounded-lg px-3 py-2.5 text-sm font-semibold text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-[#15263d]/60 select-none";
+  const inputCls = "w-full border border-slate-200 dark:border-[#333333] rounded-lg px-3 py-2.5 text-sm font-semibold text-slate-700 dark:text-white bg-white dark:bg-[#2a2a2a] focus:outline-none focus:ring-2 focus:ring-[#0b3d63] placeholder:text-slate-400 dark:placeholder:text-gray-500";
+  const lockedCls = "w-full border border-slate-200 dark:border-[#333333] rounded-lg px-3 py-2.5 text-sm font-semibold text-slate-500 dark:text-gray-300 bg-slate-50 dark:bg-[#2a2a2a]/60 select-none";
 
   return (
-    <div className="bg-[#f0f6fc] dark:bg-[#0a1420] min-h-screen p-4 lg:py-8 lg:px-12 xl:px-24 2xl:px-32" style={{ zoom: 0.85 }}>
+    <div className="bg-[#f0f6fc] dark:bg-[#1c1c1c] min-h-screen p-4 lg:py-8 lg:px-12 xl:px-24 2xl:px-32" style={{ zoom: 0.85 }}>
 
       {/* Header Card */}
-      <div className="bg-white dark:bg-[#112236] rounded-2xl shadow-sm border border-slate-200 dark:border-[#1e3550] p-5 mb-5 flex items-center gap-3">
+      <div className="bg-white dark:bg-[#242424] rounded-2xl shadow-sm border border-slate-200 dark:border-[#333333] p-5 mb-5 flex items-center gap-3">
         <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 bg-[#0b3d63]">
           <CalendarOff className="w-6 h-6 text-white" />
         </div>
         <div>
-          <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">ระบบแจ้งลาวอ</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">แจ้งลาการเข้าร่วมวอร์ | อังคาร · พฤหัสบดี · อาทิตย์</p>
+          <h1 className="text-xl font-bold text-slate-800 dark:text-white">ระบบแจ้งลาวอ</h1>
+          <p className="text-sm text-slate-500 dark:text-gray-400">แจ้งลาการเข้าร่วมวอร์ | อังคาร · พฤหัสบดี · อาทิตย์</p>
         </div>
       </div>
 
       {/* ── FORM CARD ── */}
-      <div className="bg-white dark:bg-[#112236] rounded-2xl shadow-sm border border-slate-200 dark:border-[#1e3550] p-6 mb-4">
-        <h2 className="font-bold text-[#0b3d63] dark:text-sky-400 text-base mb-5">แบบฟอร์มแจ้งลาวอ</h2>
+      <div className="bg-white dark:bg-[#242424] rounded-2xl shadow-sm border border-slate-200 dark:border-[#333333] p-6 mb-4">
+        <h2 className="font-bold text-[#0b3d63] dark:text-white text-base mb-5">แบบฟอร์มแจ้งลาวอ</h2>
         <form onSubmit={handleSubmit}>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
 
@@ -227,11 +227,11 @@ export default function LeavePage() {
       </div>
 
       {/* ── LIST CARD ── */}
-      <div className="bg-white dark:bg-[#112236] rounded-2xl shadow-sm border border-slate-200 dark:border-[#1e3550] overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-100 dark:border-[#1e3550] flex items-center gap-3">
-          <CalendarOff className="w-5 h-5 text-[#0b3d63] dark:text-sky-400" />
-          <h2 className="font-bold text-[#0b3d63] dark:text-sky-400">รายการแจ้งลาล่วงหน้า</h2>
-          <span className="bg-slate-100 dark:bg-[#182d46] text-slate-500 dark:text-slate-300 text-xs font-bold px-2 py-0.5 rounded-full ml-auto">
+      <div className="bg-white dark:bg-[#242424] rounded-2xl shadow-sm border border-slate-200 dark:border-[#333333] overflow-hidden">
+        <div className="px-6 py-4 border-b border-slate-100 dark:border-[#333333] flex items-center gap-3">
+          <CalendarOff className="w-5 h-5 text-[#0b3d63] dark:text-white" />
+          <h2 className="font-bold text-[#0b3d63] dark:text-white">รายการแจ้งลาล่วงหน้า</h2>
+          <span className="bg-slate-100 dark:bg-[#333333] text-slate-500 dark:text-white text-xs font-bold px-2 py-0.5 rounded-full ml-auto">
             {allRecords.length} รายการ
           </span>
         </div>
@@ -250,7 +250,7 @@ export default function LeavePage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-[#eef4fb] dark:bg-[#182d46] text-[#0b3d63] dark:text-sky-300 text-xs font-semibold border-b border-slate-100 dark:border-[#1e3550]">
+                <tr className="bg-[#eef4fb] dark:bg-[#2a2a2a] text-[#0b3d63] dark:text-white text-xs font-semibold border-b border-slate-100 dark:border-[#333333]">
                   <th className="px-5 py-3 text-left">วันที่ลา</th>
                   <th className="px-5 py-3 text-left">วัน</th>
                   <th className="px-5 py-3 text-left">ชื่อตัวละคร</th>
@@ -260,24 +260,24 @@ export default function LeavePage() {
                   {isAdmin && <th className="px-5 py-3 text-center">จัดการ</th>}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-[#1e3550]">
+              <tbody className="divide-y divide-slate-100 dark:divide-[#333333]">
                 {allRecords.map((rec) => {
                   const dayName = rec.day || getDayName(rec.date ?? "");
                   const isDeleting = deletingId === rec.id;
                   return (
-                    <tr key={rec.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-                      <td className="px-5 py-3.5 font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                    <tr key={rec.id} className="hover:bg-slate-50 dark:hover:bg-[#2e2e2e] transition-colors">
+                      <td className="px-5 py-3.5 font-semibold text-slate-700 dark:text-white whitespace-nowrap">
                         {formatDateTH(rec.date ?? "")}
                       </td>
                       <td className="px-5 py-3.5">
-                        <span className="px-2 py-0.5 bg-blue-50 dark:bg-sky-950/40 text-blue-600 dark:text-sky-300 rounded text-xs font-bold">
+                        <span className="px-2 py-0.5 bg-blue-50 dark:bg-[#0b3d63]/40 text-blue-600 dark:text-white rounded text-xs font-bold">
                           {dayName}
                         </span>
                       </td>
-                      <td className="px-5 py-3.5 font-bold text-slate-800 dark:text-slate-100">{rec.name}</td>
+                      <td className="px-5 py-3.5 font-bold text-slate-800 dark:text-white">{rec.name}</td>
                       <td className="px-5 py-3.5">
                         {rec.job
-                          ? <span className="px-2 py-0.5 bg-slate-100 dark:bg-[#182d46] text-slate-600 dark:text-slate-300 rounded text-xs font-semibold border border-slate-200 dark:border-[#1e3550]">{rec.job}</span>
+                          ? <span className="px-2 py-0.5 bg-slate-100 dark:bg-[#333333] text-slate-600 dark:text-white rounded text-xs font-semibold border border-slate-200 dark:border-[#333333]">{rec.job}</span>
                           : <span className="text-slate-300 dark:text-slate-600">—</span>}
                       </td>
                       <td className="px-5 py-3.5 text-slate-500 text-xs">{rec.name}</td>
