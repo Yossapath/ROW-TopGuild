@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import {
   Swords,
   CheckCircle,
@@ -12,6 +12,8 @@ import {
 } from "lucide-react";
 import { JOB_LIST, JOB_COLORS, isBookingOpen, formatTimestamp } from "@/lib/utils";
 import type { DungeonQueue, DungeonSchedule } from "@/types";
+import { useAuthStore } from "@/stores/useAuthStore";
+import Link from "next/link";
 
 // ── Booking status badge ──────────────────────────────────────
 function StatusBadge({ open, reason }: { open: boolean; reason?: string }) {
@@ -42,7 +44,15 @@ function QueueDot({ status }: { status: string }) {
 }
 
 // ─────────────────────────────────────────────────────────────
+const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
+  waiting: { label: "รอคิว", cls: "bg-yellow-100 text-yellow-700" },
+  active: { label: "กำลังลง", cls: "bg-blue-100 text-blue-700" },
+  done: { label: "เสร็จแล้ว", cls: "bg-green-100 text-green-700" },
+};
+
 export default function BookingPage() {
+  const user = useAuthStore(s => s.user);
+
   // Schedule / open state
   const [schedule, setSchedule] = useState<DungeonSchedule | null>(null);
   const [bookingStatus, setBookingStatus] = useState<{ open: boolean; reason?: string }>({
@@ -55,6 +65,26 @@ export default function BookingPage() {
   const [job, setJob] = useState(JOB_LIST[0]);
   const [twoRounds, setTwoRounds] = useState(false);
 
+  // Auto set name from user
+  useEffect(() => {
+    if (user?.gameUsername) {
+      setName(user.gameUsername);
+      // Try to fetch roster to auto-set job
+      fetch("/api/roster")
+        .then(res => res.json())
+        .then(json => {
+          if (json.ok && json.data) {
+            for (const [jobKey, arr] of Object.entries(json.data as Record<string, {name:string}[]>)) {
+              if (arr.some(m => m.name === user.gameUsername)) {
+                setJob(jobKey);
+                break;
+              }
+            }
+          }
+        }).catch(() => {});
+    }
+  }, [user]);
+
   // Submission state
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState<{ id: string; name: string; job: string; rounds: number } | null>(null);
@@ -65,8 +95,6 @@ export default function BookingPage() {
   const [queuesLoading, setQueuesLoading] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<number>(Date.now());
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  // Copy link feedback
   const [copied, setCopied] = useState(false);
 
   // ── Fetch schedule ───────────────────────────────────────────
@@ -93,22 +121,35 @@ export default function BookingPage() {
       .then((r) => r.json())
       .then((d) => {
         const all: DungeonQueue[] = d.data ?? [];
-        // Sort: Priest (waiting/active) -> Other (waiting/active) -> Done
-        const waitingPriest: DungeonQueue[] = [];
-        const waitingOther: DungeonQueue[] = [];
+        
+        const waitingRound1Priest: DungeonQueue[] = [];
+        const waitingRound1Other: DungeonQueue[] = [];
+        const waitingRound2Priest: DungeonQueue[] = [];
+        const waitingRound2Other: DungeonQueue[] = [];
         const doneQueues: DungeonQueue[] = [];
 
         all.forEach((q) => {
           if (q.status === "done") {
             doneQueues.push(q);
-          } else if (q.job === "Priest") {
-            waitingPriest.push(q);
           } else {
-            waitingOther.push(q);
+            const isWaitingRound2 = q.rounds === 2 && q.round1 === true;
+            if (isWaitingRound2) {
+              if (q.job === "Priest") waitingRound2Priest.push(q);
+              else waitingRound2Other.push(q);
+            } else {
+              if (q.job === "Priest") waitingRound1Priest.push(q);
+              else waitingRound1Other.push(q);
+            }
           }
         });
 
-        setQueues([...waitingPriest, ...waitingOther, ...doneQueues]);
+        setQueues([
+          ...waitingRound1Priest, 
+          ...waitingRound1Other, 
+          ...waitingRound2Priest, 
+          ...waitingRound2Other, 
+          ...doneQueues
+        ]);
         setLastRefresh(Date.now());
       })
       .catch(() => {})
@@ -318,6 +359,18 @@ export default function BookingPage() {
                 </div>
               );
             })()
+          ) : !user ? (
+            <div className="text-center py-10 space-y-4">
+              <Users size={48} className="mx-auto text-slate-300" />
+              <h3 className="text-lg font-bold text-slate-700">โปรดเข้าสู่ระบบเพื่อจองคิว</h3>
+              <p className="text-sm text-slate-500 max-w-sm mx-auto">ระบบจำเป็นต้องใช้ข้อมูลผู้ใช้งานจาก Discord ของคุณ เพื่อบันทึกรายชื่อและอาชีพให้อัตโนมัติ</p>
+              <Link
+                href="/login?callbackUrl=/booking"
+                className="inline-block px-6 py-3 rounded-xl bg-[#5865F2] text-white font-bold hover:bg-[#4752C4] transition-colors shadow-sm"
+              >
+                เข้าสู่ระบบด้วย Discord
+              </Link>
+            </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-5">
               {/* Error */}
@@ -336,11 +389,17 @@ export default function BookingPage() {
                 <input
                   type="text"
                   required
+                  readOnly={!!user?.gameUsername}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="ใส่ชื่อตัวละครของคุณ..."
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-400 font-medium text-slate-800 placeholder:text-slate-300 transition-shadow"
+                  className={`w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-400 font-medium transition-shadow ${
+                    user?.gameUsername ? "bg-slate-100 text-slate-500 cursor-not-allowed" : "text-slate-800 placeholder:text-slate-300"
+                  }`}
                 />
+                {user?.gameUsername && (
+                  <p className="text-xs text-slate-400 mt-1">ชื่อและอาชีพถูกดึงจากโปรไฟล์ของคุณ</p>
+                )}
               </div>
 
               {/* Job class */}
@@ -349,18 +408,24 @@ export default function BookingPage() {
                   อาชีพ <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
-                  <select
-                    required
-                    value={job}
-                    onChange={(e) => setJob(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-400 font-medium text-slate-800 appearance-none bg-white"
-                  >
-                    {JOB_LIST.map((j) => (
-                      <option key={j} value={j}>{j}</option>
-                    ))}
-                  </select>
+                  {user?.gameUsername ? (
+                    <div className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-100 text-slate-500 font-medium cursor-not-allowed flex items-center gap-2">
+                      {job}
+                    </div>
+                  ) : (
+                    <select
+                      required
+                      value={job}
+                      onChange={(e) => setJob(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-400 font-medium text-slate-800 appearance-none bg-white"
+                    >
+                      {JOB_LIST.map((j) => (
+                        <option key={j} value={j}>{j}</option>
+                      ))}
+                    </select>
+                  )}
                   <span
-                    className="absolute right-10 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full pointer-events-none"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full pointer-events-none"
                     style={{ backgroundColor: JOB_COLORS[job] ?? "#94a3b8" }}
                   />
                 </div>
@@ -448,82 +513,112 @@ export default function BookingPage() {
               <p className="font-medium text-sm">ยังไม่มีคิว</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-slate-50 text-slate-500 text-xs font-bold uppercase tracking-wide">
-                  <tr>
-                    <th className="px-4 py-3 text-center w-10">ลำดับ</th>
-                    <th className="px-4 py-3 text-left">ชื่อ</th>
-                    <th className="px-4 py-3 text-left">อาชีพ</th>
-                    <th className="px-4 py-3 text-center">รอบ</th>
-                    <th className="px-4 py-3 text-center w-10"></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {(() => {
-                    const waitingPriests = visibleQueues.filter(q => q.status !== "done" && q.job === "Priest");
-                    const waitingOthers = visibleQueues.filter(q => q.status !== "done" && q.job !== "Priest");
-                    const doneQueues = visibleQueues.filter(q => q.status === "done");
+            <div className="flex flex-col gap-2 p-4">
+              {(() => {
+                const waitingRound1Priests = queues.filter(q => q.status !== "done" && !(q.rounds === 2 && q.round1 === true) && q.job === "Priest");
+                const waitingRound1Others = queues.filter(q => q.status !== "done" && !(q.rounds === 2 && q.round1 === true) && q.job !== "Priest");
+                const waitingRound2Priests = queues.filter(q => q.status !== "done" && (q.rounds === 2 && q.round1 === true) && q.job === "Priest");
+                const waitingRound2Others = queues.filter(q => q.status !== "done" && (q.rounds === 2 && q.round1 === true) && q.job !== "Priest");
+                const doneQueues = queues.filter(q => q.status === "done");
+                
+                let currentGlobalIdx = 1;
 
-                    let currentGlobalIdx = 1;
+                const renderQueue = (q: DungeonQueue, idx: number, isDone: boolean, isR2 = false) => {
+                  const statusBadge = STATUS_BADGE[q.status] ?? STATUS_BADGE.waiting;
+                  const jobColor = JOB_COLORS[q.job] ?? "#888";
+                  const isMe = user?.gameUsername === q.name;
 
-                    const renderRow = (qr: DungeonQueue, idx: number, isDone: boolean) => (
-                      <tr key={qr.id} className={`hover:bg-slate-50 transition-colors ${isDone ? "opacity-60" : ""}`}>
-                        <td className="px-4 py-3 text-center text-slate-400 font-mono text-xs font-bold">
-                          {idx}
-                        </td>
-                        <td className="px-4 py-3 font-semibold text-slate-700">{qr.name}</td>
-                        <td className="px-4 py-3">
-                          <span className="flex items-center gap-1.5">
+                  return (
+                    <div
+                      key={q.id}
+                      className={`bg-white rounded-2xl shadow-sm border px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3 transition-colors ${
+                        isMe ? "border-blue-500 bg-blue-50/50" : "border-slate-200"
+                      } ${isDone ? "opacity-60" : ""} ${isR2 && !isDone && !isMe ? "border-l-4 border-l-purple-500" : ""}`}
+                    >
+                      {/* Number */}
+                      <span className={`font-bold text-sm w-6 shrink-0 ${isMe ? "text-blue-600" : "text-slate-400"}`}>
+                        {idx}
+                      </span>
+
+                      {/* Main info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className={`font-bold text-sm ${isMe ? "text-blue-900" : "text-slate-800"}`}>{q.name} {isMe && "(คุณ)"}</span>
+
+                          {/* Job badge */}
+                          <span
+                            className="flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full"
+                            style={{
+                              backgroundColor: jobColor + "22",
+                              color: jobColor,
+                            }}
+                          >
                             <span
-                              className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                              style={{ backgroundColor: JOB_COLORS[qr.job] ?? "#94a3b8" }}
+                              className="w-1.5 h-1.5 rounded-full shrink-0"
+                              style={{ backgroundColor: jobColor }}
                             />
-                            <span className="text-slate-600">{qr.job}</span>
+                            {q.job}
                           </span>
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
-                            qr.rounds === 2
-                              ? "bg-indigo-100 text-indigo-700"
-                              : "bg-slate-100 text-slate-500"
-                          }`}>
-                            {qr.rounds === 2 ? "1+2" : "1"}
+
+                          {/* 2 rounds badge */}
+                          {q.rounds === 2 && (
+                            <span className="text-xs bg-purple-100 text-purple-700 font-medium px-2 py-0.5 rounded-full">
+                              ✕ 2 รอบ
+                            </span>
+                          )}
+
+                          {/* Status badge */}
+                          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusBadge.cls}`}>
+                            {statusBadge.label}
                           </span>
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <QueueDot status={qr.status} />
-                        </td>
-                      </tr>
-                    );
-
-                    return (
-                      <>
-                        {waitingPriests.length > 0 && (
-                          <tr className="bg-blue-50/50">
-                            <td colSpan={5} className="px-4 py-2 text-xs font-bold text-blue-700">พระ (Priest) - รอคิว</td>
-                          </tr>
+                        </div>
+                      </div>
+                      
+                      {/* Power + timestamp (right aligned on desktop) */}
+                      <div className="flex items-center gap-3 shrink-0 sm:flex-col sm:items-end sm:gap-1">
+                        {q.power > 0 && (
+                          <span className="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded-lg">
+                            พลัง <span className="font-bold text-slate-700">{q.power.toLocaleString()}</span>
+                          </span>
                         )}
-                        {waitingPriests.map(q => renderRow(q, currentGlobalIdx++, false))}
+                        <span className="text-xs text-slate-400 flex items-center gap-1">
+                          <CheckCircle size={10} />
+                          {formatTimestamp(q.timestamp)}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                };
 
-                        {waitingOthers.length > 0 && (
-                          <tr className="bg-slate-100/50">
-                            <td colSpan={5} className="px-4 py-2 text-xs font-bold text-slate-600">อาชีพอื่นๆ - รอคิว</td>
-                          </tr>
-                        )}
-                        {waitingOthers.map(q => renderRow(q, currentGlobalIdx++, false))}
+                return (
+                  <>
+                    {waitingRound1Priests.length > 0 && (
+                      <div className="text-xs font-bold text-blue-700 mt-2 px-2">พระ (Priest) - รอคิวรอบ 1</div>
+                    )}
+                    {waitingRound1Priests.map(q => renderQueue(q, currentGlobalIdx++, false))}
+                    
+                    {waitingRound1Others.length > 0 && (
+                      <div className="text-xs font-bold text-slate-500 mt-2 px-2">อาชีพอื่นๆ - รอคิวรอบ 1</div>
+                    )}
+                    {waitingRound1Others.map(q => renderQueue(q, currentGlobalIdx++, false))}
 
-                        {doneQueues.length > 0 && (
-                          <tr className="bg-green-50/50">
-                            <td colSpan={5} className="px-4 py-2 text-xs font-bold text-green-700">ลงเสร็จแล้ว</td>
-                          </tr>
-                        )}
-                        {doneQueues.map(q => renderRow(q, currentGlobalIdx++, true))}
-                      </>
-                    );
-                  })()}
-                </tbody>
-              </table>
+                    {waitingRound2Priests.length > 0 && (
+                      <div className="text-xs font-bold text-purple-700 mt-2 px-2 border-t border-slate-200 pt-3">พระ (Priest) - รอคิวรอบ 2</div>
+                    )}
+                    {waitingRound2Priests.map(q => renderQueue(q, currentGlobalIdx++, false, true))}
+                    
+                    {waitingRound2Others.length > 0 && (
+                      <div className="text-xs font-bold text-purple-700 mt-2 px-2">อาชีพอื่นๆ - รอคิวรอบ 2</div>
+                    )}
+                    {waitingRound2Others.map(q => renderQueue(q, currentGlobalIdx++, false, true))}
+
+                    {doneQueues.length > 0 && (
+                      <div className="text-xs font-bold text-green-600 mt-2 px-2 border-t border-slate-200 pt-3">ลงเสร็จแล้ว</div>
+                    )}
+                    {doneQueues.map(q => renderQueue(q, currentGlobalIdx++, true))}
+                  </>
+                );
+              })()}
             </div>
           )}
 

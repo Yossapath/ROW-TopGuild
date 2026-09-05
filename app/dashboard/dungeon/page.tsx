@@ -68,6 +68,9 @@ export default function DungeonPage() {
   // Clipboard toast
   const [copied, setCopied] = useState(false);
 
+  // Search state
+  const [search, setSearch] = useState("");
+
   // ── Fetch queues ──────────────────────────────────────────
   const fetchQueues = useCallback(async () => {
     try {
@@ -76,21 +79,35 @@ export default function DungeonPage() {
       if (json.ok) {
         const all = json.data as DungeonQueue[];
         
-        const waitingPriest: DungeonQueue[] = [];
-        const waitingOther: DungeonQueue[] = [];
+        const waitingRound1Priest: DungeonQueue[] = [];
+        const waitingRound1Other: DungeonQueue[] = [];
+        const waitingRound2Priest: DungeonQueue[] = [];
+        const waitingRound2Other: DungeonQueue[] = [];
         const doneQueues: DungeonQueue[] = [];
 
         all.forEach((q) => {
           if (q.status === "done") {
             doneQueues.push(q);
-          } else if (q.job === "Priest") {
-            waitingPriest.push(q);
           } else {
-            waitingOther.push(q);
+            // Check if they are waiting for Round 1 or Round 2
+            const isWaitingRound2 = q.rounds === 2 && q.round1 === true;
+            if (isWaitingRound2) {
+              if (q.job === "Priest") waitingRound2Priest.push(q);
+              else waitingRound2Other.push(q);
+            } else {
+              if (q.job === "Priest") waitingRound1Priest.push(q);
+              else waitingRound1Other.push(q);
+            }
           }
         });
 
-        setQueues([...waitingPriest, ...waitingOther, ...doneQueues]);
+        setQueues([
+          ...waitingRound1Priest, 
+          ...waitingRound1Other, 
+          ...waitingRound2Priest, 
+          ...waitingRound2Other, 
+          ...doneQueues
+        ]);
       }
     } catch {
       /* silent */
@@ -458,11 +475,21 @@ export default function DungeonPage() {
         <div className="flex-1 min-w-0">
           {/* Header */}
           <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-            <div className="flex items-center gap-3">
-              <h2 className="text-[#0b3d63] font-bold text-lg">รายชื่อคิว</h2>
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-slate-700">รายชื่อคิว</span>
               <span className="bg-[#0b3d63] text-white text-xs font-bold px-2.5 py-1 rounded-full">
                 {queues.length} คน
               </span>
+            </div>
+            
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <input
+                type="text"
+                placeholder="ค้นหาชื่อ..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full sm:w-40 border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+              />
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -495,20 +522,27 @@ export default function DungeonPage() {
           ) : (
             <div className="flex flex-col gap-2">
               {(() => {
-                const waitingPriests = queues.filter(q => q.status !== "done" && q.job === "Priest");
-                const waitingOthers = queues.filter(q => q.status !== "done" && q.job !== "Priest");
-                const doneQueues = queues.filter(q => q.status === "done");
+                // Actually `queues` is already sorted by `fetchQueues` into 4 active lists + done list.
+                // But we still want the headers. Let's filter the local `queues` array again to put headers.
+                // Or just use the pre-sorted state.
+                const filteredQueues = queues.filter(q => !search || q.name.toLowerCase().includes(search.toLowerCase()));
+
+                const waitingR1Priests = filteredQueues.filter(q => q.status !== "done" && !(q.rounds === 2 && q.round1 === true) && q.job === "Priest");
+                const waitingR1Others = filteredQueues.filter(q => q.status !== "done" && !(q.rounds === 2 && q.round1 === true) && q.job !== "Priest");
+                const waitingR2Priests = filteredQueues.filter(q => q.status !== "done" && (q.rounds === 2 && q.round1 === true) && q.job === "Priest");
+                const waitingR2Others = filteredQueues.filter(q => q.status !== "done" && (q.rounds === 2 && q.round1 === true) && q.job !== "Priest");
+                const doneQueuesList = filteredQueues.filter(q => q.status === "done");
                 
                 let currentGlobalIdx = 1;
 
-                const renderQueue = (q: DungeonQueue, idx: number, isDone: boolean) => {
+                const renderQueue = (q: DungeonQueue, idx: number, isDone: boolean, isR2 = false) => {
                   const statusBadge = STATUS_BADGE[q.status] ?? STATUS_BADGE.waiting;
                   const jobColor = JOB_COLORS[q.job] ?? "#888";
 
                   return (
                     <div
                       key={q.id}
-                      className={`bg-white rounded-2xl shadow-sm border border-slate-200 px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3 ${isDone ? "opacity-60" : ""}`}
+                      className={`bg-white rounded-2xl shadow-sm border border-slate-200 px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3 ${isDone ? "opacity-60" : ""} ${isR2 && !isDone ? "border-l-4 border-l-purple-500" : ""}`}
                     >
                       {/* Number */}
                       <span className="text-slate-400 font-bold text-sm w-6 shrink-0">
@@ -607,20 +641,30 @@ export default function DungeonPage() {
 
                 return (
                   <>
-                    {waitingPriests.length > 0 && (
-                      <div className="text-xs font-bold text-blue-700 mt-2 px-2">พระ (Priest) - รอคิว</div>
+                    {waitingR1Priests.length > 0 && (
+                      <div className="text-xs font-bold text-blue-700 mt-2 px-2">พระ (Priest) - รอคิวรอบ 1</div>
                     )}
-                    {waitingPriests.map(q => renderQueue(q, currentGlobalIdx++, false))}
+                    {waitingR1Priests.map(q => renderQueue(q, currentGlobalIdx++, false))}
                     
-                    {waitingOthers.length > 0 && (
-                      <div className="text-xs font-bold text-slate-500 mt-2 px-2">อาชีพอื่นๆ - รอคิว</div>
+                    {waitingR1Others.length > 0 && (
+                      <div className="text-xs font-bold text-slate-500 mt-2 px-2">อาชีพอื่นๆ - รอคิวรอบ 1</div>
                     )}
-                    {waitingOthers.map(q => renderQueue(q, currentGlobalIdx++, false))}
+                    {waitingR1Others.map(q => renderQueue(q, currentGlobalIdx++, false))}
 
-                    {doneQueues.length > 0 && (
+                    {waitingR2Priests.length > 0 && (
+                      <div className="text-xs font-bold text-purple-700 mt-2 px-2 border-t border-slate-200 pt-3">พระ (Priest) - รอคิวรอบ 2</div>
+                    )}
+                    {waitingR2Priests.map(q => renderQueue(q, currentGlobalIdx++, false, true))}
+                    
+                    {waitingR2Others.length > 0 && (
+                      <div className="text-xs font-bold text-purple-700 mt-2 px-2">อาชีพอื่นๆ - รอคิวรอบ 2</div>
+                    )}
+                    {waitingR2Others.map(q => renderQueue(q, currentGlobalIdx++, false, true))}
+
+                    {doneQueuesList.length > 0 && (
                       <div className="text-xs font-bold text-green-600 mt-2 px-2 border-t border-slate-200 pt-3">ลงเสร็จแล้ว</div>
                     )}
-                    {doneQueues.map(q => renderQueue(q, currentGlobalIdx++, true))}
+                    {doneQueuesList.map(q => renderQueue(q, currentGlobalIdx++, true))}
                   </>
                 );
               })()}

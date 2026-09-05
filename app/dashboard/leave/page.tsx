@@ -209,12 +209,17 @@ export default function LeavePage() {
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
+                    readOnly={!isAdmin && !!user?.gameUsername}
                     placeholder="ชื่อตัวละครในเกม"
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-300 pr-20"
+                    className={`w-full border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 pr-20 ${
+                      !isAdmin && !!user?.gameUsername
+                        ? "bg-slate-100 border-slate-200 text-slate-500 cursor-not-allowed"
+                        : "border-slate-200 text-slate-700 bg-white"
+                    }`}
                   />
                   {user?.gameUsername && name === user.gameUsername && (
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">
-                      (โปรไฟล์)
+                      (ล็อกชื่อ)
                     </span>
                   )}
                 </div>
@@ -248,12 +253,28 @@ export default function LeavePage() {
               {leaveMode === "date" ? (
                 <div>
                   <label className="block text-xs font-semibold text-slate-500 mb-1.5">
-                    วันที่ลา
+                    วันที่ลา <span className="text-blue-500 font-normal">(เฉพาะ อังคาร, พฤหัส, อาทิตย์)</span>
                   </label>
                   <input
                     type="date"
                     value={leaveDate}
-                    onChange={(e) => setLeaveDate(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (!val) {
+                        setLeaveDate("");
+                        return;
+                      }
+                      const d = new Date(val);
+                      const day = d.getDay();
+                      if (day !== 0 && day !== 2 && day !== 4) {
+                        setFormMsg({ type: "err", text: "กรุณาเลือกเฉพาะ วันอังคาร, พฤหัสบดี หรือ อาทิตย์ เท่านั้น" });
+                        // Clear error after 3s
+                        setTimeout(() => setFormMsg(null), 3000);
+                        return;
+                      }
+                      setLeaveDate(val);
+                      setFormMsg(null);
+                    }}
                     className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-300"
                   />
                 </div>

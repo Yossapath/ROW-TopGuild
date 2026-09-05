@@ -34,6 +34,7 @@ export default function TeamsPage() {
   const [autoModalText, setAutoModalText] = useState("");
   const [leaveRecords, setLeaveRecords] = useState<any[]>([]);
   
+  const [unassignedSearch, setUnassignedSearch] = useState("");
   const [offlineSearch, setOfflineSearch] = useState("");
   const [isOfflineDropdownOpen, setIsOfflineDropdownOpen] = useState(false);
   const offlineDropdownRef = useRef<HTMLDivElement>(null);
@@ -470,8 +471,9 @@ export default function TeamsPage() {
   if (!data) return null;
 
   const filteredUnassignedIds = (data.columns["unassigned"].memberIds as string[]).filter(id => {
-    if (unassignedFilterJob === "All") return true;
-    return data.members[id]?.job === unassignedFilterJob;
+    if (unassignedFilterJob !== "All" && data.members[id]?.job !== unassignedFilterJob) return false;
+    if (unassignedSearch && !data.members[id]?.name.toLowerCase().includes(unassignedSearch.toLowerCase())) return false;
+    return true;
   });
 
   const AutoMatchModal = () => {
@@ -550,14 +552,23 @@ export default function TeamsPage() {
                     <h2 className="font-bold text-theme-text flex items-center gap-2 text-sm"><Users size={16} /> ยังไม่ได้จัด ({data.columns["unassigned"].memberIds.length})</h2>
                     <button onClick={() => setIsUnassignedCollapsed(true)} className="text-theme-textSecondary hover:text-theme-text bg-theme-panel border border-theme-border rounded p-1"><ChevronLeft size={14}/></button>
                   </div>
-                  <select 
-                    value={unassignedFilterJob} 
-                    onChange={e => setUnassignedFilterJob(e.target.value)}
-                    className="w-full bg-theme-bg border border-theme-border rounded-md px-2 py-1.5 text-xs font-bold text-theme-text outline-none"
-                  >
-                    <option value="All">ทุกอาชีพ</option>
-                    {JOB_LIST.map(j => <option key={j} value={j}>{j}</option>)}
-                  </select>
+                  <div className="space-y-2">
+                    <input
+                      type="text"
+                      placeholder="ค้นหาชื่อ..."
+                      value={unassignedSearch}
+                      onChange={e => setUnassignedSearch(e.target.value)}
+                      className="w-full bg-theme-bg border border-theme-border rounded-md px-2 py-1.5 text-xs font-medium text-theme-text outline-none focus:ring-1 focus:ring-[#065bca]"
+                    />
+                    <select 
+                      value={unassignedFilterJob} 
+                      onChange={e => setUnassignedFilterJob(e.target.value)}
+                      className="w-full bg-theme-bg border border-theme-border rounded-md px-2 py-1.5 text-xs font-bold text-theme-text outline-none"
+                    >
+                      <option value="All">ทุกอาชีพ</option>
+                      {JOB_LIST.map(j => <option key={j} value={j}>{j}</option>)}
+                    </select>
+                  </div>
                 </div>
                 
                 <Droppable droppableId="unassigned" type="MEMBER">

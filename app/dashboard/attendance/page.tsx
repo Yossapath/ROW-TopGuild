@@ -21,7 +21,6 @@ interface AttendanceRow {
   name: string;
   job: string;
   status: Status;
-  note: string;
 }
 
 const WAR_DAYS: WarDay[] = ["อังคาร", "พฤหัสบดี", "อาทิตย์"];
@@ -40,15 +39,48 @@ const STATUS_CONFIG: Record<Status, { emoji: string; bg: string; text: string }>
   ขาด: { emoji: "❌", bg: "bg-red-100",    text: "text-red-700"    },
   ลา:  { emoji: "🟡", bg: "bg-yellow-100", text: "text-yellow-700" },
 };
-const STATUS_CYCLE: Record<Status, Status> = { มา: "ขาด", ขาด: "ลา", ลา: "มา" };
 
-function getNextWeekday(day: WarDay): string {
-  const target = DAY_ISO[day];
+// Helper: Get upcoming war date for a given offset (0 = this week, -1 = last week, etc.)
+// Or just current week's dates
+function getWeekDates(offsetWeeks: number): Record<WarDay, string> {
   const now = new Date();
-  const diff = (target - now.getDay() + 7) % 7 || 7;
-  const next = new Date(now);
-  next.setDate(now.getDate() + diff);
-  return next.toISOString().split("T")[0];
+  now.setDate(now.getDate() + offsetWeeks * 7);
+  const currentDay = now.getDay();
+  // Find Sunday of this week (0)
+  const sunday = new Date(now);
+  sunday.setDate(now.getDate() - currentDay);
+  
+  const fmt = (d: Date) => d.toISOString().split("T")[0];
+  
+  const t = new Date(sunday); t.setDate(sunday.getDate() + 2);
+  const th = new Date(sunday); th.setDate(sunday.getDate() + 4);
+  const su = new Date(sunday); // Sunday is index 0
+  
+  return {
+    "อังคาร": fmt(t),
+    "พฤหัสบดี": fmt(th),
+    "อาทิตย์": fmt(su)
+  };
+}
+
+function getUpcomingWarDay(): { date: string; day: WarDay } {
+  const now = new Date();
+  const todayStr = now.toISOString().split("T")[0];
+  const dates = getWeekDates(0);
+  
+  // If today is past Tuesday but <= Thursday, next is Thursday.
+  if (todayStr <= dates["อังคาร"]) return { date: dates["อังคาร"], day: "อังคาร" };
+  if (todayStr <= dates["พฤหัสบดี"]) return { date: dates["พฤหัสบดี"], day: "พฤหัสบดี" };
+  // Wait, Sunday is start of week in JS, so it's ALREADY PAST if we do this logic?
+  // Let's just use the basic logic: find next day.
+  const day = now.getDay();
+  if (day === 0) return { date: dates["อาทิตย์"], day: "อาทิตย์" };
+  if (day <= 2) return { date: dates["อังคาร"], day: "อังคาร" };
+  if (day <= 4) return { date: dates["พฤหัสบดี"], day: "พฤหัสบดี" };
+  
+  // Friday/Sat -> next Sunday (which is next week's Sunday)
+  const nextDates = getWeekDates(1);
+  return { date: nextDates["อาทิตย์"], day: "อาทิตย์" };
 }
 
 function formatDateTH(dateStr: string): string {
@@ -66,7 +98,7 @@ function flattenRoster(roster: Record<string, { name: string; power?: number }[]
   const rows: AttendanceRow[] = [];
   for (const [job, members] of Object.entries(roster)) {
     for (const m of members) {
-      rows.push({ name: m.name, job, status: "มา", note: "" });
+      rows.push({ name: m.name, job, status: "ขาด" }); // Default to ขาด
     }
   }
   return rows.sort((a, b) => a.job.localeCompare(b.job) || a.name.localeCompare(b.name));
@@ -78,13 +110,35 @@ export default function AttendancePage() {
 
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [selectedDay, setSelectedDay] = useState<WarDay | "">("");
+  const [weekOffset, setWeekOffset] = useState<number>(0); // 0 = this week, -1 = last week
   const [roster, setRoster] = useState<Record<string, { name: string; power?: number }[]>>({});
   const [leaveRecords, setLeaveRecords] = useState<LeaveRecord[]>([]);
   const [rows, setRows] = useState<AttendanceRow[]>([]);
+  const [search, setSearch] = useState("");
+  
+  // Import Modal
+  const [showImport, setShowImport] = useState(false);
+  const [importText, setImportText] = useState("");
+  const [importResult, setImportResult] = useState<{ match: number, unmatch: string[] } | null>(null);
+
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
   const [msg, setMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
   const [loadingRoster, setLoadingRoster] = useState(true);
+
+  useEffect(() => {
+    // Initial date setup
+    const savedDate = localStorage.getItem("att_date");
+    if (savedDate) {
+      setSelectedDate(savedDate);
+      const dayIdx = new Date(savedDate + "T00:00:00").getDay();
+      setSelectedDay(WAR_DAYS.find((d) => DAY_ISO[d] === dayIdx) ?? "");
+    } else {
+      const up = getUpcomingWarDay();
+      setSelectedDate(up.date);
+      setSelectedDay(up.day);
+    }
+  }, []);
 
   useEffect(() => {
     async function fetchData() {
@@ -109,28 +163,27 @@ export default function AttendancePage() {
 
   useEffect(() => {
     if (!selectedDate) { setRows([]); return; }
+    localStorage.setItem("att_date", selectedDate);
     const dayName = getDayName(selectedDate);
     const baseRows = flattenRoster(roster);
     const leaveNames = new Set<string>();
-    const leaveReasons: Record<string, string> = {};
     for (const lr of leaveRecords) {
       if (lr.date === selectedDate || lr.day === dayName) {
         leaveNames.add(lr.name);
-        if (lr.reason) leaveReasons[lr.name] = lr.reason;
       }
     }
     setRows(
       baseRows.map((r) => ({
         ...r,
-        status: leaveNames.has(r.name) ? ("ลา" as Status) : ("มา" as Status),
-        note: leaveNames.has(r.name) ? (leaveReasons[r.name] ?? "ลา") : "",
+        status: leaveNames.has(r.name) ? ("ลา" as Status) : ("ขาด" as Status),
       }))
     );
   }, [selectedDate, roster, leaveRecords]);
 
   const handleDayBtn = (day: WarDay) => {
     setSelectedDay(day);
-    setSelectedDate(getNextWeekday(day));
+    const dates = getWeekDates(weekOffset);
+    setSelectedDate(dates[day]);
   };
 
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -144,16 +197,41 @@ export default function AttendancePage() {
     }
   };
 
-  const toggleStatus = useCallback((idx: number) => {
+  const setStatus = useCallback((idx: number, status: Status) => {
     if (!isAdmin) return;
     setRows((prev) =>
-      prev.map((r, i) => (i === idx ? { ...r, status: STATUS_CYCLE[r.status] } : r))
+      prev.map((r, i) => (i === idx ? { ...r, status } : r))
     );
   }, [isAdmin]);
 
-  const updateNote = useCallback((idx: number, val: string) => {
-    setRows((prev) => prev.map((r, i) => (i === idx ? { ...r, note: val } : r)));
-  }, []);
+  const handleImport = () => {
+    if (!importText.trim()) return;
+    const lines = importText.split("\n").map(l => l.trim().toLowerCase()).filter(Boolean);
+    const unmatch: string[] = [];
+    let matchCount = 0;
+    
+    setRows(prev => {
+      const next = [...prev];
+      for (const line of lines) {
+        const cleanLine = line.replace(/[^a-z0-9ก-๙]/g, '');
+        const matchedIdx = next.findIndex(r => {
+          const nm = r.name.toLowerCase();
+          return nm.includes(line) || (cleanLine && nm.replace(/[^a-z0-9ก-๙]/g, '').includes(cleanLine));
+        });
+        
+        if (matchedIdx >= 0) {
+          if (next[matchedIdx].status !== "มา") {
+            next[matchedIdx] = { ...next[matchedIdx], status: "มา" };
+            matchCount++;
+          }
+        } else {
+          unmatch.push(line);
+        }
+      }
+      return next;
+    });
+    setImportResult({ match: matchCount, unmatch });
+  };
 
   const handleSave = async () => {
     if (!selectedDate || rows.length === 0) return;
@@ -168,7 +246,6 @@ export default function AttendancePage() {
           records: rows.map((r) => ({
             name: r.name,
             present: r.status === "มา",
-            note: r.note,
             status: r.status,
           })),
         }),
@@ -244,7 +321,30 @@ export default function AttendancePage() {
       {/* Day Selector */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 mb-5 flex flex-wrap items-center gap-3">
         <span className="text-sm font-semibold text-slate-600 flex items-center gap-1.5">
-          <CalendarDays className="w-4 h-4" /> เลือกวัน:
+          <CalendarDays className="w-4 h-4" /> สัปดาห์:
+        </span>
+        <select
+          value={weekOffset}
+          onChange={(e) => {
+            const offset = Number(e.target.value);
+            setWeekOffset(offset);
+            if (selectedDay) {
+              const dates = getWeekDates(offset);
+              setSelectedDate(dates[selectedDay]);
+            }
+          }}
+          className="border border-slate-200 rounded-lg px-2 py-1.5 text-sm font-semibold text-slate-700 bg-white"
+        >
+          <option value={0}>สัปดาห์นี้</option>
+          <option value={-1}>สัปดาห์ที่แล้ว</option>
+          <option value={-2}>2 สัปดาห์ก่อน</option>
+          <option value={-3}>3 สัปดาห์ก่อน</option>
+        </select>
+
+        <div className="w-[1px] h-6 bg-slate-200 mx-1"></div>
+
+        <span className="text-sm font-semibold text-slate-600 flex items-center gap-1.5">
+          วัน:
         </span>
         {WAR_DAYS.map((day) => (
           <button
@@ -261,7 +361,7 @@ export default function AttendancePage() {
           </button>
         ))}
         <div className="flex items-center gap-2 ml-auto">
-          <label className="text-sm text-slate-500">หรือเลือกวันที่:</label>
+          <label className="text-sm text-slate-500">หรือระบุวันที่:</label>
           <input
             type="date"
             value={selectedDate}
@@ -285,14 +385,33 @@ export default function AttendancePage() {
       <div className="grid md:grid-cols-3 gap-6">
         {/* Left — Table */}
         <div className="md:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
-            <Users className="w-5 h-5 text-slate-400" />
-            <span className="font-semibold text-slate-700">รายชื่อสมาชิก</span>
-            {rows.length > 0 && (
-              <span className="bg-slate-100 text-slate-600 text-xs font-bold px-2 py-0.5 rounded-full">
-                {rows.length} คน
-              </span>
+          <div className="px-5 py-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Users className="w-5 h-5 text-slate-400" />
+              <span className="font-semibold text-slate-700">รายชื่อสมาชิก</span>
+              {rows.length > 0 && (
+                <span className="bg-slate-100 text-slate-600 text-xs font-bold px-2 py-0.5 rounded-full">
+                  {rows.length} คน
+                </span>
+              )}
+            </div>
+            {isAdmin && rows.length > 0 && (
+              <button
+                onClick={() => setShowImport(true)}
+                className="text-xs font-bold bg-blue-50 text-blue-600 border border-blue-200 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors"
+              >
+                นำเข้ารายชื่อ (Import)
+              </button>
             )}
+            <div className="w-full sm:w-auto mt-2 sm:mt-0 flex-1 sm:max-w-xs">
+              <input 
+                type="text" 
+                placeholder="ค้นหาชื่อ..." 
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+              />
+            </div>
           </div>
 
           {loadingRoster ? (
@@ -318,13 +437,12 @@ export default function AttendancePage() {
                     <th className="px-3 py-3 text-left w-8">#</th>
                     <th className="px-3 py-3 text-left">ชื่อ</th>
                     <th className="px-3 py-3 text-left">อาชีพ</th>
-                    <th className="px-3 py-3 text-center">สถานะ</th>
-                    <th className="px-3 py-3 text-left">หมายเหตุ</th>
+                    <th className="px-3 py-3 text-center min-w-[120px]">สถานะ</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {rows.map((r, i) => {
-                    const sc = STATUS_CONFIG[r.status];
+                    if (search && !r.name.toLowerCase().includes(search.toLowerCase())) return null;
                     const jobColor = JOB_COLORS[r.job] ?? "#64748b";
                     return (
                       <tr key={`${r.name}-${i}`} className="hover:bg-slate-50 transition-colors">
@@ -340,31 +458,29 @@ export default function AttendancePage() {
                         </td>
                         <td className="px-3 py-2.5 text-center">
                           {isAdmin ? (
-                            <button
-                              onClick={() => toggleStatus(i)}
-                              className={`inline-flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-bold transition-all hover:scale-105 ${sc.bg} ${sc.text}`}
-                            >
-                              {sc.emoji} {r.status}
-                            </button>
+                            <div className="flex items-center justify-center gap-1">
+                              {(["มา", "ลา", "ขาด"] as Status[]).map(st => {
+                                const sc = STATUS_CONFIG[st];
+                                const active = r.status === st;
+                                return (
+                                  <button
+                                    key={st}
+                                    onClick={() => setStatus(i, st)}
+                                    className={`px-2 py-1 rounded-md text-xs font-bold transition-all border ${
+                                      active ? `${sc.bg} ${sc.text} border-transparent shadow-sm` : "bg-white text-slate-400 border-slate-200 hover:bg-slate-50"
+                                    }`}
+                                  >
+                                    {sc.emoji} {st}
+                                  </button>
+                                );
+                              })}
+                            </div>
                           ) : (
                             <span
-                              className={`inline-flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-bold ${sc.bg} ${sc.text}`}
+                              className={`inline-flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-bold ${STATUS_CONFIG[r.status].bg} ${STATUS_CONFIG[r.status].text}`}
                             >
-                              {sc.emoji} {r.status}
+                              {STATUS_CONFIG[r.status].emoji} {r.status}
                             </span>
-                          )}
-                        </td>
-                        <td className="px-3 py-2.5">
-                          {isAdmin ? (
-                            <input
-                              type="text"
-                              value={r.note}
-                              onChange={(e) => updateNote(i, e.target.value)}
-                              placeholder="—"
-                              className="w-full text-xs border border-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-300 text-slate-700"
-                            />
-                          ) : (
-                            <span className="text-xs text-slate-500">{r.note || "—"}</span>
                           )}
                         </td>
                       </tr>
@@ -456,9 +572,6 @@ export default function AttendancePage() {
                     <span className="text-yellow-500 mt-0.5">🟡</span>
                     <div>
                       <p className="text-sm font-semibold text-slate-700">{r.name}</p>
-                      {r.note && (
-                        <p className="text-xs text-slate-500 mt-0.5">{r.note}</p>
-                      )}
                     </div>
                   </div>
                 ))}
@@ -467,6 +580,74 @@ export default function AttendancePage() {
           </div>
         </div>
       </div>
+      {/* Import Modal */}
+      {showImport && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-lg overflow-hidden flex flex-col">
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+              <h3 className="font-bold text-slate-800">นำเข้ารายชื่อผู้เข้าร่วม (มา)</h3>
+              <button 
+                onClick={() => {
+                  setShowImport(false);
+                  setImportResult(null);
+                  setImportText("");
+                }} 
+                className="text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <XCircle className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-5 flex flex-col gap-3 flex-1 min-h-[300px]">
+              <p className="text-xs text-slate-500">
+                วางรายชื่อที่ต้องการติ๊ก <b>&quot;มา&quot;</b> ลงในกล่องข้อความด้านล่าง (บรรทัดละ 1 ชื่อ) ระบบจะค้นหาและติ๊กให้อัตโนมัติ
+              </p>
+              <textarea
+                value={importText}
+                onChange={e => setImportText(e.target.value)}
+                placeholder="Name1\nName2\n..."
+                className="flex-1 w-full border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 resize-none min-h-[150px]"
+              />
+              
+              {importResult && (
+                <div className={`p-3 rounded-xl border ${importResult.unmatch.length > 0 ? "bg-amber-50 border-amber-200" : "bg-green-50 border-green-200"}`}>
+                  <p className="text-sm font-bold text-slate-700">ผลลัพธ์การนำเข้า:</p>
+                  <p className="text-xs text-green-600 mt-1">✅ ค้นพบและติ๊ก &quot;มา&quot; แล้ว: {importResult.match} คน</p>
+                  {importResult.unmatch.length > 0 && (
+                    <div className="mt-2">
+                      <p className="text-xs text-amber-600 font-bold flex items-center gap-1">
+                        <AlertCircle className="w-3.5 h-3.5" /> ไม่พบรายชื่อเหล่านี้ในระบบ (โปรดตรวจสอบตัวสะกด):
+                      </p>
+                      <ul className="list-disc list-inside text-xs text-amber-700 mt-1 max-h-24 overflow-y-auto pl-1">
+                        {importResult.unmatch.map((u, i) => <li key={i}>{u}</li>)}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            <div className="px-5 py-4 border-t border-slate-100 flex items-center justify-end gap-2 bg-slate-50">
+              <button
+                onClick={() => {
+                  setShowImport(false);
+                  setImportResult(null);
+                  setImportText("");
+                }}
+                className="px-4 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-200 transition-colors"
+              >
+                ปิด
+              </button>
+              <button
+                onClick={handleImport}
+                disabled={!importText.trim()}
+                className="px-4 py-2 rounded-xl text-sm font-semibold text-white transition-colors disabled:opacity-50"
+                style={{ backgroundColor: "#0b3d63" }}
+              >
+                ดำเนินการนำเข้า
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
