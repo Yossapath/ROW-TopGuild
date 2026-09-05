@@ -12,7 +12,7 @@ export default function RosterPage() {
   const { user } = useAuthStore();
   const isAdmin = user?.role === "admin" || user?.role === "owner";
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedJob, setSelectedJob] = useState("ทั้งหมด");
+  const [selectedJobs, setSelectedJobs] = useState<string[]>([]);
   const [editingMember, setEditingMember] = useState<any>(null);
   
   // Modal states
@@ -51,13 +51,23 @@ export default function RosterPage() {
     });
   }, [roster]);
 
+  const toggleJob = (job: string) => {
+    setSelectedJobs((prev) =>
+      prev.includes(job) ? prev.filter((j) => j !== job) : [...prev, job]
+    );
+  };
+
   const displayJobs = useMemo(() => {
     const jobs = sortedJobs.length > 0 ? sortedJobs : JOB_LIST;
-    if (selectedJob !== "ทั้งหมด") {
-      return jobs.filter(job => job === selectedJob);
+    if (selectedJobs.length > 0) {
+      return jobs.filter((job) => selectedJobs.includes(job));
     }
     return jobs;
-  }, [sortedJobs, selectedJob]);
+  }, [sortedJobs, selectedJobs]);
+
+  const filteredMembersCount = useMemo(() => {
+    return displayJobs.reduce((acc, job) => acc + (roster?.[job]?.length || 0), 0);
+  }, [displayJobs, roster]);
 
   const hexToRgba = (hex: string, alpha: number) => {
     let cleanHex = hex.replace("#", "");
@@ -156,7 +166,13 @@ export default function RosterPage() {
           <div>
             <h1 className="text-xl font-bold text-slate-800 dark:text-white">บัญชีรายชื่อสมาชิก (Roster)</h1>
             <p className="text-sm text-slate-500 dark:text-[#8B93A7]">
-              สมาชิกทั้งหมด {totalMembers} คน · {displayJobs.length} สายอาชีพ
+              {selectedJobs.length > 0 ? (
+                <>
+                  แสดง <span className="font-bold text-[#0b3d63] dark:text-[#82A0F5]">{filteredMembersCount}</span> คน ({displayJobs.length} สายอาชีพที่เลือก) · จากทั้งหมด {totalMembers} คน
+                </>
+              ) : (
+                `สมาชิกทั้งหมด ${totalMembers} คน · ${displayJobs.length} สายอาชีพ`
+              )}
             </p>
           </div>
         </div>
@@ -199,16 +215,16 @@ export default function RosterPage() {
       <div className="flex flex-wrap items-center gap-2.5 pb-1">
         {/* All jobs button */}
         <button 
-          onClick={() => setSelectedJob("ทั้งหมด")}
+          onClick={() => setSelectedJobs([])}
           className={`rounded-2xl px-4 py-2 flex items-center gap-2.5 shadow-sm border transition-all flex-shrink-0 cursor-pointer ${
-            selectedJob === "ทั้งหมด" 
+            selectedJobs.length === 0 
               ? "bg-[#0b3d63] dark:bg-[#3B66D1] border-[#0b3d63] dark:border-[#4D73CD] text-white ring-2 ring-[#4D73CD]/30 shadow-sm" 
               : "bg-white dark:bg-[#232733] border-slate-200 dark:border-[#2D3342] hover:bg-slate-50 dark:hover:bg-[#272C38] text-slate-700 dark:text-white"
           }`}
         >
           <span className="font-bold text-sm">ทั้งหมด</span>
           <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
-            selectedJob === "ทั้งหมด" 
+            selectedJobs.length === 0 
               ? "bg-white/20 text-white" 
               : "bg-slate-100 dark:bg-[#272C38] text-slate-600 dark:text-[#8B93A7]"
           }`}>
@@ -220,28 +236,52 @@ export default function RosterPage() {
           const count = roster?.[job]?.length || 0;
           if (count === 0 && searchQuery) return null; // Hide if empty during search
           const color = JOB_COLORS[job] || "#000";
-          const isSelected = selectedJob === job;
+          const isSelected = selectedJobs.includes(job);
 
           return (
             <button 
               key={`pill-${job}`} 
-              onClick={() => setSelectedJob(isSelected ? "ทั้งหมด" : job)}
+              onClick={() => toggleJob(job)}
               className={`rounded-2xl px-4 py-2 flex items-center gap-2.5 shadow-sm border transition-all flex-shrink-0 cursor-pointer ${
                 isSelected 
-                  ? "bg-white dark:bg-[#232733] border-[#3B66D1] dark:border-[#4D73CD] ring-2 ring-[#4D73CD]/40" 
+                  ? "bg-slate-50 dark:bg-[#272C38] border-[#3B66D1] dark:border-[#4D73CD] ring-2 ring-[#3B66D1]/30 dark:ring-[#4D73CD]/40 shadow-sm" 
                   : "bg-white dark:bg-[#232733] border-slate-200 dark:border-[#2D3342] hover:bg-slate-50 dark:hover:bg-[#272C38]"
               }`}
             >
               <div className="flex items-center space-x-2 font-bold text-sm text-slate-700 dark:text-white">
-                <span className="w-2.5 h-2.5 rounded-full shadow-sm shrink-0" style={{ backgroundColor: color }}></span>
-                <span>{job}</span>
+                {isSelected ? (
+                  <span 
+                    className="w-4 h-4 rounded-full flex items-center justify-center text-white shrink-0 text-[10px] font-black shadow-sm" 
+                    style={{ backgroundColor: color }}
+                  >
+                    ✓
+                  </span>
+                ) : (
+                  <span className="w-2.5 h-2.5 rounded-full shadow-sm shrink-0" style={{ backgroundColor: color }}></span>
+                )}
+                <span className={isSelected ? "text-[#0b3d63] dark:text-[#82A0F5]" : ""}>{job}</span>
               </div>
-              <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-slate-100 dark:bg-[#272C38] text-slate-600 dark:text-[#8B93A7]">
+              <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                isSelected 
+                  ? "bg-[#3B66D1] text-white dark:bg-[#4D73CD]" 
+                  : "bg-slate-100 dark:bg-[#272C38] text-slate-600 dark:text-[#8B93A7]"
+              }`}>
                 {count}
               </span>
             </button>
           );
         })}
+
+        {selectedJobs.length > 0 && (
+          <button 
+            onClick={() => setSelectedJobs([])}
+            className="rounded-2xl px-3 py-2 flex items-center gap-1.5 border border-dashed border-red-300 dark:border-red-900/50 hover:bg-red-50 dark:hover:bg-red-950/30 text-red-600 dark:text-red-400 text-xs font-bold transition-all cursor-pointer"
+            title="ล้างตัวกรองทั้งหมด"
+          >
+            <X size={14} />
+            <span>ล้างตัวกรอง ({selectedJobs.length})</span>
+          </button>
+        )}
       </div>
 
       {/* Tables Grid (Auto-fit Cards with comfortable min-width and auto-fit height) */}

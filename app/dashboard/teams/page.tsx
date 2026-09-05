@@ -29,7 +29,9 @@ export default function TeamsPage() {
   const [isMounted, setIsMounted] = useState(false);
 
   const [activeTab, setActiveTab] = useState<"main" | "sub" | "leave">("main");
-  const [unassignedFilterJob, setUnassignedFilterJob] = useState<string>("All");
+  const [unassignedFilterJobs, setUnassignedFilterJobs] = useState<string[]>([]);
+  const [isJobFilterOpen, setIsJobFilterOpen] = useState(false);
+  const jobFilterDropdownRef = useRef<HTMLDivElement>(null);
   const [isUnassignedCollapsed, setIsUnassignedCollapsed] = useState(false);
   const [isAutoModalOpen, setIsAutoModalOpen] = useState(false);
   const [autoModalText, setAutoModalText] = useState("");
@@ -47,6 +49,9 @@ export default function TeamsPage() {
     function handleClickOutside(event: MouseEvent) {
       if (offlineDropdownRef.current && !offlineDropdownRef.current.contains(event.target as Node)) {
         setIsOfflineDropdownOpen(false);
+      }
+      if (jobFilterDropdownRef.current && !jobFilterDropdownRef.current.contains(event.target as Node)) {
+        setIsJobFilterOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -472,7 +477,7 @@ export default function TeamsPage() {
   if (!data) return null;
 
   const filteredUnassignedIds = (data.columns["unassigned"].memberIds as string[]).filter(id => {
-    if (unassignedFilterJob !== "All" && data.members[id]?.job !== unassignedFilterJob) return false;
+    if (unassignedFilterJobs.length > 0 && !unassignedFilterJobs.includes(data.members[id]?.job)) return false;
     if (unassignedSearch && !data.members[id]?.name.toLowerCase().includes(unassignedSearch.toLowerCase())) return false;
     return true;
   });
@@ -570,14 +575,99 @@ export default function TeamsPage() {
                       onChange={e => setUnassignedSearch(e.target.value)}
                       className="w-full bg-white dark:bg-[#272C38] border border-slate-200 dark:border-[#2D3342] rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-800 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#6B7280] outline-none focus:ring-2 focus:ring-[#4D73CD] dark:focus:ring-[#4D73CD]"
                     />
-                    <select 
-                      value={unassignedFilterJob} 
-                      onChange={e => setUnassignedFilterJob(e.target.value)}
-                      className="w-full bg-white dark:bg-[#272C38] border border-slate-200 dark:border-[#2D3342] rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800 dark:text-white outline-none"
-                    >
-                      <option value="All">ทุกอาชีพ</option>
-                      {JOB_LIST.map(j => <option key={j} value={j}>{j}</option>)}
-                    </select>
+                    <div className="relative" ref={jobFilterDropdownRef}>
+                      <button 
+                        type="button"
+                        onClick={() => setIsJobFilterOpen(prev => !prev)}
+                        className={`w-full flex items-center justify-between bg-white dark:bg-[#272C38] border ${
+                          unassignedFilterJobs.length > 0 
+                            ? 'border-[#3B66D1] dark:border-[#4D73CD] ring-1 ring-[#4D73CD]/30' 
+                            : 'border-slate-200 dark:border-[#2D3342]'
+                        } rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800 dark:text-white outline-none cursor-pointer hover:bg-slate-50 dark:hover:bg-[#2A2F3E] transition-colors`}
+                      >
+                        <div className="flex items-center gap-1.5 truncate">
+                          {unassignedFilterJobs.length === 0 ? (
+                            <span className="text-slate-600 dark:text-[#8B93A7]">ทุกอาชีพ ({data.columns["unassigned"].memberIds.length})</span>
+                          ) : (
+                            <span className="truncate text-[#0b3d63] dark:text-[#82A0F5]">
+                              {unassignedFilterJobs.length === 1 
+                                ? unassignedFilterJobs[0] 
+                                : `${unassignedFilterJobs.length} อาชีพ (${unassignedFilterJobs.join(', ')})`}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0 ml-1">
+                          {unassignedFilterJobs.length > 0 && (
+                            <span 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setUnassignedFilterJobs([]);
+                              }}
+                              className="hover:text-red-500 text-slate-400 p-0.5 rounded cursor-pointer"
+                              title="ล้างตัวกรอง"
+                            >
+                              <X size={12} />
+                            </span>
+                          )}
+                          <ChevronDown size={14} className={`text-slate-400 transition-transform duration-200 ${isJobFilterOpen ? 'rotate-180' : ''}`} />
+                        </div>
+                      </button>
+
+                      {isJobFilterOpen && (
+                        <div className="absolute top-full left-0 mt-1 w-full bg-white dark:bg-[#232733] border border-slate-200 dark:border-[#2D3342] rounded-xl shadow-xl z-50 p-2 max-h-60 overflow-y-auto space-y-1">
+                          <div className="flex items-center justify-between pb-1 mb-1 border-b border-slate-100 dark:border-[#2D3342] text-[11px]">
+                            <button
+                              type="button"
+                              onClick={() => setUnassignedFilterJobs([])}
+                              className={`font-bold hover:underline ${unassignedFilterJobs.length === 0 ? 'text-[#3B66D1] dark:text-[#4D73CD]' : 'text-slate-500 dark:text-[#8B93A7]'}`}
+                            >
+                              เลือกทั้งหมด ({data.columns["unassigned"].memberIds.length})
+                            </button>
+                            {unassignedFilterJobs.length > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => setUnassignedFilterJobs([])}
+                                className="text-red-500 hover:underline text-[10px] font-bold"
+                              >
+                                ล้างตัวกรอง
+                              </button>
+                            )}
+                          </div>
+                          {JOB_LIST.map(job => {
+                            const isChecked = unassignedFilterJobs.includes(job);
+                            const jobColor = JOB_COLORS[job] || "#475569";
+                            const count = (data.columns["unassigned"].memberIds as string[]).filter(id => data.members[id]?.job === job).length;
+                            
+                            return (
+                              <label
+                                key={job}
+                                className="flex items-center justify-between px-2 py-1 rounded-lg hover:bg-slate-50 dark:hover:bg-[#272C38] cursor-pointer text-xs select-none"
+                              >
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={() => {
+                                      setUnassignedFilterJobs(prev => 
+                                        prev.includes(job) ? prev.filter(j => j !== job) : [...prev, job]
+                                      );
+                                    }}
+                                    className="rounded border-slate-300 text-[#3B66D1] focus:ring-[#4D73CD]"
+                                  />
+                                  <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: jobColor }} />
+                                  <span className={`truncate font-medium ${isChecked ? 'font-bold text-[#0b3d63] dark:text-[#82A0F5]' : 'text-slate-700 dark:text-slate-300'}`}>
+                                    {job}
+                                  </span>
+                                </div>
+                                <span className="text-[10px] font-mono text-slate-400 dark:text-[#8B93A7] shrink-0">
+                                  {count}
+                                </span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
                 
