@@ -162,6 +162,9 @@ test("Zod Validation - Rejects malformed payloads and validates allowed fields",
   const validPatchUnskip = validateBody(dungeonQueuePatchSchema, { action: "unskip" });
   assert.equal(validPatchUnskip.success, true);
 
+  const validPatchStartRun = validateBody(dungeonQueuePatchSchema, { action: "startRun" });
+  assert.equal(validPatchStartRun.success, true);
+
   const validPatchRounds = validateBody(dungeonQueuePatchSchema, { action: "updateRounds", rounds: 2 });
   assert.equal(validPatchRounds.success, true);
 

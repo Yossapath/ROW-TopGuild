@@ -151,12 +151,25 @@ export function calculateDungeonEstimates(
 
     if (hasActiveParty) {
       queuesAhead = r; // รอบที่ active กำลังลงอยู่
+      const activeStartTimes = activeQueues
+        .map((q) => q.startTime)
+        .filter((t): t is number => typeof t === "number" && t > 0);
+      const earliestStartTime = activeStartTimes.length > 0 ? Math.min(...activeStartTimes) : null;
+
+      let activeRemMin = 3;
+      let activeRemMax = MINUTES_PER_RUN_MIN;
+      if (earliestStartTime) {
+        const elapsedMin = Math.max(0, (now.getTime() - earliestStartTime) / 60000);
+        activeRemMin = Math.max(1, Math.round(MINUTES_PER_RUN_MIN - elapsedMin));
+        activeRemMax = Math.max(2, Math.round(MINUTES_PER_RUN_MAX - elapsedMin));
+      }
+
       if (roundIndex === 0) {
-        waitMin = 3;
-        waitMax = MINUTES_PER_RUN_MIN;
+        waitMin = activeRemMin;
+        waitMax = activeRemMax;
       } else {
-        waitMin = roundIndex * MINUTES_PER_RUN_MIN + 3;
-        waitMax = r * MINUTES_PER_RUN_MAX;
+        waitMin = roundIndex * MINUTES_PER_RUN_MIN + activeRemMin;
+        waitMax = roundIndex * MINUTES_PER_RUN_MAX + activeRemMax;
       }
     } else {
       queuesAhead = roundIndex;

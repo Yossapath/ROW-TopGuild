@@ -105,6 +105,13 @@ export default function BookingPage() {
 
   const [carryTeamsCount, setCarryTeamsCount] = useState<number>(1);
 
+  // ── Real-time clock for countdown display ─────────────────
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   // ── Fetch schedule ───────────────────────────────────────────
   useEffect(() => {
     fetch("/api/dungeon/schedule")
@@ -136,35 +143,7 @@ export default function BookingPage() {
       .then((r) => r.json())
       .then((d) => {
         const all: DungeonQueue[] = d.data ?? [];
-        
-        const waitingRound1Priest: DungeonQueue[] = [];
-        const waitingRound1Other: DungeonQueue[] = [];
-        const waitingRound2Priest: DungeonQueue[] = [];
-        const waitingRound2Other: DungeonQueue[] = [];
-        const doneQueues: DungeonQueue[] = [];
-
-        all.forEach((q) => {
-          if (q.status === "done") {
-            doneQueues.push(q);
-          } else {
-            const isWaitingRound2 = q.rounds === 2 && q.round1 === true;
-            if (isWaitingRound2) {
-              if (q.job === "Priest") waitingRound2Priest.push(q);
-              else waitingRound2Other.push(q);
-            } else {
-              if (q.job === "Priest") waitingRound1Priest.push(q);
-              else waitingRound1Other.push(q);
-            }
-          }
-        });
-
-        setQueues([
-          ...waitingRound1Priest, 
-          ...waitingRound1Other, 
-          ...waitingRound2Priest, 
-          ...waitingRound2Other, 
-          ...doneQueues
-        ]);
+        setQueues(all);
         setLastRefresh(Date.now());
       })
       .catch(() => {})
@@ -250,8 +229,8 @@ export default function BookingPage() {
   const [selectedCheckName, setSelectedCheckName] = useState<string>("");
 
   const estimates = useMemo(() => {
-    return calculateDungeonEstimates(queues, new Date(), carryTeamsCount);
-  }, [queues, carryTeamsCount]);
+    return calculateDungeonEstimates(queues, new Date(now), carryTeamsCount);
+  }, [queues, carryTeamsCount, now]);
 
   const inspectedName = selectedCheckName || success?.name || user?.gameUsername || "";
   const myQueueEstimate = useMemo(() => {
@@ -699,6 +678,7 @@ export default function BookingPage() {
           ) : (
             <div className="flex flex-col gap-2 p-4">
               {(() => {
+                const activeQueues = queues.filter(q => q.status === "active");
                 const waitingRound1Priests = queues.filter(q => q.status === "waiting" && !(q.rounds === 2 && q.round1 === true) && q.job === "Priest");
                 const waitingRound1Others = queues.filter(q => q.status === "waiting" && !(q.rounds === 2 && q.round1 === true) && q.job !== "Priest");
                 const waitingRound2Priests = queues.filter(q => q.status === "waiting" && (q.rounds === 2 && q.round1 === true) && q.job === "Priest");
@@ -723,6 +703,8 @@ export default function BookingPage() {
                           ? "border-[#3B66D1] dark:border-[#4D73CD] ring-2 ring-[#3B66D1]/20 dark:ring-[#4D73CD]/20 bg-blue-50/50 dark:bg-[#3B66D1]/25"
                           : isSkipped
                           ? "border-amber-300/70 dark:border-amber-700/50 bg-amber-50/20 dark:bg-amber-950/10"
+                          : q.status === "active"
+                          ? "border-blue-300/70 dark:border-blue-700/50 bg-blue-50/40 dark:bg-blue-950/20 shadow-sm"
                           : "border-slate-200 dark:border-[#2D3342]"
                       } ${isDone ? "opacity-60" : ""} ${isR2 && !isDone && !isMe && !isSkipped ? "border-l-4 border-l-purple-500" : ""}`}
                     >
@@ -743,10 +725,11 @@ export default function BookingPage() {
                             <span className="text-slate-300 dark:text-[#4B5563] mx-1">|</span>
                             <span className="text-xs text-slate-400 dark:text-[#8B93A7] font-medium">class :</span>
                             <span
-                              className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-0.5 rounded-full"
+                              className="flex items-center gap-1.5 text-xs font-bold px-2.5 py-0.5 rounded-full"
                               style={{
-                                backgroundColor: jobColor + "22",
+                                backgroundColor: jobColor + "44",
                                 color: jobColor,
+                                border: `1px solid ${jobColor}66`,
                               }}
                             >
                               <span
@@ -764,12 +747,12 @@ export default function BookingPage() {
                             </span>
                           )}
 
-                          {/* Carry Round & Team Badge */}
+                          {/* Carry Round & Team Badge — no slot number */}
                           {qEst && qEst.assignedRound > 0 && !isDone && !isSkipped && (
                             <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-[#0b3d63]/10 dark:bg-[#3B66D1]/20 text-[#0b3d63] dark:text-[#82A0F5] border border-[#0b3d63]/20 dark:border-[#4D73CD]/30">
                               {qEst.track === "priest"
                                 ? `โควตาพระ · รอบที่ ${qEst.assignedRound} (ทีม ${qEst.assignedTeam})`
-                                : `รอบที่ ${qEst.assignedRound} · ทีม ${qEst.assignedTeam} (ช่อง ${qEst.slotInTeam}/2)`}
+                                : `รอบที่ ${qEst.assignedRound} · ทีม ${qEst.assignedTeam}`}
                             </span>
                           )}
 
@@ -800,6 +783,29 @@ export default function BookingPage() {
                           </div>
                         )}
 
+                        {/* Real-time elapsed + ETA for active players */}
+                        {q.status === "active" && q.startTime && !isDone && (
+                          (() => {
+                            const elapsed = Math.floor((now - q.startTime) / 1000);
+                            const elapsedMin = Math.floor(elapsed / 60);
+                            const elapsedSec = elapsed % 60;
+                            const etaMaxSec = 12 * 60 - elapsed;
+                            const etaStr = etaMaxSec > 0
+                              ? `เหลืออีกประมาณ ${Math.floor(etaMaxSec / 60)} นาที ${etaMaxSec % 60} วินาที`
+                              : "ครบเวลาแล้ว";
+                            return (
+                              <div className="flex items-center gap-2 mt-1.5 flex-wrap text-xs">
+                                <span className="text-[11px] font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 rounded-md border border-blue-200 dark:border-blue-800/40 flex items-center gap-1">
+                                  ⏱ กำลังลง {elapsedMin} นาที {String(elapsedSec).padStart(2, "0")} วินาที
+                                </span>
+                                <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400">
+                                  {etaStr}
+                                </span>
+                              </div>
+                            );
+                          })()
+                        )}
+
                         {isSkipped && (
                           <div className="flex items-center gap-2 mt-1.5 text-xs text-amber-600 dark:text-amber-400 font-medium">
                             ⚠️ คิวถูกข้ามเนื่องจากไม่อยู่ขณะเรียกคิว (ติดต่อแอดมินหรือหัวตี้เพื่อนำกลับเข้าคิว)
@@ -825,6 +831,16 @@ export default function BookingPage() {
 
                 return (
                   <>
+                    {activeQueues.length > 0 && (
+                      <div className="text-xs font-bold text-blue-600 dark:text-[#82A0F5] mt-2 px-2 flex items-center gap-1.5">
+                        <span>กำลังลงดันเจี้ยน (Active)</span>
+                        <span className="bg-blue-100 dark:bg-blue-950/50 text-blue-800 dark:text-[#82A0F5] text-[10px] px-2 py-0.5 rounded-full font-bold">
+                          {activeQueues.length}
+                        </span>
+                      </div>
+                    )}
+                    {activeQueues.map(q => renderQueue(q, currentGlobalIdx++, false))}
+
                     {waitingRound1Priests.length > 0 && (
                       <div className="text-xs font-bold text-blue-700 dark:text-white mt-2 px-2">พระ (Priest) - รอคิวรอบ 1</div>
                     )}

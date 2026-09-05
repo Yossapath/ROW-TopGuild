@@ -9,7 +9,7 @@ import { dungeonQueuePatchSchema, validateBody } from "@/lib/validations";
 type Params = { params: { id: string } };
 
 // PATCH /api/dungeon/queues/[id]
-// Body: { round: 1 | 2 } or { action: "updateRounds", rounds: 1 | 2 }
+// Body: { round: 1 | 2 } or { action: "updateRounds"|"skip"|"unskip"|"startRun", rounds?: 1|2 }
 export async function PATCH(req: NextRequest, { params }: Params) {
   try {
     const { id } = params;
@@ -40,39 +40,50 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     let newRound2 = data.round2 ?? false;
     let totalRounds = data.rounds ?? 1;
 
-    // Check action
-    if (action === "skip") {
+    // ── Action handlers ────────────────────────────────────────
+    if (action === "startRun") {
+      // Mark this queue item as actively running; record start time
+      update.status = "active";
+      update.startTime = Date.now();
+    } else if (action === "skip") {
       update.status = "skipped";
     } else if (action === "unskip") {
+      // Give a fresh timestamp so the player re-queues AFTER current active players
+      // (sorting is by timestamp ascending; active items already have lower timestamps)
+      update.timestamp = Date.now();
       const allDone = totalRounds === 1 ? newRound1 : newRound1 && newRound2;
-      update.status = allDone ? "done" : (newRound1 || newRound2) ? "active" : "waiting";
+      update.status = allDone ? "done" : "waiting";
     } else if (action === "updateRounds") {
       if (newRounds === 1 || newRounds === 2) {
         update.rounds = newRounds;
         totalRounds = newRounds;
       }
       const allDone = totalRounds === 1 ? newRound1 : newRound1 && newRound2;
-      update.status = allDone ? "done" : (newRound1 || newRound2) ? "active" : "waiting";
+      update.status = allDone ? "done" : data.status === "active" ? "active" : "waiting";
     } else {
-      // Normal mark round done
+      // Normal mark round done — does NOT change waiting→active; only active→done
       if (round === 1) { update.round1 = true; newRound1 = true; }
       if (round === 2) { update.round2 = true; newRound2 = true; }
       const allDone = totalRounds === 1 ? newRound1 : newRound1 && newRound2;
-      update.status = allDone ? "done" : (newRound1 || newRound2) ? "active" : "waiting";
+      // Keep existing status unless all done (then set done)
+      update.status = allDone ? "done" : data.status;
     }
 
     await docRef.update(update);
 
-    // Save audit log to database
+    // ── Audit log ──────────────────────────────────────────────
     let logDetail = "";
     let logActionType = "COMPLETE_ROUND";
 
-    if (action === "skip") {
+    if (action === "startRun") {
+      logActionType = "START_RUN";
+      logDetail = `เริ่มรันคิวของ ${data?.name || id}`;
+    } else if (action === "skip") {
       logActionType = "SKIP_QUEUE";
       logDetail = `ข้ามคิวของ ${data?.name || id} (ไม่อยู่)`;
     } else if (action === "unskip") {
       logActionType = "UNSKIP_QUEUE";
-      logDetail = `นำคิวของ ${data?.name || id} กลับเข้าระบบ`;
+      logDetail = `นำคิวของ ${data?.name || id} กลับเข้าระบบ (ต่อท้ายคิวปัจจุบัน)`;
     } else if (action === "updateRounds") {
       logActionType = "UPDATE_ROUNDS";
       logDetail = `แก้ไขจำนวนรอบเป็น ${update.rounds} รอบ`;

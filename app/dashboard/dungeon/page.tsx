@@ -48,7 +48,17 @@ export default function DungeonPage() {
   const [loading, setLoading] = useState(true);
   const [carryTeamsCount, setCarryTeamsCount] = useState<number>(1);
 
-  const estimates = useMemo(() => calculateDungeonEstimates(queues, new Date(), carryTeamsCount), [queues, carryTeamsCount]);
+  // ── Real-time clock for countdown display ─────────────────
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const estimates = useMemo(
+    () => calculateDungeonEstimates(queues, new Date(now), carryTeamsCount),
+    [queues, carryTeamsCount, now]
+  );
 
   // Form state
   const [formName, setFormName] = useState("");
@@ -94,38 +104,8 @@ export default function DungeonPage() {
     try {
       const res = await fetch("/api/dungeon/queues");
       const json = await res.json();
-      if (json.ok) {
-        const all = json.data as DungeonQueue[];
-        
-        const waitingRound1Priest: DungeonQueue[] = [];
-        const waitingRound1Other: DungeonQueue[] = [];
-        const waitingRound2Priest: DungeonQueue[] = [];
-        const waitingRound2Other: DungeonQueue[] = [];
-        const doneQueues: DungeonQueue[] = [];
-
-        all.forEach((q) => {
-          if (q.status === "done") {
-            doneQueues.push(q);
-          } else {
-            // Check if they are waiting for Round 1 or Round 2
-            const isWaitingRound2 = q.rounds === 2 && q.round1 === true;
-            if (isWaitingRound2) {
-              if (q.job === "Priest") waitingRound2Priest.push(q);
-              else waitingRound2Other.push(q);
-            } else {
-              if (q.job === "Priest") waitingRound1Priest.push(q);
-              else waitingRound1Other.push(q);
-            }
-          }
-        });
-
-        setQueues([
-          ...waitingRound1Priest, 
-          ...waitingRound1Other, 
-          ...waitingRound2Priest, 
-          ...waitingRound2Other, 
-          ...doneQueues
-        ]);
+      if (json.ok && Array.isArray(json.data)) {
+        setQueues(json.data as DungeonQueue[]);
       }
     } catch {
       /* silent */
@@ -316,6 +296,22 @@ export default function DungeonPage() {
       /* silent */
     }
   };
+
+  // ── Start run (เริ่มรันคิว → sets status active + startTime) ───
+  const handleStartRun = async (queueId: string) => {
+    try {
+      const res = await fetch(`/api/dungeon/queues/${queueId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "startRun" }),
+      });
+      const json = await res.json();
+      if (json.ok) fetchQueues();
+    } catch {
+      /* silent */
+    }
+  };
+
 
   // ── Delete queue item ─────────────────────────────────────
   const handleDelete = async (queueId: string) => {
@@ -749,12 +745,14 @@ export default function DungeonPage() {
                     return (
                       <div
                         key={q.id}
-                        className={`bg-slate-50 dark:bg-[#272C38] rounded-xl p-3.5 flex items-center justify-between gap-3 border transition-colors ${
+                        className={`rounded-xl p-3.5 flex items-center justify-between gap-3 border transition-colors ${
                           isDone
-                            ? "border-slate-100 dark:border-[#2D3342] opacity-50"
+                            ? "bg-slate-50 dark:bg-[#272C38] border-slate-100 dark:border-[#2D3342] opacity-50"
                             : isSkipped
-                            ? "border-amber-300/70 dark:border-amber-700/50 bg-amber-50/20 dark:bg-amber-950/10"
-                            : "border-slate-200 dark:border-[#2D3342]"
+                            ? "bg-amber-50/20 dark:bg-amber-950/10 border-amber-300/70 dark:border-amber-700/50"
+                            : q.status === "active"
+                            ? "bg-blue-50/40 dark:bg-blue-950/20 border-blue-300/70 dark:border-blue-700/50 shadow-sm"
+                            : "bg-slate-50 dark:bg-[#272C38] border-slate-200 dark:border-[#2D3342]"
                         } ${isR2 && !isDone && !isSkipped ? "border-l-4 border-l-purple-500" : ""}`}
                       >
                         {/* Number */}
@@ -774,10 +772,11 @@ export default function DungeonPage() {
 
                               <span className="text-xs text-slate-400 dark:text-[#8B93A7] font-medium">class :</span>
                               <span
-                                className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-0.5 rounded-full"
+                                className="flex items-center gap-1.5 text-xs font-bold px-2.5 py-0.5 rounded-full"
                                 style={{
-                                  backgroundColor: jobColor + "22",
+                                  backgroundColor: jobColor + "44",
                                   color: jobColor,
+                                  border: `1px solid ${jobColor}66`,
                                 }}
                               >
                                 <span
@@ -795,12 +794,12 @@ export default function DungeonPage() {
                               </span>
                             )}
 
-                            {/* Carry Round & Team Badge */}
+                            {/* Carry Round & Team Badge — no slot number */}
                             {qEst && qEst.assignedRound > 0 && !isDone && !isSkipped && (
                               <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-[#0b3d63]/10 dark:bg-[#3B66D1]/20 text-[#0b3d63] dark:text-[#82A0F5] border border-[#0b3d63]/20 dark:border-[#4D73CD]/30">
                                 {qEst.track === "priest"
                                   ? `โควตาพระ · รอบที่ ${qEst.assignedRound} (ทีม ${qEst.assignedTeam})`
-                                  : `รอบที่ ${qEst.assignedRound} · ทีม ${qEst.assignedTeam} (ช่อง ${qEst.slotInTeam}/2)`}
+                                  : `รอบที่ ${qEst.assignedRound} · ทีม ${qEst.assignedTeam}`}
                               </span>
                             )}
 
@@ -815,7 +814,7 @@ export default function DungeonPage() {
                             <div className="flex items-center gap-2 mt-1.5 flex-wrap text-xs">
                               {qEst.queuesAhead === 0 ? (
                                 <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800/40 flex items-center gap-1">
-                                  🚀 รอบแรก (ทีมแบก {qEst.assignedTeam} · พร้อมลงทันที)
+                                  🚀 ถึงคิวแล้ว (ทีมแบก {qEst.assignedTeam} · รอเริ่มรัน)
                                 </span>
                               ) : (
                                 <>
@@ -829,6 +828,30 @@ export default function DungeonPage() {
                                 </>
                               )}
                             </div>
+                          )}
+
+                          {/* Real-time elapsed + ETA for active players */}
+                          {q.status === "active" && q.startTime && !isDone && (
+                            (() => {
+                              const elapsed = Math.floor((now - q.startTime) / 1000);
+                              const elapsedMin = Math.floor(elapsed / 60);
+                              const elapsedSec = elapsed % 60;
+                              // Each run is 11–12 min; show how long until done
+                              const etaMaxSec = 12 * 60 - elapsed;
+                              const etaStr = etaMaxSec > 0
+                                ? `เหลืออีกประมาณ ${Math.floor(etaMaxSec / 60)} นาที ${etaMaxSec % 60} วินาที`
+                                : "ครบเวลาแล้ว";
+                              return (
+                                <div className="flex items-center gap-2 mt-1.5 flex-wrap text-xs">
+                                  <span className="text-[11px] font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 rounded-md border border-blue-200 dark:border-blue-800/40 flex items-center gap-1">
+                                    ⏱ กำลังลง {elapsedMin} นาที {String(elapsedSec).padStart(2, "0")} วินาที
+                                  </span>
+                                  <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400">
+                                    {etaStr}
+                                  </span>
+                                </div>
+                              );
+                            })()
                           )}
 
                           {isSkipped && (
@@ -858,7 +881,7 @@ export default function DungeonPage() {
                                 <button
                                   onClick={() => handleSkip(q.id, q.status)}
                                   className="text-sm font-semibold px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
-                                  title="นำผู้เล่นกลับเข้าคิว"
+                                  title="นำผู้เล่นกลับเข้าคิว (ต่อท้ายคิวปัจจุบัน)"
                                 >
                                   <RotateCcw size={15} />
                                   กลับเข้าคิว
@@ -878,42 +901,61 @@ export default function DungeonPage() {
                             </>
                           ) : (
                             <>
-                              {/* Round 1 */}
-                              <button
-                                onClick={() => isAdmin && handleRound(q.id, 1)}
-                                className={`text-sm font-semibold px-3.5 py-1.5 rounded-xl transition-all ${
-                                  q.round1
-                                    ? "bg-emerald-600 text-white shadow-xs"
-                                    : "bg-slate-100 dark:bg-[#202636] text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-[#3A4256] " +
-                                      (isAdmin
-                                        ? "hover:bg-emerald-500 hover:text-white dark:hover:bg-emerald-600 hover:border-transparent cursor-pointer"
-                                        : "cursor-default")
-                                }`}
-                                title={isAdmin ? "คลิกเพื่อทำเครื่องหมายรอบ 1" : undefined}
-                              >
-                                รอบ 1
-                              </button>
+                              {/* เริ่มรันคิว — only show when waiting & it's this player's turn (queuesAhead===0) */}
+                              {isAdmin && q.status === "waiting" && qEst && qEst.queuesAhead === 0 && (
+                                <button
+                                  onClick={() => handleStartRun(q.id)}
+                                  className="text-sm font-semibold px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-colors flex items-center gap-1.5 cursor-pointer"
+                                  title="กดเพื่อเริ่มรันคิว (ตั้งสถานะกำลังลง)"
+                                >
+                                  🎮 เริ่มรันคิว
+                                </button>
+                              )}
 
-                              {/* Round 2 (only if rounds=2) */}
-                              {q.rounds === 2 && (
+                              {/* Round 1 — mark round 1 as done */}
+                              {!isDone && (
+                                <button
+                                  onClick={() => isAdmin && handleRound(q.id, 1)}
+                                  disabled={q.status !== "active"}
+                                  className={`text-sm font-semibold px-3.5 py-1.5 rounded-xl transition-all ${
+                                    q.round1
+                                      ? "bg-emerald-600 text-white shadow-xs"
+                                      : q.status !== "active"
+                                      ? "bg-slate-100 dark:bg-[#202636] text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-[#3A4256] cursor-not-allowed opacity-50"
+                                      : "bg-slate-100 dark:bg-[#202636] text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-[#3A4256] " +
+                                        (isAdmin
+                                          ? "hover:bg-emerald-500 hover:text-white dark:hover:bg-emerald-600 hover:border-transparent cursor-pointer"
+                                          : "cursor-default")
+                                  }`}
+                                  title={q.status !== "active" ? "กดเริ่มรันคิวก่อน" : (isAdmin ? "คลิกเพื่อทำเครื่องหมายรอบ 1 เสร็จ" : undefined)}
+                                >
+                                  รอบ 1
+                                </button>
+                              )}
+
+                              {/* Round 2 (only if rounds=2) — mark round 2 as done */}
+                              {q.rounds === 2 && !isDone && (
                                 <button
                                   onClick={() => isAdmin && handleRound(q.id, 2)}
+                                  disabled={!q.round1}
                                   className={`text-sm font-semibold px-3.5 py-1.5 rounded-xl transition-all ${
                                     q.round2
                                       ? "bg-purple-600 text-white shadow-xs"
+                                      : !q.round1
+                                      ? "bg-slate-100 dark:bg-[#202636] text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-[#3A4256] cursor-not-allowed opacity-50"
                                       : "bg-slate-100 dark:bg-[#202636] text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-[#3A4256] " +
                                         (isAdmin
                                           ? "hover:bg-purple-500 hover:text-white dark:hover:bg-purple-600 hover:border-transparent cursor-pointer"
                                           : "cursor-default")
                                   }`}
-                                  title={isAdmin ? "คลิกเพื่อทำเครื่องหมายรอบ 2" : undefined}
+                                  title={!q.round1 ? "ต้องทำเครื่องหมายรอบ 1 ก่อน" : (isAdmin ? "คลิกเพื่อทำเครื่องหมายรอบ 2 เสร็จ" : undefined)}
                                 >
                                   รอบ 2
                                 </button>
                               )}
 
                               {/* Skip button (ถ้าผู้เล่นไม่อยู่) */}
-                              {isAdmin && !isDone && (
+                              {isAdmin && !isDone && q.status !== "active" && (
                                 <button
                                   onClick={() => handleSkip(q.id, q.status)}
                                   className="text-sm font-semibold px-3.5 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 hover:bg-amber-500 hover:text-white dark:hover:bg-amber-600 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-900/50 transition-colors flex items-center gap-1.5 cursor-pointer"

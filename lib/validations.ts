@@ -65,11 +65,11 @@ export const dungeonQueueBookingSchema = z.object({
 
 export const dungeonQueuePatchSchema = z.object({
   round: z.union([z.literal(1), z.literal(2)]).optional(),
-  action: z.enum(["updateRounds", "skip", "unskip"]).optional(),
+  action: z.enum(["updateRounds", "skip", "unskip", "startRun"]).optional(),
   rounds: z.union([z.literal(1), z.literal(2)]).optional(),
 }).refine((data) => {
   if (data.action === "updateRounds") return data.rounds === 1 || data.rounds === 2;
-  if (data.action === "skip" || data.action === "unskip") return true;
+  if (data.action === "skip" || data.action === "unskip" || data.action === "startRun") return true;
   return data.round === 1 || data.round === 2;
 }, {
   message: "ข้อมูลรอบไม่ถูกต้อง",

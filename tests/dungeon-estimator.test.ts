@@ -173,3 +173,24 @@ test("Dungeon Estimator - Skipped players do not block the queue and next player
   assert.equal(david.slotInTeam, 2);
 });
 
+test("Dungeon Estimator - Active party with startTime dynamically reduces waiting time", () => {
+  const baseTime = new Date("2026-09-06T14:00:00Z").getTime();
+  // Started 6 minutes ago
+  const startTime = baseTime - 6 * 60 * 1000;
+
+  const queues: DungeonQueue[] = [
+    { id: "act1", name: "Active1", job: "Lord Knight", dungeon: "ดันมายา (Maya)", power: 100, status: "active", rounds: 1, timestamp: 1, startTime },
+    { id: "w1", name: "NextInLine", job: "Sniper", dungeon: "ดันมายา (Maya)", power: 100, status: "waiting", rounds: 1, timestamp: 2 },
+  ];
+
+  const now = new Date(baseTime);
+  const result = calculateDungeonEstimates(queues, now, 1);
+
+  const next = result.estimatesByName["nextinline"];
+  assert.equal(next.assignedRound, 1);
+  assert.equal(next.queuesAhead, 1);
+  // Total 11-12 min run, 6 min elapsed -> remaining is 5-6 min
+  assert.equal(next.waitMinutesMin, 5);
+  assert.equal(next.waitMinutesMax, 6);
+});
+

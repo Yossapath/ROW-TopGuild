@@ -79,6 +79,7 @@ export interface DungeonQueue {
   round1?: boolean;
   round2?: boolean;
   timestamp: number;
+  startTime?: number; // set when status transitions to "active" via startRun
 }
 
 export interface DungeonTeamMember {
