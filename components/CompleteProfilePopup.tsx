@@ -56,12 +56,12 @@ export default function CompleteProfilePopup() {
     <Dialog.Root open={!!isOpen}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
-        <Dialog.Content className="fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border border-slate-200 dark:border-[#333333] bg-white dark:bg-[#242424] p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-2xl">
+        <Dialog.Content className="fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border border-slate-200 dark:border-[#2D3342] bg-white dark:bg-[#232733] p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-2xl">
           <div className="flex flex-col space-y-1.5 text-center sm:text-left">
             <Dialog.Title className="text-lg font-semibold leading-none tracking-tight text-slate-800 dark:text-white">
               เติมเต็มข้อมูลโปรไฟล์ให้สมบูรณ์
             </Dialog.Title>
-            <Dialog.Description className="text-sm text-gray-500 dark:text-gray-400">
+            <Dialog.Description className="text-sm text-gray-500 dark:text-[#8B93A7]">
               กรุณาระบุข้อมูลเกมของคุณเพื่อเข้าใช้งานระบบ
             </Dialog.Description>
           </div>
@@ -79,7 +79,7 @@ export default function CompleteProfilePopup() {
                 type="text" 
                 value={user?.discordUsername || ""}
                 disabled
-                className="flex h-10 w-full rounded-xl border border-gray-300 dark:border-[#333333] bg-gray-100 dark:bg-[#2a2a2a] px-3 py-2 text-sm text-gray-500 dark:text-gray-400 cursor-not-allowed outline-none"
+                className="flex h-10 w-full rounded-xl border border-gray-300 dark:border-[#2D3342] bg-gray-100 dark:bg-[#272C38] px-3 py-2 text-sm text-gray-500 dark:text-[#8B93A7] cursor-not-allowed outline-none"
               />
             </div>
 
@@ -90,7 +90,7 @@ export default function CompleteProfilePopup() {
                 required
                 value={gameUsername}
                 onChange={(e) => setGameUsername(e.target.value)}
-                className="flex h-10 w-full rounded-xl border border-gray-300 dark:border-[#333333] bg-white dark:bg-[#2a2a2a] px-3 py-2 text-sm text-slate-800 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#0b3d63]"
+                className="flex h-10 w-full rounded-xl border border-gray-300 dark:border-[#2D3342] bg-white dark:bg-[#272C38] px-3 py-2 text-sm text-slate-800 dark:text-white placeholder:text-gray-400 dark:placeholder:text-[#6B7280] focus:outline-none focus:ring-2 focus:ring-[#4D73CD]"
                 placeholder="ชื่อตัวละครหลัก"
               />
             </div>
@@ -101,7 +101,7 @@ export default function CompleteProfilePopup() {
                 required
                 value={userClass}
                 onChange={(e) => setUserClass(e.target.value)}
-                className="flex h-10 w-full rounded-xl border border-gray-300 dark:border-[#333333] bg-white dark:bg-[#2a2a2a] px-3 py-2 text-sm text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0b3d63] cursor-pointer"
+                className="flex h-10 w-full rounded-xl border border-gray-300 dark:border-[#2D3342] bg-white dark:bg-[#272C38] px-3 py-2 text-sm text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#4D73CD] cursor-pointer"
               >
                 <option value="" disabled>เลือกสายอาชีพ</option>
                 {JOB_CLASSES.map((job) => (
@@ -118,7 +118,7 @@ export default function CompleteProfilePopup() {
                 min="0"
                 value={power}
                 onChange={(e) => setPower(e.target.value)}
-                className="flex h-10 w-full rounded-xl border border-gray-300 dark:border-[#333333] bg-white dark:bg-[#2a2a2a] px-3 py-2 text-sm text-slate-800 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#0b3d63]"
+                className="flex h-10 w-full rounded-xl border border-gray-300 dark:border-[#2D3342] bg-white dark:bg-[#272C38] px-3 py-2 text-sm text-slate-800 dark:text-white placeholder:text-gray-400 dark:placeholder:text-[#6B7280] focus:outline-none focus:ring-2 focus:ring-[#4D73CD]"
                 placeholder="เช่น 150000"
               />
             </div>
@@ -127,7 +127,7 @@ export default function CompleteProfilePopup() {
               <button 
                 type="submit" 
                 disabled={loading}
-                className="inline-flex items-center justify-center rounded-xl text-sm font-bold transition-colors disabled:opacity-50 bg-[#0b3d63] hover:bg-[#0f4b7a] text-white h-10 px-6 py-2 w-full sm:w-auto shadow-sm"
+                className="inline-flex items-center justify-center rounded-xl text-sm font-bold transition-colors disabled:opacity-50 bg-[#3B66D1] hover:bg-[#4D73CD] text-white h-10 px-6 py-2 w-full sm:w-auto shadow-sm"
               >
                 {loading ? "กำลังบันทึก..." : "ยืนยันข้อมูล"}
               </button>

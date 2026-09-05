@@ -9,13 +9,13 @@ function LoginForm() {
   const error = searchParams.get("error");
 
   return (
-    <div className="relative rounded-2xl bg-white dark:bg-[#242424] p-8 shadow-2xl overflow-hidden border border-slate-100 dark:border-[#333333] text-center">
+    <div className="relative rounded-2xl bg-white dark:bg-[#232733] p-8 shadow-2xl overflow-hidden border border-slate-100 dark:border-[#2D3342] text-center">
       {/* Top blue border effect */}
       <div className="absolute top-0 left-0 w-full h-1.5 bg-[#0b3d63]"></div>
 
       <div className="mb-8 mt-2 flex flex-col items-center">
         <h2 className="text-2xl font-black italic text-slate-800 dark:text-white tracking-wider uppercase mb-2">LOGIN</h2>
-        <p className="text-gray-500 dark:text-gray-400 text-sm">เข้าสู่ระบบด้วยบัญชี Discord ของคุณ</p>
+        <p className="text-gray-500 dark:text-[#8B93A7] text-sm">เข้าสู่ระบบด้วยบัญชี Discord ของคุณ</p>
       </div>
 
       {error && (
@@ -39,7 +39,7 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <div className="flex min-h-screen bg-slate-50 dark:bg-[#1c1c1c]">
+    <div className="flex min-h-screen bg-slate-50 dark:bg-[#1C1F27]">
       <div className="flex w-full max-w-5xl mx-auto items-center justify-center p-4 lg:p-8">
         
         {/* Left Side (Branding) */}
@@ -52,7 +52,7 @@ export default function LoginPage() {
             RAGNAROK <br />
             THE NEW WORLD
           </h2>
-          <p className="mt-6 text-sm font-bold tracking-widest text-slate-500 dark:text-gray-400 uppercase">
+          <p className="mt-6 text-sm font-bold tracking-widest text-slate-500 dark:text-[#8B93A7] uppercase">
             Guild Data Management System
           </p>
         </div>

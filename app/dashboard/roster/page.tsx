@@ -144,7 +144,7 @@ export default function RosterPage() {
   if (isLoading) return <div className="flex h-screen items-center justify-center font-bold text-gray-500">กำลังโหลดรายชื่อ...</div>;
 
   return (
-    <div className="space-y-6 bg-[#f0f6fc] dark:bg-[#1c1c1c] min-h-screen p-4 lg:py-8 lg:px-12 xl:px-24 2xl:px-32 relative" style={{ zoom: 0.85 }}>
+    <div className="space-y-6 bg-[#f0f6fc] dark:bg-[#1C1F27] min-h-screen p-4 lg:py-8 lg:px-12 xl:px-24 2xl:px-32 relative" style={{ zoom: 0.85 }}>
       
       {/* Top Banner */}
       <div className="bg-[#0b3d63] rounded-2xl p-6 text-white flex items-center justify-between shadow-md">
@@ -172,21 +172,21 @@ export default function RosterPage() {
             <input
               type="text"
               placeholder="ค้นหาชื่อสมาชิก..."
-              className="block w-full rounded-full border border-theme-border bg-theme-bg py-2.5 pl-11 pr-4 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-gray-500 focus:bg-theme-panel focus:ring-2 focus:ring-[#0b3d63] dark:focus:ring-[#0b3d63] sm:text-sm font-medium transition-colors outline-none"
+              className="block w-full rounded-full border border-theme-border bg-theme-bg py-2.5 pl-11 pr-4 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#6B7280] focus:bg-theme-panel focus:ring-2 focus:ring-[#4D73CD] dark:focus:ring-[#4D73CD] sm:text-sm font-medium transition-colors outline-none"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
           <button 
             onClick={openAddModal}
-            className="w-full sm:w-auto flex-shrink-0 rounded-full bg-[#0b3d63] hover:bg-[#0f4b7a] px-6 py-2.5 text-sm font-bold text-white transition-colors shadow-sm"
+            className="w-full sm:w-auto flex-shrink-0 rounded-full bg-[#3B66D1] hover:bg-[#4D73CD] px-6 py-2.5 text-sm font-bold text-white transition-colors shadow-sm"
           >
             เพิ่มสมาชิกใหม่
           </button>
         </div>
         <button 
           onClick={() => alert("ระบบ Import Excel กำลังพัฒนา")}
-          className="w-full md:w-auto rounded-full bg-theme-panel border border-[#0b3d63] dark:border-[#0b3d63] px-6 py-2.5 text-sm font-bold text-[#0b3d63] dark:text-white hover:bg-blue-50 dark:hover:bg-[#2e2e2e] transition-colors shadow-sm"
+          className="w-full md:w-auto rounded-full bg-theme-panel border border-[#0b3d63] dark:border-[#4D73CD] px-6 py-2.5 text-sm font-bold text-[#0b3d63] dark:text-white hover:bg-blue-50 dark:hover:bg-[#2A2F3E] transition-colors shadow-sm"
         >
           เพิ่มกลุ่ม (Excel)
         </button>
@@ -199,7 +199,7 @@ export default function RosterPage() {
           onClick={() => setSelectedJob("ทั้งหมด")}
           className={`rounded-xl p-3.5 flex items-center justify-between shadow-sm border transition-all ${
             selectedJob === "ทั้งหมด" 
-              ? "bg-[#0b3d63] dark:bg-[#0b3d63] border-[#0b3d63] dark:border-[#0b3d63] text-white ring-2 ring-offset-2 ring-[#0b3d63] dark:ring-[#0b3d63] dark:ring-offset-[#1c1c1c]" 
+              ? "bg-[#0b3d63] dark:bg-[#3B66D1] border-[#0b3d63] dark:border-[#4D73CD] text-white ring-2 ring-offset-2 ring-[#0b3d63] dark:ring-[#4D73CD] dark:ring-offset-[#1c1c1c]" 
               : "bg-theme-panel border-theme-border hover:border-[#0b3d63] dark:hover:border-sky-500 hover:shadow-md text-theme-text"
           }`}
         >
@@ -313,7 +313,7 @@ export default function RosterPage() {
                           {user?.role === 'admin' && (
                             <button 
                               onClick={() => openEditModal(m, job)}
-                              className="px-3 py-1.5 bg-theme-panel border border-blue-200 dark:border-[#0b3d63]/40 rounded-md text-[11px] font-bold text-[#0b3d63] dark:text-white shadow-sm hover:bg-blue-50 dark:hover:bg-sky-950/40 transition-colors"
+                              className="px-3 py-1.5 bg-theme-panel border border-blue-200 dark:border-[#4D73CD]/40 rounded-md text-[11px] font-bold text-[#0b3d63] dark:text-white shadow-sm hover:bg-blue-50 dark:hover:bg-sky-950/40 transition-colors"
                             >
                               แก้ไข
                             </button>
@@ -355,7 +355,7 @@ export default function RosterPage() {
                     type="text" 
                     value={editDiscordUsername}
                     disabled
-                    className="w-full border border-gray-200 dark:border-[#333333] rounded-xl px-4 py-3 text-gray-500 dark:text-gray-400 font-medium bg-gray-100 dark:bg-[#2a2a2a] cursor-not-allowed outline-none"
+                    className="w-full border border-gray-200 dark:border-[#2D3342] rounded-xl px-4 py-3 text-gray-500 dark:text-[#8B93A7] font-medium bg-gray-100 dark:bg-[#272C38] cursor-not-allowed outline-none"
                   />
                 </div>
               )}
@@ -365,7 +365,7 @@ export default function RosterPage() {
                   type="text" 
                   value={editName}
                   onChange={e => setEditName(e.target.value)}
-                  className="w-full border border-blue-100 dark:border-[#333333] rounded-xl px-4 py-3 text-theme-text font-bold focus:ring-2 focus:ring-[#0b3d63] dark:focus:ring-[#0b3d63] focus:border-[#0b3d63] bg-blue-50/40 dark:bg-[#2a2a2a] transition-all outline-none placeholder:text-slate-400 dark:placeholder:text-gray-500"
+                  className="w-full border border-blue-100 dark:border-[#2D3342] rounded-xl px-4 py-3 text-theme-text font-bold focus:ring-2 focus:ring-[#4D73CD] dark:focus:ring-[#4D73CD] focus:border-[#0b3d63] bg-blue-50/40 dark:bg-[#272C38] transition-all outline-none placeholder:text-slate-400 dark:placeholder:text-[#6B7280]"
                   placeholder="กรอกชื่อตัวละคร..."
                 />
               </div>
@@ -375,7 +375,7 @@ export default function RosterPage() {
                 <select 
                   value={editJob}
                   onChange={e => setEditJob(e.target.value)}
-                  className="w-full border border-blue-100 dark:border-[#333333] rounded-xl px-4 py-3 text-[#0b3d63] dark:text-white font-bold focus:ring-2 focus:ring-[#0b3d63] dark:focus:ring-[#0b3d63] focus:border-[#0b3d63] bg-blue-50/40 dark:bg-[#2a2a2a] transition-all outline-none appearance-none cursor-pointer"
+                  className="w-full border border-blue-100 dark:border-[#2D3342] rounded-xl px-4 py-3 text-[#0b3d63] dark:text-white font-bold focus:ring-2 focus:ring-[#4D73CD] dark:focus:ring-[#4D73CD] focus:border-[#0b3d63] bg-blue-50/40 dark:bg-[#272C38] transition-all outline-none appearance-none cursor-pointer"
                 >
                   {JOB_LIST.map(job => (
                     <option key={job} value={job}>{job}</option>
@@ -389,7 +389,7 @@ export default function RosterPage() {
                   type="number" 
                   value={editPower}
                   onChange={e => setEditPower(e.target.value)}
-                  className="w-full border border-blue-100 dark:border-[#333333] rounded-xl px-4 py-3 text-[#0b3d63] dark:text-white font-bold focus:ring-2 focus:ring-[#0b3d63] dark:focus:ring-[#0b3d63] focus:border-[#0b3d63] bg-blue-50/40 dark:bg-[#2a2a2a] transition-all outline-none placeholder:text-slate-400 dark:placeholder:text-gray-500"
+                  className="w-full border border-blue-100 dark:border-[#2D3342] rounded-xl px-4 py-3 text-[#0b3d63] dark:text-white font-bold focus:ring-2 focus:ring-[#4D73CD] dark:focus:ring-[#4D73CD] focus:border-[#0b3d63] bg-blue-50/40 dark:bg-[#272C38] transition-all outline-none placeholder:text-slate-400 dark:placeholder:text-[#6B7280]"
                   placeholder="เช่น 150000"
                 />
               </div>
@@ -402,7 +402,7 @@ export default function RosterPage() {
                   value={editRole}
                   onChange={e => setEditRole(e.target.value)}
                   disabled={user?.role !== "admin"}
-                  className={`w-full border rounded-xl px-4 py-3 font-bold transition-all outline-none appearance-none ${user?.role === "admin" ? "border-blue-100 dark:border-[#333333] text-[#0b3d63] dark:text-white focus:ring-2 focus:ring-[#0b3d63] dark:focus:ring-[#0b3d63] focus:border-[#0b3d63] bg-blue-50/40 dark:bg-[#2a2a2a] cursor-pointer" : "bg-gray-100 dark:bg-[#2a2a2a] text-gray-500 dark:text-gray-400 cursor-not-allowed border-gray-200 dark:border-[#333333]"}`}
+                  className={`w-full border rounded-xl px-4 py-3 font-bold transition-all outline-none appearance-none ${user?.role === "admin" ? "border-blue-100 dark:border-[#2D3342] text-[#0b3d63] dark:text-white focus:ring-2 focus:ring-[#4D73CD] dark:focus:ring-[#4D73CD] focus:border-[#0b3d63] bg-blue-50/40 dark:bg-[#272C38] cursor-pointer" : "bg-gray-100 dark:bg-[#272C38] text-gray-500 dark:text-[#8B93A7] cursor-not-allowed border-gray-200 dark:border-[#2D3342]"}`}
                 >
                   <option value="อิสระ (ให้ระบบจัดให้)">อิสระ (ให้ระบบจัดให้)</option>
                   <option value="สนามหลัก">สนามหลัก</option>
@@ -432,7 +432,7 @@ export default function RosterPage() {
                 <button 
                   onClick={handleSave}
                   disabled={mutation.isPending}
-                  className="bg-[#0b3d63] hover:bg-[#0f4b7a] text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm hover:shadow disabled:opacity-70"
+                  className="bg-[#3B66D1] hover:bg-[#4D73CD] text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm hover:shadow disabled:opacity-70"
                 >
                   {mutation.isPending ? "กำลังบันทึก..." : "บันทึกสมาชิก"}
                 </button>

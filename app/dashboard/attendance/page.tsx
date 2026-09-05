@@ -332,20 +332,20 @@ export default function AttendancePage() {
 
   return (
     <div
-      className="bg-[#f0f6fc] dark:bg-[#1c1c1c] min-h-screen p-4 lg:py-8 lg:px-12 xl:px-24 2xl:px-32"
+      className="bg-[#f0f6fc] dark:bg-[#1C1F27] min-h-screen p-4 lg:py-8 lg:px-12 xl:px-24 2xl:px-32"
       style={{ zoom: 0.85 }}
     >
       {/* Header Card */}
-      <div className="bg-white dark:bg-[#242424] rounded-2xl shadow-sm border border-slate-200 dark:border-[#333333] p-5 mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="bg-white dark:bg-[#232733] rounded-2xl shadow-sm border border-slate-200 dark:border-[#2D3342] p-5 mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
           <div
-            className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 bg-[#0b3d63]"
+            className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 bg-[#0b3d63] dark:bg-[#3B66D1]"
           >
             <CheckSquare className="w-6 h-6 text-white" />
           </div>
           <div>
             <h1 className="text-xl font-bold text-slate-800 dark:text-white">เช็คชื่อกิลด์วอร์</h1>
-            <p className="text-sm text-slate-500 dark:text-gray-400">
+            <p className="text-sm text-slate-500 dark:text-[#8B93A7]">
               บันทึกการเข้าร่วมวอร์ | อังคาร · พฤหัสบดี · อาทิตย์
             </p>
           </div>
@@ -353,7 +353,7 @@ export default function AttendancePage() {
         <button
           onClick={handleCopy}
           disabled={rows.length === 0}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-[#0b3d63] hover:bg-[#0f4b7a] text-white"
+          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-[#3B66D1] hover:bg-[#4D73CD] text-white"
         >
           {copied ? (
             <ClipboardCheck className="w-4 h-4" />
@@ -365,7 +365,7 @@ export default function AttendancePage() {
       </div>
 
       {/* Day Selector */}
-      <div className="bg-white dark:bg-[#242424] rounded-2xl shadow-sm border border-slate-200 dark:border-[#333333] p-4 mb-5 flex flex-wrap items-center gap-3">
+      <div className="bg-white dark:bg-[#232733] rounded-2xl shadow-sm border border-slate-200 dark:border-[#2D3342] p-4 mb-5 flex flex-wrap items-center gap-3">
         <span className="text-sm font-semibold text-slate-600 dark:text-white flex items-center gap-1.5">
           <CalendarDays className="w-4 h-4" /> สัปดาห์:
         </span>
@@ -383,7 +383,7 @@ export default function AttendancePage() {
               setSelectedDay("อาทิตย์");
             }
           }}
-          className="border border-slate-200 dark:border-[#333333] rounded-lg px-2 py-1.5 text-sm font-semibold text-slate-700 dark:text-white bg-white dark:bg-[#2a2a2a] focus:outline-none"
+          className="border border-slate-200 dark:border-[#2D3342] rounded-lg px-2 py-1.5 text-sm font-semibold text-slate-700 dark:text-white bg-white dark:bg-[#272C38] focus:outline-none"
         >
           {Array.from({ length: getCurrentWeekIndex() + 1 }, (_, i) => {
             const wIdx = getCurrentWeekIndex() - i;
@@ -399,7 +399,7 @@ export default function AttendancePage() {
           })}
         </select>
 
-        <div className="w-[1px] h-6 bg-slate-200 dark:bg-[#1e3550] mx-1"></div>
+        <div className="w-[1px] h-6 bg-slate-200 dark:bg-[#2D3342] mx-1"></div>
 
         <span className="text-sm font-semibold text-slate-600 dark:text-white flex items-center gap-1.5">
           วัน:
@@ -414,8 +414,8 @@ export default function AttendancePage() {
               onClick={() => handleDayBtn(day)}
               className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all flex flex-col items-center ${
                 isSelected
-                  ? "bg-[#0b3d63] dark:bg-[#0b3d63] text-white border-[#0b3d63] dark:border-[#0b3d63] shadow-sm"
-                  : "bg-white dark:bg-[#2a2a2a] text-[#0b3d63] dark:text-white border-[#0b3d63]/30 dark:border-[#0b3d63]/40 hover:bg-blue-50 dark:hover:bg-[#2e2e2e]"
+                  ? "bg-[#0b3d63] dark:bg-[#3B66D1] text-white border-[#0b3d63] dark:border-[#4D73CD] shadow-sm"
+                  : "bg-white dark:bg-[#272C38] text-[#0b3d63] dark:text-white border-[#0b3d63]/30 dark:border-[#4D73CD]/40 hover:bg-blue-50 dark:hover:bg-[#2A2F3E]"
               }`}
             >
               <span>{day}</span>
@@ -438,10 +438,10 @@ export default function AttendancePage() {
       {/* Main Grid */}
       <div className="flex gap-5 items-start">
         {/* Left — Table */}
-        <div className="flex-1 min-w-0 bg-white dark:bg-[#242424] rounded-2xl shadow-sm border border-slate-200 dark:border-[#333333] overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-100 dark:border-[#333333] flex flex-wrap items-center justify-between gap-3">
+        <div className="flex-1 min-w-0 bg-white dark:bg-[#232733] rounded-2xl shadow-sm border border-slate-200 dark:border-[#2D3342] overflow-hidden">
+          <div className="px-5 py-4 border-b border-slate-100 dark:border-[#2D3342] flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
-              <Users className="w-5 h-5 text-slate-400 dark:text-gray-500" />
+              <Users className="w-5 h-5 text-slate-400 dark:text-[#6B7280]" />
               <span className="font-semibold text-slate-700 dark:text-white">รายชื่อสมาชิก</span>
               {rows.length > 0 && (
                 <span className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-white text-xs font-bold px-2 py-0.5 rounded-full">
@@ -452,7 +452,7 @@ export default function AttendancePage() {
             {isAdmin && rows.length > 0 && (
               <button
                 onClick={() => setShowImport(true)}
-                className="text-xs font-bold bg-blue-50 dark:bg-[#0b3d63]/25 text-blue-600 dark:text-white border border-blue-200 dark:border-[#0b3d63]/40 px-3 py-1.5 rounded-lg hover:bg-blue-100 dark:hover:bg-sky-900/40 transition-colors"
+                className="text-xs font-bold bg-blue-50 dark:bg-[#3B66D1]/25 text-blue-600 dark:text-white border border-blue-200 dark:border-[#4D73CD]/40 px-3 py-1.5 rounded-lg hover:bg-blue-100 dark:hover:bg-sky-900/40 transition-colors"
               >
                 นำเข้ารายชื่อ (Import)
               </button>
@@ -463,23 +463,23 @@ export default function AttendancePage() {
                 placeholder="ค้นหาชื่อ..." 
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full border border-slate-200 dark:border-[#333333] bg-white dark:bg-[#2a2a2a] text-slate-800 dark:text-white placeholder:text-slate-400 dark:placeholder:text-gray-500 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0b3d63] dark:focus:ring-[#0b3d63]"
+                className="w-full border border-slate-200 dark:border-[#2D3342] bg-white dark:bg-[#272C38] text-slate-800 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#6B7280] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#4D73CD] dark:focus:ring-[#4D73CD]"
               />
             </div>
           </div>
 
           {loadingRoster ? (
-            <div className="flex items-center justify-center py-16 text-slate-400 dark:text-gray-500 text-sm gap-2">
+            <div className="flex items-center justify-center py-16 text-slate-400 dark:text-[#6B7280] text-sm gap-2">
               <div className="w-5 h-5 border-2 border-slate-300 border-t-blue-500 rounded-full animate-spin" />
               กำลังโหลดข้อมูล...
             </div>
           ) : !selectedDate ? (
-            <div className="flex flex-col items-center justify-center py-16 text-slate-400 dark:text-gray-500 gap-2">
+            <div className="flex flex-col items-center justify-center py-16 text-slate-400 dark:text-[#6B7280] gap-2">
               <CalendarDays className="w-10 h-10 opacity-30" />
               <p className="text-sm">เลือกวันก่อนเพื่อแสดงรายชื่อ</p>
             </div>
           ) : rows.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-slate-400 dark:text-gray-500 gap-2">
+            <div className="flex flex-col items-center justify-center py-16 text-slate-400 dark:text-[#6B7280] gap-2">
               <Users className="w-10 h-10 opacity-30" />
               <p className="text-sm">ไม่มีข้อมูลสมาชิกใน Roster</p>
             </div>
@@ -487,7 +487,7 @@ export default function AttendancePage() {
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="bg-[#eef4fb] dark:bg-[#2a2a2a] text-[#0b3d63] dark:text-white text-xs font-semibold">
+                  <tr className="bg-[#eef4fb] dark:bg-[#272C38] text-[#0b3d63] dark:text-white text-xs font-semibold">
                     <th className="px-4 py-3.5 text-left w-10">#</th>
                     <th className="px-4 py-3.5 text-left w-[28%]">ชื่อตัวละคร</th>
                     <th className="px-4 py-3.5 text-left w-[24%]">อาชีพ</th>
@@ -504,9 +504,9 @@ export default function AttendancePage() {
                     return (
                       <tr
                         key={`${r.name}-${i}`}
-                        className={`transition-colors border-b border-slate-100 dark:border-[#333333] ${isEven ? "bg-white dark:bg-[#242424]" : "bg-slate-50/50 dark:bg-[#2a2a2a]/40"} hover:bg-blue-50/40 dark:hover:bg-[#2e2e2e]`}
+                        className={`transition-colors border-b border-slate-100 dark:border-[#2D3342] ${isEven ? "bg-white dark:bg-[#232733]" : "bg-slate-50/50 dark:bg-[#272C38]/40"} hover:bg-blue-50/40 dark:hover:bg-[#2A2F3E]`}
                       >
-                        <td className="px-4 py-3.5 text-slate-400 dark:text-gray-500 text-sm font-medium">{i + 1}</td>
+                        <td className="px-4 py-3.5 text-slate-400 dark:text-[#6B7280] text-sm font-medium">{i + 1}</td>
                         <td className="px-4 py-3.5 font-semibold text-slate-800 dark:text-white text-sm">{r.name}</td>
                         <td className="px-4 py-3.5 font-semibold text-sm" style={{ color: jobColor }}>{r.job}</td>
                         <td className="px-4 py-3.5 text-right font-semibold text-slate-800 dark:text-white text-sm tabular-nums">
@@ -524,7 +524,7 @@ export default function AttendancePage() {
                                 className={`appearance-none pl-3 pr-7 py-1.5 rounded-lg text-sm font-semibold border-2 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-300 transition-all w-full ${
                                   sc
                                     ? `${sc.bg} ${sc.text} ${sc.border}`
-                                    : "bg-white dark:bg-[#2a2a2a] text-slate-400 dark:text-gray-400 border-slate-200 dark:border-[#333333] hover:border-slate-300 dark:hover:border-slate-600"
+                                    : "bg-white dark:bg-[#272C38] text-slate-400 dark:text-[#8B93A7] border-slate-200 dark:border-[#2D3342] hover:border-slate-300 dark:hover:border-slate-600"
                                 }`}
                               >
                                 <option value="">— เลือก —</option>
@@ -535,7 +535,7 @@ export default function AttendancePage() {
                               <span className={`pointer-events-none absolute right-2 text-[10px] font-bold ${sc ? sc.text : "text-slate-400"}`}>▼</span>
                             </div>
                           ) : (
-                            <span className={`inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold border-2 ${sc ? `${sc.bg} ${sc.text} ${sc.border}` : "bg-white dark:bg-[#2a2a2a] text-slate-400 border-slate-200 dark:border-[#333333]"}`}>
+                            <span className={`inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold border-2 ${sc ? `${sc.bg} ${sc.text} ${sc.border}` : "bg-white dark:bg-[#272C38] text-slate-400 border-slate-200 dark:border-[#2D3342]"}`}>
                               {sc ? sc.label : "—"}
                             </span>
                           )}
@@ -549,11 +549,11 @@ export default function AttendancePage() {
           )}
 
           {isAdmin && rows.length > 0 && (
-            <div className="px-5 py-3.5 border-t border-slate-100 dark:border-[#333333] flex items-center gap-3">
+            <div className="px-5 py-3.5 border-t border-slate-100 dark:border-[#2D3342] flex items-center gap-3">
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all disabled:opacity-50 shadow-sm bg-[#0b3d63] hover:bg-[#0f4b7a]"
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all disabled:opacity-50 shadow-sm bg-[#3B66D1] hover:bg-[#4D73CD]"
               >
                 {saving ? (
                   <><div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />กำลังบันทึก...</>
@@ -574,8 +574,8 @@ export default function AttendancePage() {
         <div className="flex flex-col gap-3 w-56 flex-shrink-0">
 
           {/* Stats */}
-          <div className="bg-white dark:bg-[#242424] rounded-2xl shadow-sm border border-slate-200 dark:border-[#333333] p-4">
-            <p className="text-xs font-semibold text-slate-400 dark:text-gray-400 mb-3 uppercase tracking-wider">สรุปการเข้าร่วม</p>
+          <div className="bg-white dark:bg-[#232733] rounded-2xl shadow-sm border border-slate-200 dark:border-[#2D3342] p-4">
+            <p className="text-xs font-semibold text-slate-400 dark:text-[#8B93A7] mb-3 uppercase tracking-wider">สรุปการเข้าร่วม</p>
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between px-3 py-2.5 rounded-xl bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800/60">
                 <div className="flex items-center gap-2">
@@ -603,7 +603,7 @@ export default function AttendancePage() {
 
           {/* รายชื่อผู้ลา */}
           {laList.length > 0 && (
-            <div className="bg-white dark:bg-[#242424] rounded-2xl shadow-sm border border-slate-200 dark:border-[#333333] p-4">
+            <div className="bg-white dark:bg-[#232733] rounded-2xl shadow-sm border border-slate-200 dark:border-[#2D3342] p-4">
               <p className="text-xs font-semibold text-yellow-600 dark:text-yellow-400 mb-2.5 flex items-center gap-1.5">
                 <AlertCircle className="w-3.5 h-3.5" /> รายชื่อผู้ลา ({laList.length})
               </p>
@@ -623,13 +623,13 @@ export default function AttendancePage() {
 
           {/* ออฟไลน์ (from teams page) */}
           {offlineList.length > 0 && (
-            <div className="bg-white dark:bg-[#242424] rounded-2xl shadow-sm border border-slate-200 dark:border-[#333333] p-4">
-              <p className="text-xs font-semibold text-slate-500 dark:text-gray-400 mb-2.5 flex items-center gap-1.5">
+            <div className="bg-white dark:bg-[#232733] rounded-2xl shadow-sm border border-slate-200 dark:border-[#2D3342] p-4">
+              <p className="text-xs font-semibold text-slate-500 dark:text-[#8B93A7] mb-2.5 flex items-center gap-1.5">
                 <Users className="w-3.5 h-3.5" /> ออฟไลน์ ({offlineList.length})
               </p>
               <div className="flex flex-col gap-1.5 max-h-48 overflow-y-auto">
                 {offlineList.map((r, i) => (
-                  <div key={i} className="flex items-center gap-2 px-2.5 py-1.5 bg-slate-50 dark:bg-[#2a2a2a]/60 rounded-lg border border-slate-100 dark:border-[#333333]">
+                  <div key={i} className="flex items-center gap-2 px-2.5 py-1.5 bg-slate-50 dark:bg-[#272C38]/60 rounded-lg border border-slate-100 dark:border-[#2D3342]">
                     <div className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-600 flex-shrink-0" />
                     <div className="min-w-0">
                       <p className="text-xs font-semibold text-slate-600 dark:text-white truncate">{r.name}</p>
@@ -646,8 +646,8 @@ export default function AttendancePage() {
       {/* Import Modal */}
       {showImport && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-          <div className="bg-white dark:bg-[#242424] rounded-2xl shadow-xl border border-slate-200 dark:border-[#333333] w-full max-w-lg overflow-hidden flex flex-col">
-            <div className="px-5 py-4 border-b border-slate-100 dark:border-[#333333] flex items-center justify-between">
+          <div className="bg-white dark:bg-[#232733] rounded-2xl shadow-xl border border-slate-200 dark:border-[#2D3342] w-full max-w-lg overflow-hidden flex flex-col">
+            <div className="px-5 py-4 border-b border-slate-100 dark:border-[#2D3342] flex items-center justify-between">
               <h3 className="font-bold text-slate-800 dark:text-white">นำเข้ารายชื่อผู้เข้าร่วม (มา)</h3>
               <button 
                 onClick={() => {
@@ -661,14 +661,14 @@ export default function AttendancePage() {
               </button>
             </div>
             <div className="p-5 flex flex-col gap-3 flex-1 min-h-[300px]">
-              <p className="text-xs text-slate-500 dark:text-gray-400">
+              <p className="text-xs text-slate-500 dark:text-[#8B93A7]">
                 วางรายชื่อที่ต้องการติ๊ก <b>&quot;มา&quot;</b> ลงในกล่องข้อความด้านล่าง (บรรทัดละ 1 ชื่อ) ระบบจะค้นหาและติ๊กให้อัตโนมัติ
               </p>
               <textarea
                 value={importText}
                 onChange={e => setImportText(e.target.value)}
                 placeholder="Name1\nName2\n..."
-                className="flex-1 w-full border border-slate-200 dark:border-[#333333] bg-white dark:bg-[#2a2a2a] text-slate-800 dark:text-white placeholder:text-slate-400 dark:placeholder:text-gray-500 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#0b3d63] dark:focus:ring-[#0b3d63] resize-none min-h-[150px]"
+                className="flex-1 w-full border border-slate-200 dark:border-[#2D3342] bg-white dark:bg-[#272C38] text-slate-800 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#6B7280] rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#4D73CD] dark:focus:ring-[#4D73CD] resize-none min-h-[150px]"
               />
               
               {importResult && (
@@ -688,21 +688,21 @@ export default function AttendancePage() {
                 </div>
               )}
             </div>
-            <div className="px-5 py-4 border-t border-slate-100 dark:border-[#333333] flex items-center justify-end gap-2 bg-slate-50 dark:bg-[#2a2a2a]/50">
+            <div className="px-5 py-4 border-t border-slate-100 dark:border-[#2D3342] flex items-center justify-end gap-2 bg-slate-50 dark:bg-[#272C38]/50">
               <button
                 onClick={() => {
                   setShowImport(false);
                   setImportResult(null);
                   setImportText("");
                 }}
-                className="px-4 py-2 rounded-xl text-sm font-semibold text-slate-600 dark:text-white hover:bg-slate-200 dark:hover:bg-[#383838] transition-colors"
+                className="px-4 py-2 rounded-xl text-sm font-semibold text-slate-600 dark:text-white hover:bg-slate-200 dark:hover:bg-[#2F3547] transition-colors"
               >
                 ปิด
               </button>
               <button
                 onClick={handleImport}
                 disabled={!importText.trim()}
-                className="px-4 py-2 rounded-xl text-sm font-semibold text-white transition-colors disabled:opacity-50 bg-[#0b3d63] hover:bg-[#0f4b7a]"
+                className="px-4 py-2 rounded-xl text-sm font-semibold text-white transition-colors disabled:opacity-50 bg-[#3B66D1] hover:bg-[#4D73CD]"
               >
                 ดำเนินการนำเข้า
               </button>

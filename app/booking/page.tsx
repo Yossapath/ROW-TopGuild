@@ -235,11 +235,11 @@ export default function BookingPage() {
   const visibleQueues = queues;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 to-blue-50 dark:from-[#1c1c1c] dark:to-[#1c1c1c] py-8 px-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-100 to-blue-50 dark:from-[#1C1F27] dark:to-[#1C1F27] py-8 px-4">
       <div className="max-w-2xl mx-auto space-y-6">
 
         {/* ── Header Banner ──────────────────────────────────── */}
-        <div className="bg-[#0b3d63] dark:bg-[#0b3d63] text-white rounded-2xl p-8 shadow-xl relative overflow-hidden border border-transparent dark:border-[#333333]">
+        <div className="bg-[#0b3d63] dark:bg-[#3B66D1] text-white rounded-2xl p-8 shadow-xl relative overflow-hidden border border-transparent dark:border-[#2D3342]">
           {/* Decorative circles */}
           <div className="absolute -right-12 -top-12 w-48 h-48 rounded-full bg-white/5" />
           <div className="absolute -right-6 -bottom-8 w-32 h-32 rounded-full bg-white/5" />
@@ -288,7 +288,7 @@ export default function BookingPage() {
         </div>
 
         {/* ── Booking Form Card ───────────────────────────────── */}
-        <div className="bg-white dark:bg-[#242424] rounded-2xl shadow-sm border border-slate-200 dark:border-[#333333] p-8">
+        <div className="bg-white dark:bg-[#232733] rounded-2xl shadow-sm border border-slate-200 dark:border-[#2D3342] p-8">
           <h2 className="text-xl font-bold text-[#0b3d63] dark:text-white mb-6 flex items-center gap-2">
             <Users size={22} className="text-[#0f4b7a] dark:text-white" />
             ลงทะเบียนจองคิว
@@ -336,14 +336,14 @@ export default function BookingPage() {
                       <button
                         onClick={() => handleEditRounds(success.id, 1)}
                         disabled={success.rounds === 1}
-                        className="flex-1 py-2 rounded-lg text-sm font-bold transition-all disabled:opacity-50 disabled:bg-[#0b3d63] disabled:text-white bg-white border border-slate-200 text-slate-600"
+                        className="flex-1 py-2 rounded-lg text-sm font-bold transition-all disabled:opacity-50 disabled:bg-[#3B66D1] disabled:text-white bg-white border border-slate-200 text-slate-600"
                       >
                         เปลี่ยนเป็น 1 รอบ
                       </button>
                       <button
                         onClick={() => handleEditRounds(success.id, 2)}
                         disabled={success.rounds === 2}
-                        className="flex-1 py-2 rounded-lg text-sm font-bold transition-all disabled:opacity-50 disabled:bg-[#0b3d63] disabled:text-white bg-white border border-slate-200 text-slate-600"
+                        className="flex-1 py-2 rounded-lg text-sm font-bold transition-all disabled:opacity-50 disabled:bg-[#3B66D1] disabled:text-white bg-white border border-slate-200 text-slate-600"
                       >
                         เปลี่ยนเป็น 2 รอบ
                       </button>
@@ -352,7 +352,7 @@ export default function BookingPage() {
 
                   <button
                     onClick={resetForm}
-                    className="w-full py-3 rounded-xl border-2 border-[#0b3d63] text-[#0b3d63] font-bold hover:bg-[#0b3d63] hover:text-white transition-all mt-4"
+                    className="w-full py-3 rounded-xl border-2 border-[#3B66D1] text-[#3B66D1] dark:text-[#4D73CD] font-bold hover:bg-[#3B66D1] hover:text-white hover:text-white transition-all mt-4"
                   >
                     จองใหม่อีกคน
                   </button>
@@ -363,7 +363,7 @@ export default function BookingPage() {
             <div className="text-center py-10 space-y-4">
               <Users size={48} className="mx-auto text-slate-300 dark:text-slate-600" />
               <h3 className="text-lg font-bold text-slate-700 dark:text-white">โปรดเข้าสู่ระบบเพื่อจองคิว</h3>
-              <p className="text-sm text-slate-500 dark:text-gray-400 max-w-sm mx-auto">ระบบจำเป็นต้องใช้ข้อมูลผู้ใช้งานจาก Discord ของคุณ เพื่อบันทึกรายชื่อและอาชีพให้อัตโนมัติ</p>
+              <p className="text-sm text-slate-500 dark:text-[#8B93A7] max-w-sm mx-auto">ระบบจำเป็นต้องใช้ข้อมูลผู้ใช้งานจาก Discord ของคุณ เพื่อบันทึกรายชื่อและอาชีพให้อัตโนมัติ</p>
               <Link
                 href="/login?callbackUrl=/booking"
                 className="inline-block px-6 py-3 rounded-xl bg-[#5865F2] text-white font-bold hover:bg-[#4752C4] transition-colors shadow-sm"
@@ -393,12 +393,12 @@ export default function BookingPage() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="ใส่ชื่อตัวละครของคุณ..."
-                  className={`w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-[#333333] focus:outline-none focus:ring-2 focus:ring-blue-400 dark:focus:ring-[#0b3d63] font-medium transition-shadow ${
-                    user?.gameUsername ? "bg-slate-100 dark:bg-[#2a2a2a] text-slate-500 dark:text-gray-400 cursor-not-allowed" : "bg-white dark:bg-[#2a2a2a] text-slate-800 dark:text-white placeholder:text-slate-400 dark:placeholder:text-gray-500"
+                  className={`w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-[#2D3342] focus:outline-none focus:ring-2 focus:ring-blue-400 dark:focus:ring-[#4D73CD] font-medium transition-shadow ${
+                    user?.gameUsername ? "bg-slate-100 dark:bg-[#272C38] text-slate-500 dark:text-[#8B93A7] cursor-not-allowed" : "bg-white dark:bg-[#272C38] text-slate-800 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#6B7280]"
                   }`}
                 />
                 {user?.gameUsername && (
-                  <p className="text-xs text-slate-400 dark:text-gray-500 mt-1">ชื่อและอาชีพถูกดึงจากโปรไฟล์ของคุณ</p>
+                  <p className="text-xs text-slate-400 dark:text-[#6B7280] mt-1">ชื่อและอาชีพถูกดึงจากโปรไฟล์ของคุณ</p>
                 )}
               </div>
 
@@ -409,7 +409,7 @@ export default function BookingPage() {
                 </label>
                 <div className="relative">
                   {user?.gameUsername ? (
-                    <div className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-[#333333] bg-slate-100 dark:bg-[#2a2a2a] text-slate-500 dark:text-gray-400 font-medium cursor-not-allowed flex items-center gap-2">
+                    <div className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-[#2D3342] bg-slate-100 dark:bg-[#272C38] text-slate-500 dark:text-[#8B93A7] font-medium cursor-not-allowed flex items-center gap-2">
                       {job}
                     </div>
                   ) : (
@@ -417,7 +417,7 @@ export default function BookingPage() {
                       required
                       value={job}
                       onChange={(e) => setJob(e.target.value)}
-                      className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-[#333333] focus:outline-none focus:ring-2 focus:ring-blue-400 dark:focus:ring-[#0b3d63] font-medium text-slate-800 dark:text-white appearance-none bg-white dark:bg-[#2a2a2a]"
+                      className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-[#2D3342] focus:outline-none focus:ring-2 focus:ring-blue-400 dark:focus:ring-[#4D73CD] font-medium text-slate-800 dark:text-white appearance-none bg-white dark:bg-[#272C38]"
                     >
                       {JOB_LIST.map((j) => (
                         <option key={j} value={j}>{j}</option>
@@ -436,14 +436,14 @@ export default function BookingPage() {
                 <label className="block text-sm font-bold text-slate-700 dark:text-white mb-2">
                   รอบที่ต้องการ
                 </label>
-                <div className="flex rounded-xl overflow-hidden border border-slate-200 dark:border-[#333333]">
+                <div className="flex rounded-xl overflow-hidden border border-slate-200 dark:border-[#2D3342]">
                   <button
                     type="button"
                     onClick={() => setTwoRounds(false)}
                     className={`flex-1 py-3 text-sm font-bold transition-all ${
                       !twoRounds
-                        ? "bg-[#0b3d63] dark:bg-[#0b3d63] text-white"
-                        : "bg-white dark:bg-[#2a2a2a] text-slate-500 dark:text-gray-400 hover:bg-slate-50 dark:hover:bg-[#2e2e2e]"
+                        ? "bg-[#0b3d63] dark:bg-[#3B66D1] text-white"
+                        : "bg-white dark:bg-[#272C38] text-slate-500 dark:text-[#8B93A7] hover:bg-slate-50 dark:hover:bg-[#2A2F3E]"
                     }`}
                   >
                     ↑ รอบ 1
@@ -451,10 +451,10 @@ export default function BookingPage() {
                   <button
                     type="button"
                     onClick={() => setTwoRounds(true)}
-                    className={`flex-1 py-3 text-sm font-bold transition-all border-l border-slate-200 dark:border-[#333333] ${
+                    className={`flex-1 py-3 text-sm font-bold transition-all border-l border-slate-200 dark:border-[#2D3342] ${
                       twoRounds
-                        ? "bg-[#0b3d63] dark:bg-[#0b3d63] text-white"
-                        : "bg-white dark:bg-[#2a2a2a] text-slate-500 dark:text-gray-400 hover:bg-slate-50 dark:hover:bg-[#2e2e2e]"
+                        ? "bg-[#0b3d63] dark:bg-[#3B66D1] text-white"
+                        : "bg-white dark:bg-[#272C38] text-slate-500 dark:text-[#8B93A7] hover:bg-slate-50 dark:hover:bg-[#2A2F3E]"
                     }`}
                   >
                     ✕ รอบ 1 + 2
@@ -466,7 +466,7 @@ export default function BookingPage() {
               <button
                 type="submit"
                 disabled={loading || !bookingStatus.open}
-                className="w-full py-4 bg-[#0b3d63] text-white rounded-xl font-bold text-lg shadow-md hover:bg-[#0f4b7a] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full py-4 bg-[#3B66D1] hover:bg-[#4D73CD] text-white rounded-xl font-bold text-lg shadow-md shadow-[#3B66D1]/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {loading ? (
                   <>
@@ -491,8 +491,8 @@ export default function BookingPage() {
         </div>
 
         {/* ── Queue Preview ───────────────────────────────────── */}
-        <div className="bg-white dark:bg-[#242424] rounded-2xl shadow-sm border border-slate-200 dark:border-[#333333] overflow-hidden">
-          <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-100 dark:border-[#333333]">
+        <div className="bg-white dark:bg-[#232733] rounded-2xl shadow-sm border border-slate-200 dark:border-[#2D3342] overflow-hidden">
+          <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-100 dark:border-[#2D3342]">
             <Users size={18} className="text-[#0b3d63] dark:text-white" />
             <span className="font-bold text-slate-700 dark:text-white">
               คิวปัจจุบัน ({queues.length} คน)
@@ -500,7 +500,7 @@ export default function BookingPage() {
             <button
               onClick={fetchQueues}
               disabled={queuesLoading}
-              className="ml-auto p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-[#2e2e2e] transition-colors text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              className="ml-auto p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-[#2A2F3E] transition-colors text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
               title="รีเฟรช"
             >
               <RefreshCw size={16} className={queuesLoading ? "animate-spin" : ""} />
@@ -508,7 +508,7 @@ export default function BookingPage() {
           </div>
 
           {queues.length === 0 ? (
-            <div className="text-center py-12 text-slate-400 dark:text-gray-500">
+            <div className="text-center py-12 text-slate-400 dark:text-[#6B7280]">
               <Swords size={36} className="mx-auto mb-3 opacity-20" />
               <p className="font-medium text-sm">ยังไม่มีคิว</p>
             </div>
@@ -531,12 +531,12 @@ export default function BookingPage() {
                   return (
                     <div
                       key={q.id}
-                      className={`bg-white dark:bg-[#2a2a2a] rounded-2xl shadow-sm border px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3 transition-colors ${
-                        isMe ? "border-blue-500 dark:border-[#0b3d63] bg-blue-50/50 dark:bg-[#0b3d63]/25" : "border-slate-200 dark:border-[#333333]"
+                      className={`bg-white dark:bg-[#272C38] rounded-2xl shadow-sm border px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3 transition-colors ${
+                        isMe ? "border-blue-500 dark:border-[#4D73CD] bg-blue-50/50 dark:bg-[#3B66D1]/25" : "border-slate-200 dark:border-[#2D3342]"
                       } ${isDone ? "opacity-60" : ""} ${isR2 && !isDone && !isMe ? "border-l-4 border-l-purple-500" : ""}`}
                     >
                       {/* Number */}
-                      <span className={`font-bold text-sm w-6 shrink-0 ${isMe ? "text-blue-600 dark:text-white" : "text-slate-400 dark:text-gray-500"}`}>
+                      <span className={`font-bold text-sm w-6 shrink-0 ${isMe ? "text-blue-600 dark:text-white" : "text-slate-400 dark:text-[#6B7280]"}`}>
                         {idx}
                       </span>
 
@@ -577,11 +577,11 @@ export default function BookingPage() {
                       {/* Power + timestamp (right aligned on desktop) */}
                       <div className="flex items-center gap-3 shrink-0 sm:flex-col sm:items-end sm:gap-1">
                         {q.power > 0 && (
-                          <span className="text-xs text-slate-500 dark:text-gray-400 bg-slate-100 dark:bg-[#242424] px-2 py-0.5 rounded-lg border border-transparent dark:border-[#333333]">
+                          <span className="text-xs text-slate-500 dark:text-[#8B93A7] bg-slate-100 dark:bg-[#232733] px-2 py-0.5 rounded-lg border border-transparent dark:border-[#2D3342]">
                             พลัง <span className="font-bold text-slate-700 dark:text-white">{q.power.toLocaleString()}</span>
                           </span>
                         )}
-                        <span className="text-xs text-slate-400 dark:text-gray-500 flex items-center gap-1">
+                        <span className="text-xs text-slate-400 dark:text-[#6B7280] flex items-center gap-1">
                           <CheckCircle size={10} />
                           {formatTimestamp(q.timestamp)}
                         </span>
@@ -598,12 +598,12 @@ export default function BookingPage() {
                     {waitingRound1Priests.map(q => renderQueue(q, currentGlobalIdx++, false))}
                     
                     {waitingRound1Others.length > 0 && (
-                      <div className="text-xs font-bold text-slate-500 dark:text-gray-400 mt-2 px-2">อาชีพอื่นๆ - รอคิวรอบ 1</div>
+                      <div className="text-xs font-bold text-slate-500 dark:text-[#8B93A7] mt-2 px-2">อาชีพอื่นๆ - รอคิวรอบ 1</div>
                     )}
                     {waitingRound1Others.map(q => renderQueue(q, currentGlobalIdx++, false))}
 
                     {waitingRound2Priests.length > 0 && (
-                      <div className="text-xs font-bold text-purple-700 dark:text-purple-300 mt-2 px-2 border-t border-slate-200 dark:border-[#333333] pt-3">พระ (Priest) - รอคิวรอบ 2</div>
+                      <div className="text-xs font-bold text-purple-700 dark:text-purple-300 mt-2 px-2 border-t border-slate-200 dark:border-[#2D3342] pt-3">พระ (Priest) - รอคิวรอบ 2</div>
                     )}
                     {waitingRound2Priests.map(q => renderQueue(q, currentGlobalIdx++, false, true))}
                     
@@ -613,7 +613,7 @@ export default function BookingPage() {
                     {waitingRound2Others.map(q => renderQueue(q, currentGlobalIdx++, false, true))}
 
                     {doneQueues.length > 0 && (
-                      <div className="text-xs font-bold text-green-600 dark:text-emerald-400 mt-2 px-2 border-t border-slate-200 dark:border-[#333333] pt-3">ลงเสร็จแล้ว</div>
+                      <div className="text-xs font-bold text-green-600 dark:text-emerald-400 mt-2 px-2 border-t border-slate-200 dark:border-[#2D3342] pt-3">ลงเสร็จแล้ว</div>
                     )}
                     {doneQueues.map(q => renderQueue(q, currentGlobalIdx++, true))}
                   </>
@@ -622,8 +622,8 @@ export default function BookingPage() {
             </div>
           )}
 
-          <div className="px-6 py-3 bg-slate-50 dark:bg-[#2a2a2a]/60 border-t border-slate-100 dark:border-[#333333]">
-            <p className="text-xs text-slate-400 dark:text-gray-500 font-medium">
+          <div className="px-6 py-3 bg-slate-50 dark:bg-[#272C38]/60 border-t border-slate-100 dark:border-[#2D3342]">
+            <p className="text-xs text-slate-400 dark:text-[#6B7280] font-medium">
               * รายชื่อนี้เป็นข้อมูลสด อัปเดตทุก 15 วินาที
               {" · "}
               <span className="font-mono">{formatTimestamp(lastRefresh)}</span>
