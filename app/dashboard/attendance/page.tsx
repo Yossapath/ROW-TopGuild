@@ -46,7 +46,8 @@ const BASE_DATE = new Date("2026-09-06T00:00:00+07:00"); // Sunday 6 Sep 2026
 function getWeekDates(weeksSinceBase: number): Record<WarDay, string> {
   const sunday = new Date(BASE_DATE);
   sunday.setDate(sunday.getDate() + weeksSinceBase * 7);
-  const fmt = (d: Date) => d.toISOString().split("T")[0];
+  // fmt adds 7h to convert UTC→Thai time before splitting ISO string
+  const fmt = (d: Date) => new Date(d.getTime() + 7 * 60 * 60 * 1000).toISOString().split("T")[0];
   const t = new Date(sunday); t.setDate(sunday.getDate() + 2);
   const th = new Date(sunday); th.setDate(sunday.getDate() + 4);
   const su = new Date(sunday);
@@ -435,9 +436,9 @@ export default function AttendancePage() {
       </div>
 
       {/* Main Grid */}
-      <div className="grid md:grid-cols-3 gap-6">
+      <div className="flex gap-5 items-start">
         {/* Left — Table */}
-        <div className="md:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div className="flex-1 min-w-0 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
           <div className="px-5 py-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <Users className="w-5 h-5 text-slate-400" />
