@@ -57,7 +57,7 @@ export default function BookingPage() {
 
   // Submission state
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState<{ name: string; job: string; rounds: number } | null>(null);
+  const [success, setSuccess] = useState<{ id: string; name: string; job: string; rounds: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Queue preview
@@ -93,7 +93,22 @@ export default function BookingPage() {
       .then((r) => r.json())
       .then((d) => {
         const all: DungeonQueue[] = d.data ?? [];
-        setQueues(all.filter((q) => q.status === "waiting" || q.status === "active"));
+        // Sort: Priest (waiting/active) -> Other (waiting/active) -> Done
+        const waitingPriest: DungeonQueue[] = [];
+        const waitingOther: DungeonQueue[] = [];
+        const doneQueues: DungeonQueue[] = [];
+
+        all.forEach((q) => {
+          if (q.status === "done") {
+            doneQueues.push(q);
+          } else if (q.job === "Priest") {
+            waitingPriest.push(q);
+          } else {
+            waitingOther.push(q);
+          }
+        });
+
+        setQueues([...waitingPriest, ...waitingOther, ...doneQueues]);
         setLastRefresh(Date.now());
       })
       .catch(() => {})
@@ -108,6 +123,23 @@ export default function BookingPage() {
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ── Edit Rounds ──────────────────────────────────────────────
+  async function handleEditRounds(id: string, newRounds: 1 | 2) {
+    try {
+      const res = await fetch(`/api/dungeon/queues/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "updateRounds", rounds: newRounds }),
+      });
+      if (res.ok) {
+        setSuccess((prev) => (prev ? { ...prev, rounds: newRounds } : prev));
+        fetchQueues();
+      }
+    } catch {
+      /* silent */
+    }
+  }
 
   // ── Submit booking ───────────────────────────────────────────
   async function handleSubmit(e: React.FormEvent) {
@@ -131,7 +163,7 @@ export default function BookingPage() {
       if (!res.ok || !data.ok) {
         setError(data.error ?? "เกิดข้อผิดพลาด กรุณาลองใหม่");
       } else {
-        setSuccess({ name: name.trim(), job, rounds: twoRounds ? 2 : 1 });
+        setSuccess({ id: data.data.id, name: name.trim(), job, rounds: twoRounds ? 2 : 1 });
         fetchQueues();
       }
     } catch {
@@ -159,7 +191,7 @@ export default function BookingPage() {
     }
   }
 
-  const visibleQueues = queues.slice(0, 20);
+  const visibleQueues = queues;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-100 to-blue-50 py-8 px-4">
@@ -223,30 +255,69 @@ export default function BookingPage() {
 
           {/* Success state */}
           {success ? (
-            <div className="space-y-4">
-              <div className="bg-green-50 border border-green-200 rounded-xl p-6 text-center">
-                <CheckCircle size={48} className="text-green-500 mx-auto mb-3" />
-                <h3 className="text-xl font-bold text-green-700 mb-1">จองสำเร็จ! 🎉</h3>
-                <p className="text-green-600 font-medium">{success.name}</p>
-                <div className="flex justify-center gap-3 mt-3 flex-wrap">
-                  <span
-                    className="px-3 py-1 rounded-full text-sm font-bold text-white"
-                    style={{ backgroundColor: JOB_COLORS[success.job] ?? "#64748b" }}
+            (() => {
+              const myQueueIdx = queues.findIndex(q => q.id === success.id);
+              const myQueue = myQueueIdx >= 0 ? queues[myQueueIdx] : null;
+              
+              return (
+                <div className="space-y-4">
+                  <div className="bg-green-50 border border-green-200 rounded-xl p-6 text-center">
+                    <CheckCircle size={48} className="text-green-500 mx-auto mb-3" />
+                    <h3 className="text-xl font-bold text-green-700 mb-1">จองสำเร็จ! 🎉</h3>
+                    <p className="text-green-600 font-medium text-lg">{success.name}</p>
+                    
+                    {myQueue && (
+                      <div className="mt-4 bg-white/60 p-3 rounded-lg inline-block text-sm font-bold text-slate-700">
+                        <span className="block mb-1">คุณอยู่คิวที่: <span className="text-blue-600 text-lg">{myQueueIdx + 1}</span></span>
+                        <span>สถานะ: <QueueDot status={myQueue.status} /> {
+                          myQueue.status === "waiting" ? "รอคิว" : 
+                          myQueue.status === "active" ? "กำลังลง" : "เสร็จแล้ว"
+                        }</span>
+                      </div>
+                    )}
+
+                    <div className="flex justify-center gap-3 mt-4 flex-wrap">
+                      <span
+                        className="px-3 py-1.5 rounded-full text-sm font-bold text-white"
+                        style={{ backgroundColor: JOB_COLORS[success.job] ?? "#64748b" }}
+                      >
+                        {success.job}
+                      </span>
+                      <span className="px-3 py-1.5 rounded-full text-sm font-bold bg-indigo-100 text-indigo-700">
+                        {success.rounds === 2 ? "รอบ 1 + รอบ 2" : "รอบ 1"}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl">
+                    <p className="text-sm font-bold text-slate-700 mb-2 text-center">แก้ไขจำนวนรอบ</p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleEditRounds(success.id, 1)}
+                        disabled={success.rounds === 1}
+                        className="flex-1 py-2 rounded-lg text-sm font-bold transition-all disabled:opacity-50 disabled:bg-[#0b3d63] disabled:text-white bg-white border border-slate-200 text-slate-600"
+                      >
+                        เปลี่ยนเป็น 1 รอบ
+                      </button>
+                      <button
+                        onClick={() => handleEditRounds(success.id, 2)}
+                        disabled={success.rounds === 2}
+                        className="flex-1 py-2 rounded-lg text-sm font-bold transition-all disabled:opacity-50 disabled:bg-[#0b3d63] disabled:text-white bg-white border border-slate-200 text-slate-600"
+                      >
+                        เปลี่ยนเป็น 2 รอบ
+                      </button>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={resetForm}
+                    className="w-full py-3 rounded-xl border-2 border-[#0b3d63] text-[#0b3d63] font-bold hover:bg-[#0b3d63] hover:text-white transition-all mt-4"
                   >
-                    {success.job}
-                  </span>
-                  <span className="px-3 py-1 rounded-full text-sm font-bold bg-indigo-100 text-indigo-700">
-                    {success.rounds === 2 ? "รอบ 1 + รอบ 2" : "รอบ 1"}
-                  </span>
+                    จองใหม่อีกคน
+                  </button>
                 </div>
-              </div>
-              <button
-                onClick={resetForm}
-                className="w-full py-3 rounded-xl border-2 border-[#0b3d63] text-[#0b3d63] font-bold hover:bg-[#0b3d63] hover:text-white transition-all"
-              >
-                จองอีกคน
-              </button>
-            </div>
+              );
+            })()
           ) : (
             <form onSubmit={handleSubmit} className="space-y-5">
               {/* Error */}
@@ -389,35 +460,68 @@ export default function BookingPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {visibleQueues.map((qr, idx) => (
-                    <tr key={qr.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-4 py-3 text-center text-slate-400 font-mono text-xs font-bold">
-                        {idx + 1}
-                      </td>
-                      <td className="px-4 py-3 font-semibold text-slate-700">{qr.name}</td>
-                      <td className="px-4 py-3">
-                        <span className="flex items-center gap-1.5">
-                          <span
-                            className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                            style={{ backgroundColor: JOB_COLORS[qr.job] ?? "#94a3b8" }}
-                          />
-                          <span className="text-slate-600">{qr.job}</span>
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
-                          qr.rounds === 2
-                            ? "bg-indigo-100 text-indigo-700"
-                            : "bg-slate-100 text-slate-500"
-                        }`}>
-                          {qr.rounds === 2 ? "1+2" : "1"}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <QueueDot status={qr.status} />
-                      </td>
-                    </tr>
-                  ))}
+                  {(() => {
+                    const waitingPriests = visibleQueues.filter(q => q.status !== "done" && q.job === "Priest");
+                    const waitingOthers = visibleQueues.filter(q => q.status !== "done" && q.job !== "Priest");
+                    const doneQueues = visibleQueues.filter(q => q.status === "done");
+
+                    let currentGlobalIdx = 1;
+
+                    const renderRow = (qr: DungeonQueue, idx: number, isDone: boolean) => (
+                      <tr key={qr.id} className={`hover:bg-slate-50 transition-colors ${isDone ? "opacity-60" : ""}`}>
+                        <td className="px-4 py-3 text-center text-slate-400 font-mono text-xs font-bold">
+                          {idx}
+                        </td>
+                        <td className="px-4 py-3 font-semibold text-slate-700">{qr.name}</td>
+                        <td className="px-4 py-3">
+                          <span className="flex items-center gap-1.5">
+                            <span
+                              className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                              style={{ backgroundColor: JOB_COLORS[qr.job] ?? "#94a3b8" }}
+                            />
+                            <span className="text-slate-600">{qr.job}</span>
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                            qr.rounds === 2
+                              ? "bg-indigo-100 text-indigo-700"
+                              : "bg-slate-100 text-slate-500"
+                          }`}>
+                            {qr.rounds === 2 ? "1+2" : "1"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <QueueDot status={qr.status} />
+                        </td>
+                      </tr>
+                    );
+
+                    return (
+                      <>
+                        {waitingPriests.length > 0 && (
+                          <tr className="bg-blue-50/50">
+                            <td colSpan={5} className="px-4 py-2 text-xs font-bold text-blue-700">พระ (Priest) - รอคิว</td>
+                          </tr>
+                        )}
+                        {waitingPriests.map(q => renderRow(q, currentGlobalIdx++, false))}
+
+                        {waitingOthers.length > 0 && (
+                          <tr className="bg-slate-100/50">
+                            <td colSpan={5} className="px-4 py-2 text-xs font-bold text-slate-600">อาชีพอื่นๆ - รอคิว</td>
+                          </tr>
+                        )}
+                        {waitingOthers.map(q => renderRow(q, currentGlobalIdx++, false))}
+
+                        {doneQueues.length > 0 && (
+                          <tr className="bg-green-50/50">
+                            <td colSpan={5} className="px-4 py-2 text-xs font-bold text-green-700">ลงเสร็จแล้ว</td>
+                          </tr>
+                        )}
+                        {doneQueues.map(q => renderRow(q, currentGlobalIdx++, true))}
+                      </>
+                    );
+                  })()}
                 </tbody>
               </table>
             </div>

@@ -63,7 +63,7 @@ export default function DungeonPage() {
   const [schedMsg, setSchedMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
   // Roster autocomplete
-  const [rosterNames, setRosterNames] = useState<string[]>([]);
+  const [rosterMembers, setRosterMembers] = useState<{name: string, job: string}[]>([]);
 
   // Clipboard toast
   const [copied, setCopied] = useState(false);
@@ -73,7 +73,25 @@ export default function DungeonPage() {
     try {
       const res = await fetch("/api/dungeon/queues");
       const json = await res.json();
-      if (json.ok) setQueues(json.data as DungeonQueue[]);
+      if (json.ok) {
+        const all = json.data as DungeonQueue[];
+        
+        const waitingPriest: DungeonQueue[] = [];
+        const waitingOther: DungeonQueue[] = [];
+        const doneQueues: DungeonQueue[] = [];
+
+        all.forEach((q) => {
+          if (q.status === "done") {
+            doneQueues.push(q);
+          } else if (q.job === "Priest") {
+            waitingPriest.push(q);
+          } else {
+            waitingOther.push(q);
+          }
+        });
+
+        setQueues([...waitingPriest, ...waitingOther, ...doneQueues]);
+      }
     } catch {
       /* silent */
     } finally {
@@ -104,10 +122,13 @@ export default function DungeonPage() {
       const res = await fetch("/api/roster");
       const json = await res.json();
       if (json.ok && json.data) {
-        const all: string[] = Object.values(json.data as Record<string, { name: string }[]>)
-          .flat()
-          .map((m) => m.name);
-        setRosterNames(Array.from(new Set(all)));
+        const members: {name: string, job: string}[] = [];
+        for (const [job, arr] of Object.entries(json.data as Record<string, { name: string }[]>)) {
+          for (const m of arr) {
+            members.push({ name: m.name, job });
+          }
+        }
+        setRosterMembers(members);
       }
     } catch {
       /* silent */
@@ -255,13 +276,20 @@ export default function DungeonPage() {
                 <input
                   list="roster-names"
                   value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setFormName(val);
+                    const member = rosterMembers.find((m) => m.name === val);
+                    if (member) {
+                      setFormJob(member.job);
+                    }
+                  }}
                   placeholder="พิมพ์หรือเลือกชื่อ…"
                   className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0b3d63]/30"
                 />
                 <datalist id="roster-names">
-                  {rosterNames.map((n) => (
-                    <option key={n} value={n} />
+                  {rosterMembers.map((m) => (
+                    <option key={m.name} value={m.name} />
                   ))}
                 </datalist>
               </div>
@@ -352,6 +380,7 @@ export default function DungeonPage() {
                     <label className="block text-xs font-semibold text-slate-600 mb-1">เวลาเปิด</label>
                     <input
                       type="time"
+                      lang="en-GB"
                       value={schedOpen}
                       onChange={(e) => setSchedOpen(e.target.value)}
                       disabled={schedUnlimited}
@@ -362,6 +391,7 @@ export default function DungeonPage() {
                     <label className="block text-xs font-semibold text-slate-600 mb-1">เวลาปิด</label>
                     <input
                       type="time"
+                      lang="en-GB"
                       value={schedClose}
                       onChange={(e) => setSchedClose(e.target.value)}
                       disabled={schedUnlimited}
@@ -464,109 +494,136 @@ export default function DungeonPage() {
             </div>
           ) : (
             <div className="flex flex-col gap-2">
-              {queues.map((q, idx) => {
-                const statusBadge = STATUS_BADGE[q.status] ?? STATUS_BADGE.waiting;
-                const jobColor = JOB_COLORS[q.job] ?? "#888";
+              {(() => {
+                const waitingPriests = queues.filter(q => q.status !== "done" && q.job === "Priest");
+                const waitingOthers = queues.filter(q => q.status !== "done" && q.job !== "Priest");
+                const doneQueues = queues.filter(q => q.status === "done");
+                
+                let currentGlobalIdx = 1;
+
+                const renderQueue = (q: DungeonQueue, idx: number, isDone: boolean) => {
+                  const statusBadge = STATUS_BADGE[q.status] ?? STATUS_BADGE.waiting;
+                  const jobColor = JOB_COLORS[q.job] ?? "#888";
+
+                  return (
+                    <div
+                      key={q.id}
+                      className={`bg-white rounded-2xl shadow-sm border border-slate-200 px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3 ${isDone ? "opacity-60" : ""}`}
+                    >
+                      {/* Number */}
+                      <span className="text-slate-400 font-bold text-sm w-6 shrink-0">
+                        {idx}
+                      </span>
+
+                      {/* Main info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-slate-800 text-sm">{q.name}</span>
+
+                          {/* Job badge */}
+                          <span
+                            className="flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full"
+                            style={{
+                              backgroundColor: jobColor + "22",
+                              color: jobColor,
+                            }}
+                          >
+                            <span
+                              className="w-1.5 h-1.5 rounded-full shrink-0"
+                              style={{ backgroundColor: jobColor }}
+                            />
+                            {q.job}
+                          </span>
+
+                          {/* 2 rounds badge */}
+                          {q.rounds === 2 && (
+                            <span className="text-xs bg-purple-100 text-purple-700 font-medium px-2 py-0.5 rounded-full">
+                              ✕ 2 รอบ
+                            </span>
+                          )}
+
+                          {/* Status badge */}
+                          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusBadge.cls}`}>
+                            {statusBadge.label}
+                          </span>
+                        </div>
+
+                        {/* Power + timestamp */}
+                        <div className="flex items-center gap-3 mt-1 flex-wrap">
+                          {q.power > 0 && (
+                            <span className="text-xs text-slate-500">
+                              <Shield size={11} className="inline mr-0.5" />
+                              {q.power.toLocaleString()}
+                            </span>
+                          )}
+                          <span className="text-xs text-slate-400">{formatTimestamp(q.timestamp)}</span>
+                        </div>
+                      </div>
+
+                      {/* Round indicators + Admin actions */}
+                      <div className="flex items-center gap-2 flex-wrap shrink-0">
+                        {/* Round 1 */}
+                        <button
+                          onClick={() => isAdmin && handleRound(q.id, 1)}
+                          className={`text-xs font-medium px-2.5 py-1 rounded-lg transition-colors ${
+                            q.round1
+                              ? "bg-green-100 text-green-700"
+                              : "bg-slate-100 text-slate-400 " + (isAdmin ? "hover:bg-green-50 hover:text-green-600 cursor-pointer" : "cursor-default")
+                          }`}
+                          title={isAdmin ? "คลิกเพื่อทำเครื่องหมายรอบ 1" : undefined}
+                        >
+                          รอบ 1
+                        </button>
+
+                        {/* Round 2 (only if rounds=2) */}
+                        {q.rounds === 2 && (
+                          <button
+                            onClick={() => isAdmin && handleRound(q.id, 2)}
+                            className={`text-xs font-medium px-2.5 py-1 rounded-lg transition-colors ${
+                              q.round2
+                                ? "bg-orange-100 text-orange-700"
+                                : "bg-slate-100 text-slate-400 " + (isAdmin ? "hover:bg-orange-50 hover:text-orange-600 cursor-pointer" : "cursor-default")
+                            }`}
+                            title={isAdmin ? "คลิกเพื่อทำเครื่องหมายรอบ 2" : undefined}
+                          >
+                            รอบ 2
+                          </button>
+                        )}
+
+                        {/* Admin delete */}
+                        {isAdmin && (
+                          <button
+                            onClick={() => handleDelete(q.id)}
+                            className="text-xs bg-red-50 hover:bg-red-100 text-red-600 font-medium px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1"
+                          >
+                            <Trash2 size={12} />
+                            ลบ
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                };
 
                 return (
-                  <div
-                    key={q.id}
-                    className="bg-white rounded-2xl shadow-sm border border-slate-200 px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3"
-                  >
-                    {/* Number */}
-                    <span className="text-slate-400 font-bold text-sm w-6 shrink-0">
-                      {idx + 1}
-                    </span>
+                  <>
+                    {waitingPriests.length > 0 && (
+                      <div className="text-xs font-bold text-blue-700 mt-2 px-2">พระ (Priest) - รอคิว</div>
+                    )}
+                    {waitingPriests.map(q => renderQueue(q, currentGlobalIdx++, false))}
+                    
+                    {waitingOthers.length > 0 && (
+                      <div className="text-xs font-bold text-slate-500 mt-2 px-2">อาชีพอื่นๆ - รอคิว</div>
+                    )}
+                    {waitingOthers.map(q => renderQueue(q, currentGlobalIdx++, false))}
 
-                    {/* Main info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-bold text-slate-800 text-sm">{q.name}</span>
-
-                        {/* Job badge */}
-                        <span
-                          className="flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full"
-                          style={{
-                            backgroundColor: jobColor + "22",
-                            color: jobColor,
-                          }}
-                        >
-                          <span
-                            className="w-1.5 h-1.5 rounded-full shrink-0"
-                            style={{ backgroundColor: jobColor }}
-                          />
-                          {q.job}
-                        </span>
-
-                        {/* 2 rounds badge */}
-                        {q.rounds === 2 && (
-                          <span className="text-xs bg-purple-100 text-purple-700 font-medium px-2 py-0.5 rounded-full">
-                            ✕ 2 รอบ
-                          </span>
-                        )}
-
-                        {/* Status badge */}
-                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusBadge.cls}`}>
-                          {statusBadge.label}
-                        </span>
-                      </div>
-
-                      {/* Power + timestamp */}
-                      <div className="flex items-center gap-3 mt-1 flex-wrap">
-                        {q.power > 0 && (
-                          <span className="text-xs text-slate-500">
-                            <Shield size={11} className="inline mr-0.5" />
-                            {q.power.toLocaleString()}
-                          </span>
-                        )}
-                        <span className="text-xs text-slate-400">{formatTimestamp(q.timestamp)}</span>
-                      </div>
-                    </div>
-
-                    {/* Round indicators + Admin actions */}
-                    <div className="flex items-center gap-2 flex-wrap shrink-0">
-                      {/* Round 1 */}
-                      <button
-                        onClick={() => isAdmin && handleRound(q.id, 1)}
-                        className={`text-xs font-medium px-2.5 py-1 rounded-lg transition-colors ${
-                          q.round1
-                            ? "bg-green-100 text-green-700"
-                            : "bg-slate-100 text-slate-400 " + (isAdmin ? "hover:bg-green-50 hover:text-green-600 cursor-pointer" : "cursor-default")
-                        }`}
-                        title={isAdmin ? "คลิกเพื่อทำเครื่องหมายรอบ 1" : undefined}
-                      >
-                        รอบ 1
-                      </button>
-
-                      {/* Round 2 (only if rounds=2) */}
-                      {q.rounds === 2 && (
-                        <button
-                          onClick={() => isAdmin && handleRound(q.id, 2)}
-                          className={`text-xs font-medium px-2.5 py-1 rounded-lg transition-colors ${
-                            q.round2
-                              ? "bg-orange-100 text-orange-700"
-                              : "bg-slate-100 text-slate-400 " + (isAdmin ? "hover:bg-orange-50 hover:text-orange-600 cursor-pointer" : "cursor-default")
-                          }`}
-                          title={isAdmin ? "คลิกเพื่อทำเครื่องหมายรอบ 2" : undefined}
-                        >
-                          รอบ 2
-                        </button>
-                      )}
-
-                      {/* Admin delete */}
-                      {isAdmin && (
-                        <button
-                          onClick={() => handleDelete(q.id)}
-                          className="text-xs bg-red-50 hover:bg-red-100 text-red-600 font-medium px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1"
-                        >
-                          <Trash2 size={12} />
-                          ลบ
-                        </button>
-                      )}
-                    </div>
-                  </div>
+                    {doneQueues.length > 0 && (
+                      <div className="text-xs font-bold text-green-600 mt-2 px-2 border-t border-slate-200 pt-3">ลงเสร็จแล้ว</div>
+                    )}
+                    {doneQueues.map(q => renderQueue(q, currentGlobalIdx++, true))}
+                  </>
                 );
-              })}
+              })()}
             </div>
           )}
         </div>

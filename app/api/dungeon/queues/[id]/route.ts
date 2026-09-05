@@ -1,4 +1,4 @@
-﻿export const dynamic = "force-dynamic";
+export const dynamic = "force-dynamic";
 
 import { NextRequest } from "next/server";
 import { ok, err } from "@/lib/server-utils";
@@ -15,7 +15,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     const body = await req.json() as { round?: 1 | 2 };
     const round = body.round;
 
-    if (round !== 1 && round !== 2) {
+    const action = (body as any).action;
+    if (action !== "updateRounds" && round !== 1 && round !== 2) {
       return err("round must be 1 or 2", 400);
     }
 
@@ -32,19 +33,29 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
     const update: Record<string, unknown> = {};
 
-    if (round === 1) update.round1 = true;
-    if (round === 2) update.round2 = true;
+    let newRound1 = data.round1 ?? false;
+    let newRound2 = data.round2 ?? false;
+    let totalRounds = data.rounds ?? 1;
 
-    const newRound1 = round === 1 ? true : (data.round1 ?? false);
-    const newRound2 = round === 2 ? true : (data.round2 ?? false);
+    // Check if the action is updating rounds
+    if (action === "updateRounds") {
+      const newRounds = (body as any).rounds;
+      if (newRounds === 1 || newRounds === 2) {
+        update.rounds = newRounds;
+        totalRounds = newRounds;
+      }
+    } else {
+      // Normal mark round done
+      if (round === 1) { update.round1 = true; newRound1 = true; }
+      if (round === 2) { update.round2 = true; newRound2 = true; }
+    }
 
-    const totalRounds = data.rounds ?? 1;
     const allDone = totalRounds === 1 ? newRound1 : newRound1 && newRound2;
 
     if (allDone) {
       update.status = "done";
     } else {
-      update.status = "active";
+      update.status = (newRound1 || newRound2) ? "active" : "waiting";
     }
 
     await docRef.update(update);
