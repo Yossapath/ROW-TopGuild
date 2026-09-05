@@ -4,7 +4,7 @@ import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { JOB_COLORS, JOB_LIST } from "@/lib/utils";
-import { Search, X, Shield } from "lucide-react";
+import { Search, X, Shield, Users } from "lucide-react";
 import { useAuthStore } from "@/stores/useAuthStore";
 
 export default function RosterPage() {
@@ -145,56 +145,54 @@ export default function RosterPage() {
   if (isLoading) return <div className="flex h-screen items-center justify-center font-bold text-gray-500">กำลังโหลดรายชื่อ...</div>;
 
   return (
-    <div className="space-y-6 bg-[#f0f6fc] dark:bg-[#1C1F27] min-h-screen p-4 lg:py-8 lg:px-12 xl:px-24 2xl:px-32 relative" style={{ zoom: 0.85 }}>
+    <div className="space-y-6 bg-[#f0f6fc] dark:bg-[#1C1F27] min-h-screen p-4 lg:py-6 lg:px-6 2xl:px-8 relative" style={{ zoom: 0.85 }}>
       
-      {/* Top Banner */}
-      <div className="bg-[#0b3d63] rounded-2xl p-6 text-white flex items-center justify-between shadow-md">
-        <div className="flex items-center space-x-4">
-          <div className="bg-white/10 p-3 rounded-xl hidden sm:block">
-            <Shield className="w-8 h-8 text-blue-200" />
+      {/* Header Card */}
+      <div className="bg-white dark:bg-[#232733] rounded-2xl shadow-sm border border-slate-200 dark:border-[#2D3342] p-5 mb-5 flex flex-col lg:flex-row items-center justify-between gap-4">
+        <div className="flex items-center gap-3 w-full lg:w-auto">
+          <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 bg-[#0b3d63] dark:bg-[#3B66D1] shadow-sm">
+            <Users className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold tracking-wide">สมาชิกทั้งหมดในกิลด์</h1>
-            <p className="text-blue-200 text-sm md:text-base font-medium mt-1">จำแนกตาม {displayJobs.length} สายอาชีพ</p>
+            <h1 className="text-xl font-bold text-slate-800 dark:text-white">บัญชีรายชื่อสมาชิก (Roster)</h1>
+            <p className="text-sm text-slate-500 dark:text-[#8B93A7]">
+              สมาชิกทั้งหมด {totalMembers} คน · {displayJobs.length} สายอาชีพ
+            </p>
           </div>
         </div>
-        <div className="text-right">
-          <div className="text-4xl md:text-5xl font-bold">{totalMembers} <span className="text-xl md:text-2xl font-medium">คน</span></div>
-        </div>
-      </div>
 
-      {/* Toolbar */}
-      <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-theme-panel p-4 rounded-2xl shadow-sm border border-theme-border">
-        <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
-          <div className="relative w-full sm:w-64">
-            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
-              <Search className="h-4 w-4 text-theme-textMuted" />
+        <div className="flex items-center gap-3 w-full lg:w-auto justify-end flex-wrap">
+          {/* Search Box */}
+          <div className="relative w-full sm:w-60">
+            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+              <Search className="h-4 w-4 text-slate-400 dark:text-[#6B7280]" />
             </div>
             <input
               type="text"
               placeholder="ค้นหาชื่อสมาชิก..."
-              className="block w-full rounded-full border border-theme-border bg-theme-bg py-2.5 pl-11 pr-4 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#6B7280] focus:bg-theme-panel focus:ring-2 focus:ring-[#4D73CD] dark:focus:ring-[#4D73CD] sm:text-sm font-medium transition-colors outline-none"
+              className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 dark:border-[#2D3342] bg-white dark:bg-[#272C38] text-slate-800 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#6B7280] text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#4D73CD] transition-all"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
+
           {isAdmin && (
-            <button 
-              onClick={openAddModal}
-              className="w-full sm:w-auto flex-shrink-0 rounded-full bg-[#3B66D1] hover:bg-[#4D73CD] px-6 py-2.5 text-sm font-bold text-white transition-colors shadow-sm"
-            >
-              เพิ่มสมาชิกใหม่
-            </button>
+            <>
+              <button 
+                onClick={openAddModal}
+                className="flex items-center gap-2 px-4 py-2 bg-[#3B66D1] hover:bg-[#4D73CD] text-white rounded-xl font-bold transition-colors shadow-sm text-sm"
+              >
+                + เพิ่มสมาชิกใหม่
+              </button>
+              <button 
+                onClick={() => alert("ระบบ Import Excel กำลังพัฒนา")}
+                className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-[#272C38] text-[#0b3d63] dark:text-white border border-slate-200 dark:border-[#2D3342] rounded-xl font-bold hover:bg-slate-50 dark:hover:bg-[#2A2F3E] transition-colors text-sm shadow-sm"
+              >
+                เพิ่มกลุ่ม (Excel)
+              </button>
+            </>
           )}
         </div>
-        {isAdmin && (
-          <button 
-            onClick={() => alert("ระบบ Import Excel กำลังพัฒนา")}
-            className="w-full md:w-auto rounded-full bg-theme-panel border border-[#0b3d63] dark:border-[#4D73CD] px-6 py-2.5 text-sm font-bold text-[#0b3d63] dark:text-white hover:bg-blue-50 dark:hover:bg-[#2A2F3E] transition-colors shadow-sm"
-          >
-            เพิ่มกลุ่ม (Excel)
-          </button>
-        )}
       </div>
 
       {/* Summary Pills (Wrap naturally without horizontal scrollbar) */}
@@ -204,15 +202,15 @@ export default function RosterPage() {
           onClick={() => setSelectedJob("ทั้งหมด")}
           className={`rounded-2xl px-4 py-2 flex items-center gap-2.5 shadow-sm border transition-all flex-shrink-0 cursor-pointer ${
             selectedJob === "ทั้งหมด" 
-              ? "bg-[#14161D] border-[#4D73CD] text-white ring-1 ring-[#4D73CD]/50" 
-              : "bg-[#14161D] border-[#262A35] hover:border-slate-500 text-slate-300"
+              ? "bg-[#0b3d63] dark:bg-[#3B66D1] border-[#0b3d63] dark:border-[#4D73CD] text-white ring-2 ring-[#4D73CD]/30 shadow-sm" 
+              : "bg-white dark:bg-[#232733] border-slate-200 dark:border-[#2D3342] hover:bg-slate-50 dark:hover:bg-[#272C38] text-slate-700 dark:text-white"
           }`}
         >
           <span className="font-bold text-sm">ทั้งหมด</span>
           <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
             selectedJob === "ทั้งหมด" 
-              ? "bg-[#1E2330] text-[#4D73CD] border border-[#4D73CD]/40" 
-              : "bg-[#1E2330] text-slate-400"
+              ? "bg-white/20 text-white" 
+              : "bg-slate-100 dark:bg-[#272C38] text-slate-600 dark:text-[#8B93A7]"
           }`}>
             {totalMembers}
           </span>
@@ -228,17 +226,17 @@ export default function RosterPage() {
             <button 
               key={`pill-${job}`} 
               onClick={() => setSelectedJob(isSelected ? "ทั้งหมด" : job)}
-              className={`rounded-2xl px-4 py-2 flex items-center gap-2.5 shadow-sm border transition-all hover:border-slate-400 flex-shrink-0 cursor-pointer ${
+              className={`rounded-2xl px-4 py-2 flex items-center gap-2.5 shadow-sm border transition-all flex-shrink-0 cursor-pointer ${
                 isSelected 
-                  ? "bg-[#14161D] border-[#4D73CD] ring-1 ring-[#4D73CD]/50" 
-                  : "bg-[#14161D] border-[#262A35]"
+                  ? "bg-white dark:bg-[#232733] border-[#3B66D1] dark:border-[#4D73CD] ring-2 ring-[#4D73CD]/40" 
+                  : "bg-white dark:bg-[#232733] border-slate-200 dark:border-[#2D3342] hover:bg-slate-50 dark:hover:bg-[#272C38]"
               }`}
             >
-              <div className="flex items-center space-x-2 font-bold text-sm text-slate-200">
+              <div className="flex items-center space-x-2 font-bold text-sm text-slate-700 dark:text-white">
                 <span className="w-2.5 h-2.5 rounded-full shadow-sm shrink-0" style={{ backgroundColor: color }}></span>
                 <span>{job}</span>
               </div>
-              <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-[#1E2330] text-slate-400">
+              <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-slate-100 dark:bg-[#272C38] text-slate-600 dark:text-[#8B93A7]">
                 {count}
               </span>
             </button>
@@ -267,24 +265,24 @@ export default function RosterPage() {
           return (
             <div 
               key={`col-${job}`} 
-              className="bg-[#14161D] rounded-2xl shadow-sm border border-[#262A35] overflow-hidden flex flex-col transition-all hover:shadow-md h-fit"
+              className="bg-white dark:bg-[#232733] rounded-2xl shadow-sm border border-slate-200 dark:border-[#2D3342] overflow-hidden flex flex-col transition-all hover:shadow-md h-fit"
               style={{ borderTop: `3px solid ${color}` }}
             >
               {/* Header */}
-              <div className="px-5 py-4 flex items-center justify-between border-b border-[#232938]">
-                <div className="flex items-center space-x-2.5 font-bold text-base text-white min-w-0">
+              <div className="px-5 py-4 flex items-center justify-between border-b border-slate-100 dark:border-[#2D3342]">
+                <div className="flex items-center space-x-2.5 font-bold text-base text-slate-800 dark:text-white min-w-0">
                   <span className="w-2.5 h-2.5 rounded-full shadow-sm shrink-0" style={{ backgroundColor: color }}></span>
                   <span className="truncate">{job}</span>
                 </div>
                 <div 
-                  className="px-3 py-0.5 rounded-full text-xs font-medium text-slate-400 bg-[#1E2330] border border-[#2A3040] shrink-0 ml-2"
+                  className="px-3 py-0.5 rounded-full text-xs font-medium text-slate-600 dark:text-[#8B93A7] bg-slate-100 dark:bg-[#272C38] border border-slate-200 dark:border-[#2D3342] shrink-0 ml-2"
                 >
                   {members.length} คน
                 </div>
               </div>
 
               {/* Table Column Headers */}
-              <div className="flex items-center justify-between gap-2 px-5 py-2.5 border-b border-[#232938] text-[11px] font-medium text-slate-500">
+              <div className="flex items-center justify-between gap-2 px-5 py-2.5 bg-slate-50/70 dark:bg-[#272C38]/50 border-b border-slate-100 dark:border-[#2D3342] text-[11px] font-bold text-slate-500 dark:text-[#8B93A7]">
                 <div className="w-6 text-left flex-shrink-0">#</div>
                 <div className="flex-1 min-w-0 text-left">ชื่อ</div>
                 <div className="flex-shrink-0 text-right whitespace-nowrap">คะแนน</div>
@@ -292,33 +290,33 @@ export default function RosterPage() {
               </div>
 
               {/* List */}
-              <div className="p-0 bg-[#14161D] flex flex-col">
+              <div className="p-0 bg-white dark:bg-[#232733] flex flex-col">
                 {members.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-6 px-4">
-                    <div className="w-10 h-10 rounded-full border border-dashed border-[#262A35] flex items-center justify-center mb-2.5">
-                      <span className="text-slate-600 text-sm font-bold">—</span>
+                    <div className="w-10 h-10 rounded-full border border-dashed border-slate-200 dark:border-[#2D3342] flex items-center justify-center mb-2.5">
+                      <span className="text-slate-400 dark:text-[#6B7280] text-sm font-bold">—</span>
                     </div>
-                    <p className="text-xs text-slate-500 font-medium">ไม่มีข้อมูลสมาชิก</p>
+                    <p className="text-xs text-slate-400 dark:text-[#6B7280] font-medium">ไม่มีข้อมูลสมาชิก</p>
                   </div>
                 ) : (
-                  <ul className="divide-y divide-[#232938]/60">
+                  <ul className="divide-y divide-slate-100 dark:divide-[#2D3342]/60">
                     {members.map((m: any, idx: number) => {
                       const rank = idx + 1;
                       return (
-                        <li key={m.name || idx} className="flex items-center justify-between gap-2 px-5 py-3.5 hover:bg-[#1A1F2C] transition-colors text-[13px] group">
+                        <li key={m.name || idx} className="flex items-center justify-between gap-2 px-5 py-3 hover:bg-slate-50 dark:hover:bg-[#272C38] transition-colors text-[13px] group">
                           {/* Rank Number without border/frame */}
-                          <div className="w-6 text-left flex-shrink-0 text-slate-400 font-mono text-sm font-medium">
+                          <div className="w-6 text-left flex-shrink-0 text-slate-400 dark:text-[#6B7280] font-mono text-sm font-medium">
                             {rank}
                           </div>
 
                           {/* Member Name */}
-                          <div className="flex-1 min-w-0 text-left truncate text-white font-bold text-sm" title={m.name}>
+                          <div className="flex-1 min-w-0 text-left truncate text-slate-800 dark:text-white font-bold text-sm" title={m.name}>
                             {m.name || "Unknown"}
                           </div>
 
                           {/* Score / Power without 'หน่วย' */}
                           <div className="flex-shrink-0 text-right tabular-nums whitespace-nowrap pl-2">
-                            <span className="font-bold text-white text-sm">
+                            <span className="font-bold text-slate-700 dark:text-white text-sm">
                               {m.power != null ? Number(m.power).toLocaleString('en-US') : '-'}
                             </span>
                           </div>
@@ -328,7 +326,7 @@ export default function RosterPage() {
                             <div className="w-12 flex-shrink-0 flex justify-center ml-1">
                               <button 
                                 onClick={() => openEditModal(m, job)}
-                                className="px-2.5 py-1 bg-[#1E2330] border border-[#2D3342] hover:border-[#4D73CD] rounded-md text-[11px] font-bold text-slate-300 hover:text-white shadow-sm hover:bg-[#3B66D1] transition-colors"
+                                className="px-2.5 py-1 bg-white dark:bg-[#272C38] border border-slate-200 dark:border-[#2D3342] hover:border-[#4D73CD] rounded-md text-[11px] font-bold text-slate-700 dark:text-white shadow-sm hover:bg-[#3B66D1] hover:text-white transition-colors"
                               >
                                 แก้ไข
                               </button>
