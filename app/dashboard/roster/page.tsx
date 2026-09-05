@@ -193,21 +193,21 @@ export default function RosterPage() {
         </button>
       </div>
 
-      {/* Summary Pills (Horizontal scrollable bar matching screenshot) */}
-      <div className="flex items-center gap-2.5 overflow-x-auto pb-3 pt-1 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
+      {/* Summary Pills (Wrap naturally without horizontal scrollbar) */}
+      <div className="flex flex-wrap items-center gap-2.5 pb-1">
         {/* All jobs button */}
         <button 
           onClick={() => setSelectedJob("ทั้งหมด")}
           className={`rounded-2xl px-4 py-2 flex items-center gap-2.5 shadow-sm border transition-all flex-shrink-0 cursor-pointer ${
             selectedJob === "ทั้งหมด" 
-              ? "bg-[#14161D] border-[#C9A15C] text-[#E5B555] ring-1 ring-[#C9A15C]/40" 
+              ? "bg-[#14161D] border-[#4D73CD] text-white ring-1 ring-[#4D73CD]/50" 
               : "bg-[#14161D] border-[#262A35] hover:border-slate-500 text-slate-300"
           }`}
         >
           <span className="font-bold text-sm">ทั้งหมด</span>
           <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
             selectedJob === "ทั้งหมด" 
-              ? "bg-[#241F1A] text-[#E5B555] border border-[#C9A15C]/30" 
+              ? "bg-[#1E2330] text-[#4D73CD] border border-[#4D73CD]/40" 
               : "bg-[#1E2330] text-slate-400"
           }`}>
             {totalMembers}
@@ -242,8 +242,8 @@ export default function RosterPage() {
         })}
       </div>
 
-      {/* Tables Grid (Separated by Class) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-5">
+      {/* Tables Grid (Auto-fit Cards with comfortable min-width) */}
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-5">
         {displayJobs.map(job => {
           const rawMembers = roster?.[job] || [];
           
@@ -280,11 +280,11 @@ export default function RosterPage() {
               </div>
 
               {/* Table Column Headers */}
-              <div className="grid grid-cols-12 gap-2 px-5 py-2.5 border-b border-[#232938] text-[11px] font-medium text-slate-500">
-                <div className="col-span-2 text-left">#</div>
-                <div className={isAdmin ? "col-span-4 text-left" : "col-span-6 text-left"}>ชื่อ</div>
-                <div className={isAdmin ? "col-span-3 text-right" : "col-span-4 text-right"}>คะแนน</div>
-                {isAdmin && <div className="col-span-3 text-center">จัดการ</div>}
+              <div className="flex items-center justify-between gap-2 px-5 py-2.5 border-b border-[#232938] text-[11px] font-medium text-slate-500">
+                <div className="w-7 text-left flex-shrink-0">#</div>
+                <div className="flex-1 min-w-0 text-left">ชื่อ</div>
+                <div className="flex-shrink-0 text-right whitespace-nowrap">คะแนน</div>
+                {isAdmin && <div className="w-12 text-center flex-shrink-0 ml-1">จัดการ</div>}
               </div>
 
               {/* List */}
@@ -301,9 +301,9 @@ export default function RosterPage() {
                     {members.map((m: any, idx: number) => {
                       const rank = idx + 1;
                       return (
-                        <li key={m.name || idx} className="grid grid-cols-12 gap-2 px-5 py-3.5 items-center hover:bg-[#1A1F2C] transition-colors text-[13px] group">
+                        <li key={m.name || idx} className="flex items-center justify-between gap-2 px-5 py-3.5 hover:bg-[#1A1F2C] transition-colors text-[13px] group">
                           {/* Rank Badge */}
-                          <div className="col-span-2 flex items-center">
+                          <div className="w-7 flex-shrink-0 flex items-center">
                             {rank === 1 ? (
                               <div className="w-6 h-6 rounded-md bg-[#C9A15C]/20 border border-[#C9A15C]/60 text-[#E5B555] font-bold text-xs flex items-center justify-center shadow-sm">
                                 1
@@ -324,12 +324,12 @@ export default function RosterPage() {
                           </div>
 
                           {/* Member Name */}
-                          <div className={`${isAdmin ? "col-span-4" : "col-span-6"} text-left truncate text-white font-bold text-sm`}>
+                          <div className="flex-1 min-w-0 text-left truncate text-white font-bold text-sm" title={m.name}>
                             {m.name || "Unknown"}
                           </div>
 
                           {/* Score / Power */}
-                          <div className={`${isAdmin ? "col-span-3" : "col-span-4"} text-right tabular-nums flex items-baseline justify-end`}>
+                          <div className="flex-shrink-0 text-right tabular-nums whitespace-nowrap pl-2">
                             <span className="font-bold text-white text-sm">
                               {m.power != null ? Number(m.power).toLocaleString('en-US') : '-'}
                             </span>
@@ -340,7 +340,7 @@ export default function RosterPage() {
 
                           {/* Admin Management Button */}
                           {isAdmin && (
-                            <div className="col-span-3 flex justify-center opacity-80 group-hover:opacity-100 transition-opacity">
+                            <div className="w-12 flex-shrink-0 flex justify-center ml-1">
                               <button 
                                 onClick={() => openEditModal(m, job)}
                                 className="px-2.5 py-1 bg-[#1E2330] border border-[#2D3342] hover:border-[#4D73CD] rounded-md text-[11px] font-bold text-slate-300 hover:text-white shadow-sm hover:bg-[#3B66D1] transition-colors"
