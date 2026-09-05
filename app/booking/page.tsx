@@ -333,25 +333,25 @@ export default function BookingPage() {
                         <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-white">
                           <span>ตำแหน่งคิว:</span>
                           <span className="text-[#3B66D1] dark:text-[#82A0F5] text-sm font-extrabold">
-                            ตี้ที่ {myEst.partyNumber} (ลำดับที่ {myQueueIdx + 1})
+                            ตี้ที่ {myEst.partyNumber} ({myEst.partyMemberCount}/5 คน) · ลำดับที่ {myQueueIdx + 1}
                           </span>
                         </div>
                         <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-white">
                           <span>คิวก่อนหน้า:</span>
                           <span className="text-amber-600 dark:text-amber-400 font-bold">
-                            {myEst.queuesAhead === 0 ? "ถึงคิวแล้ว (คิวถัดไป)" : `อีก ${myEst.queuesAhead} คิว`}
+                            {myEst.queuesAhead === 0 ? "คิวแรก (พร้อมลงทันที)" : `อีก ${myEst.queuesAhead} คิว`}
                           </span>
                         </div>
                         <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-white">
                           <span>เวลารอโดยประมาณ:</span>
                           <span className="text-slate-800 dark:text-slate-200 font-bold">
-                            {myEst.queuesAhead === 0 ? "~0-3 นาที" : `~${myEst.waitMinutesMin} - ${myEst.waitMinutesMax} นาที`}
+                            {myEst.queuesAhead === 0 ? "พร้อมลงทันที" : `~${myEst.waitMinutesMin} - ${myEst.waitMinutesMax} นาที`}
                           </span>
                         </div>
                         <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-white">
                           <span>คาดว่าจะถึงคิว:</span>
                           <span className="text-blue-600 dark:text-[#82A0F5] font-extrabold">
-                            {myEst.estimatedStartTimeText}
+                            {myEst.queuesAhead === 0 ? "รอบถัดไป" : myEst.estimatedStartTimeText}
                           </span>
                         </div>
                       </div>
@@ -593,11 +593,11 @@ export default function BookingPage() {
                       <span className="text-green-600 dark:text-emerald-400 font-bold">🎉 ลงดันเจี้ยนเสร็จสิ้นเรียบร้อยแล้ว</span>
                     ) : myQueueEstimate.queuesAhead === 0 ? (
                       <span className="text-emerald-600 dark:text-emerald-400 font-bold">
-                        ✨ ถึงคิวของคุณแล้ว! คุณอยู่ใน <span className="underline">ตี้ที่ {myQueueEstimate.partyNumber}</span> (คิวถัดไปที่จะได้ลง)
+                        ✨ ถึงคิวของคุณแล้ว! คุณอยู่ใน <span className="underline">ตี้ที่ {myQueueEstimate.partyNumber} ({myQueueEstimate.partyMemberCount}/5 คน)</span> (คิวแรก พร้อมลงทันทีเมื่อครบตี้)
                       </span>
                     ) : (
                       <>
-                        คุณอยู่ <span className="font-bold text-[#0b3d63] dark:text-[#82A0F5]">คิวตี้ที่ {myQueueEstimate.partyNumber}</span>
+                        คุณอยู่ <span className="font-bold text-[#0b3d63] dark:text-[#82A0F5]">คิวตี้ที่ {myQueueEstimate.partyNumber} ({myQueueEstimate.partyMemberCount}/5 คน)</span>
                         {" · "}
                         เหลืออีก <span className="font-bold text-amber-600 dark:text-amber-400">{myQueueEstimate.queuesAhead} คิว</span> จะถึงคุณ
                       </>
@@ -612,7 +612,7 @@ export default function BookingPage() {
                         อีกกี่คิวถึงเรา
                       </span>
                       <span className="font-extrabold text-sm text-amber-600 dark:text-amber-400">
-                        {myQueueEstimate.queuesAhead === 0 ? "คิวถัดไป" : `อีก ${myQueueEstimate.queuesAhead} คิว`}
+                        {myQueueEstimate.queuesAhead === 0 ? "คิวแรก" : `อีก ${myQueueEstimate.queuesAhead} คิว`}
                       </span>
                     </div>
 
@@ -621,7 +621,7 @@ export default function BookingPage() {
                         เวลารอประมาณ
                       </span>
                       <span className="font-extrabold text-sm text-[#0b3d63] dark:text-white">
-                        {myQueueEstimate.queuesAhead === 0 ? "~0-3 นาที" : `~${myQueueEstimate.waitMinutesMin}-${myQueueEstimate.waitMinutesMax} นาที`}
+                        {myQueueEstimate.queuesAhead === 0 ? "พร้อมลงทันที" : `~${myQueueEstimate.waitMinutesMin}-${myQueueEstimate.waitMinutesMax} นาที`}
                       </span>
                     </div>
 
@@ -630,7 +630,7 @@ export default function BookingPage() {
                         เวลาประมาณการ
                       </span>
                       <span className="font-extrabold text-sm text-[#3B66D1] dark:text-[#82A0F5]">
-                        {myQueueEstimate.estimatedStartTimeText}
+                        {myQueueEstimate.queuesAhead === 0 ? "รอบถัดไป" : myQueueEstimate.estimatedStartTimeText}
                       </span>
                     </div>
                   </div>
@@ -729,7 +729,7 @@ export default function BookingPage() {
                           {/* Party Badge */}
                           {qEst && qEst.partyNumber > 0 && !isDone && (
                             <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-[#0b3d63]/10 dark:bg-[#3B66D1]/20 text-[#0b3d63] dark:text-[#82A0F5] border border-[#0b3d63]/20 dark:border-[#4D73CD]/30">
-                              ตี้ที่ {qEst.partyNumber}
+                              ตี้ที่ {qEst.partyNumber} ({qEst.partyMemberCount}/5 คน)
                             </span>
                           )}
 
@@ -742,13 +742,21 @@ export default function BookingPage() {
                         {/* Estimated Time for Waiting queue */}
                         {qEst && qEst.status === "waiting" && (
                           <div className="flex items-center gap-2 mt-1.5 flex-wrap text-xs">
-                            <span className="text-[11px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-800/40 flex items-center gap-1">
-                              <Clock size={11} />
-                              {qEst.queuesAhead === 0 ? "คิวถัดไป (~0-3 นาที)" : `อีก ${qEst.queuesAhead} คิว (~${qEst.waitMinutesMin}-${qEst.waitMinutesMax} นาที)`}
-                            </span>
-                            <span className="text-[11px] font-bold text-blue-600 dark:text-[#82A0F5]">
-                              🕒 ถึงคิวประมาณ {qEst.estimatedStartTimeText}
-                            </span>
+                            {qEst.queuesAhead === 0 ? (
+                              <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800/40 flex items-center gap-1">
+                                🚀 ตี้แรก (พร้อมลงทันทีเมื่อครบ 5 คน)
+                              </span>
+                            ) : (
+                              <>
+                                <span className="text-[11px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-800/40 flex items-center gap-1">
+                                  <Clock size={11} />
+                                  อีก {qEst.queuesAhead} คิว (~${qEst.waitMinutesMin}-${qEst.waitMinutesMax} นาที)
+                                </span>
+                                <span className="text-[11px] font-bold text-blue-600 dark:text-[#82A0F5]">
+                                  🕒 คาดว่าได้ลง {qEst.estimatedStartTimeText}
+                                </span>
+                              </>
+                            )}
                           </div>
                         )}
                       </div>

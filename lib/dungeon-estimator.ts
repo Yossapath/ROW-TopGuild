@@ -7,17 +7,19 @@ export interface QueueEstimate {
   status: "waiting" | "active" | "done";
   partyNumber: number; // ลำดับตี้ เช่น 1, 2, 3... (0 ถ้า done หรือ active)
   partySlot: number; // ตำแหน่งในตี้ 1..5
+  partyMemberCount: number; // จำนวนสมาชิกในตี้นี้ (1..5)
   globalQueueIndex: number; // ลำดับรวมในคิวรอ
   queuesAhead: number; // จำนวนคิวตี้ที่ต้องรอก่อนหน้า (0, 1, 2, ...)
   waitMinutesMin: number;
   waitMinutesMax: number;
-  estimatedWaitText: string; // เช่น "อีก 1 คิว (~11-12 นาที)" หรือ "ถึงคิวแล้ว (คิวถัดไป)"
-  estimatedStartTimeText: string; // เช่น "~14:35 - 14:38 น."
+  estimatedWaitText: string; // เช่น "อีก 1 คิว (~11-12 นาที)" หรือ "คิวแรก (พร้อมลงทันที)"
+  estimatedStartTimeText: string; // เช่น "~14:35 - 14:38 น." หรือ "รอบถัดไป"
   isCurrentParty: boolean;
 }
 
 export interface DungeonPartyGroup {
   partyNumber: number;
+  memberCount: number;
   queuesAhead: number;
   waitMinutesMin: number;
   waitMinutesMax: number;
@@ -142,8 +144,8 @@ export function calculateDungeonEstimates(
     let estimatedStartTimeText = "";
 
     if (queuesAhead === 0) {
-      estimatedWaitText = "ถึงคิวแล้ว (คิวถัดไป)";
-      estimatedStartTimeText = "กำลังจะลงดัน";
+      estimatedWaitText = "คิวแรก (พร้อมลงทันที)";
+      estimatedStartTimeText = "รอบถัดไป";
     } else if (queuesAhead === 1) {
       estimatedWaitText = `อีก 1 คิว (~${waitMin}-${waitMax} นาที)`;
       const tMin = new Date(now.getTime() + waitMin * 60000);
@@ -162,6 +164,7 @@ export function calculateDungeonEstimates(
 
     parties.push({
       partyNumber: currentPartyNum,
+      memberCount: currentMembers.length,
       queuesAhead,
       waitMinutesMin: waitMin,
       waitMinutesMax: waitMax,
@@ -187,6 +190,7 @@ export function calculateDungeonEstimates(
         status: m.status,
         partyNumber: party.partyNumber,
         partySlot: slotIdx + 1,
+        partyMemberCount: party.members.length,
         globalQueueIndex: globalWaitingIdx++,
         queuesAhead: party.queuesAhead,
         waitMinutesMin: party.waitMinutesMin,
@@ -210,6 +214,7 @@ export function calculateDungeonEstimates(
       status: "active",
       partyNumber: 0,
       partySlot: idx + 1,
+      partyMemberCount: activeQueues.length,
       globalQueueIndex: 0,
       queuesAhead: 0,
       waitMinutesMin: 0,
@@ -231,6 +236,7 @@ export function calculateDungeonEstimates(
       status: "done",
       partyNumber: 0,
       partySlot: 0,
+      partyMemberCount: 0,
       globalQueueIndex: 0,
       queuesAhead: 0,
       waitMinutesMin: 0,

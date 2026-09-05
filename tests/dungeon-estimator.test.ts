@@ -26,8 +26,9 @@ test("Dungeon Estimator - 1 Party without active run", () => {
   const alice = result.estimatesByName["alice"];
   assert.ok(alice);
   assert.equal(alice.partyNumber, 1);
+  assert.equal(alice.partyMemberCount, 3);
   assert.equal(alice.queuesAhead, 0);
-  assert.equal(alice.estimatedWaitText, "ถึงคิวแล้ว (คิวถัดไป)");
+  assert.equal(alice.estimatedWaitText, "คิวแรก (พร้อมลงทันที)");
 });
 
 test("Dungeon Estimator - 2 Parties with 11-12 min queue calculation", () => {

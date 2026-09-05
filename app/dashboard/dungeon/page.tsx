@@ -666,7 +666,7 @@ export default function DungeonPage() {
                           {/* Party Badge */}
                           {qEst && qEst.partyNumber > 0 && !isDone && (
                             <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-[#0b3d63]/10 dark:bg-[#3B66D1]/20 text-[#0b3d63] dark:text-[#82A0F5] border border-[#0b3d63]/20 dark:border-[#4D73CD]/30">
-                              ตี้ที่ {qEst.partyNumber}
+                              ตี้ที่ {qEst.partyNumber} ({qEst.partyMemberCount}/5 คน)
                             </span>
                           )}
 
@@ -679,13 +679,21 @@ export default function DungeonPage() {
                         {/* Estimated time for waiting */}
                         {qEst && qEst.status === "waiting" && (
                           <div className="flex items-center gap-2 mt-1.5 flex-wrap text-xs">
-                            <span className="text-[11px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-800/40 flex items-center gap-1">
-                              <Clock size={11} />
-                              {qEst.queuesAhead === 0 ? "คิวถัดไป (~0-3 นาที)" : `อีก ${qEst.queuesAhead} คิว (~${qEst.waitMinutesMin}-${qEst.waitMinutesMax} นาที)`}
-                            </span>
-                            <span className="text-[11px] font-bold text-blue-600 dark:text-[#82A0F5]">
-                              🕒 ถึงคิวประมาณ {qEst.estimatedStartTimeText}
-                            </span>
+                            {qEst.queuesAhead === 0 ? (
+                              <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800/40 flex items-center gap-1">
+                                🚀 ตี้แรก (พร้อมลงทันทีเมื่อครบ 5 คน)
+                              </span>
+                            ) : (
+                              <>
+                                <span className="text-[11px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-800/40 flex items-center gap-1">
+                                  <Clock size={11} />
+                                  อีก {qEst.queuesAhead} คิว (~${qEst.waitMinutesMin}-${qEst.waitMinutesMax} นาที)
+                                </span>
+                                <span className="text-[11px] font-bold text-blue-600 dark:text-[#82A0F5]">
+                                  🕒 คาดว่าได้ลง {qEst.estimatedStartTimeText}
+                                </span>
+                              </>
+                            )}
                           </div>
                         )}
 
