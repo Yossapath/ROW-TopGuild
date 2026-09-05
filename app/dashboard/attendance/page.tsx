@@ -294,7 +294,9 @@ export default function AttendancePage() {
   const countMa = rows.filter((r) => r.status === "มา").length;
   const countKhad = rows.filter((r) => r.status === "ขาด").length;
   const countLa = rows.filter((r) => r.status === "ลา").length;
+  const countOffline = rows.filter((r) => r.status === null).length;
   const laList = rows.filter((r) => r.status === "ลา");
+  const offlineList = rows.filter((r) => r.status === null);
 
   return (
     <div
@@ -453,30 +455,34 @@ export default function AttendancePage() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full">
                 <thead>
-                  <tr className="bg-[#eef4fb] text-[#1a6abb] text-xs font-semibold border-b border-blue-100">
-                    <th className="px-4 py-3 text-left w-10">#</th>
-                    <th className="px-4 py-3 text-left">ชื่อตัวละคร</th>
-                    <th className="px-4 py-3 text-left">อาชีพ</th>
-                    <th className="px-4 py-3 text-right">ค่าพลัง</th>
-                    <th className="px-4 py-3 text-left min-w-[180px]">สถานะ</th>
+                  <tr className="bg-[#eef4fb] text-[#1a6abb] text-xs font-semibold">
+                    <th className="px-5 py-3.5 text-left w-12">#</th>
+                    <th className="px-5 py-3.5 text-left">ชื่อตัวละคร</th>
+                    <th className="px-5 py-3.5 text-left">อาชีพ</th>
+                    <th className="px-5 py-3.5 text-right">ค่าพลัง</th>
+                    <th className="px-5 py-3.5 text-left min-w-[160px]">สถานะ</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody>
                   {rows.map((r, i) => {
                     if (search && !r.name.toLowerCase().includes(search.toLowerCase())) return null;
                     const jobColor = JOB_COLORS[r.job] ?? "#64748b";
                     const sc = r.status ? STATUS_CONFIG[r.status] : null;
+                    const isEven = i % 2 === 0;
                     return (
-                      <tr key={`${r.name}-${i}`} className="hover:bg-slate-50/60 transition-colors">
-                        <td className="px-4 py-2.5 text-slate-400 text-xs font-medium">{i + 1}</td>
-                        <td className="px-4 py-2.5 font-semibold text-slate-800">{r.name}</td>
-                        <td className="px-4 py-2.5 font-semibold" style={{ color: jobColor }}>{r.job}</td>
-                        <td className="px-4 py-2.5 text-right text-slate-500 text-xs tabular-nums">
+                      <tr
+                        key={`${r.name}-${i}`}
+                        className={`transition-colors border-b border-slate-100 ${isEven ? "bg-white" : "bg-slate-50/50"} hover:bg-blue-50/40`}
+                      >
+                        <td className="px-5 py-4 text-slate-400 text-sm">{i + 1}</td>
+                        <td className="px-5 py-4 font-bold text-slate-800 text-sm">{r.name}</td>
+                        <td className="px-5 py-4 font-semibold text-sm" style={{ color: jobColor }}>{r.job}</td>
+                        <td className="px-5 py-4 text-right font-semibold text-slate-800 text-sm tabular-nums">
                           {r.power > 0 ? r.power.toLocaleString() : "—"}
                         </td>
-                        <td className="px-4 py-2.5">
+                        <td className="px-5 py-4">
                           {isAdmin ? (
                             <div className="relative inline-flex items-center">
                               <select
@@ -485,10 +491,10 @@ export default function AttendancePage() {
                                   const val = e.target.value as Status;
                                   setStatus(i, val || null);
                                 }}
-                                className={`appearance-none pl-3 pr-8 py-1.5 rounded-lg text-sm font-semibold border cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-300 transition-colors ${
+                                className={`appearance-none pl-3 pr-8 py-1.5 rounded-lg text-sm font-semibold border-2 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-300 transition-all min-w-[110px] ${
                                   sc
                                     ? `${sc.bg} ${sc.text} ${sc.border}`
-                                    : "bg-slate-50 text-slate-400 border-slate-200"
+                                    : "bg-white text-slate-400 border-slate-200 hover:border-slate-300"
                                 }`}
                               >
                                 <option value="">— เลือก —</option>
@@ -496,10 +502,10 @@ export default function AttendancePage() {
                                 <option value="ลา">ลา</option>
                                 <option value="ขาด">ขาด</option>
                               </select>
-                              <span className="pointer-events-none absolute right-2 text-xs opacity-50">▼</span>
+                              <span className={`pointer-events-none absolute right-2.5 text-[10px] font-bold ${sc ? sc.text : "text-slate-400"}`}>▼</span>
                             </div>
                           ) : (
-                            <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold border ${sc ? `${sc.bg} ${sc.text} ${sc.border}` : "bg-slate-50 text-slate-400 border-slate-200"}`}>
+                            <span className={`inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-bold border-2 ${sc ? `${sc.bg} ${sc.text} ${sc.border}` : "bg-white text-slate-400 border-slate-200"}`}>
                               {sc ? sc.label : "ยังไม่เช็ค"}
                             </span>
                           )}
@@ -513,11 +519,11 @@ export default function AttendancePage() {
           )}
 
           {isAdmin && rows.length > 0 && (
-            <div className="px-5 py-3 border-t border-slate-100 flex items-center gap-3">
+            <div className="px-5 py-3.5 border-t border-slate-100 flex items-center gap-3">
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-50"
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-50 shadow-sm"
                 style={{ backgroundColor: "#0b3d63" }}
               >
                 {saving ? (
@@ -535,51 +541,84 @@ export default function AttendancePage() {
           )}
         </div>
 
-        {/* Right — Summary (compact) */}
-        <div className="flex flex-col gap-3 min-w-[180px]">
+        {/* Right — Summary + Lists */}
+        <div className="flex flex-col gap-3 min-w-[200px] max-w-[240px]">
+
+          {/* Stats */}
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
-            <p className="text-xs font-semibold text-slate-400 mb-3 uppercase tracking-wide">สรุปการเข้าร่วม</p>
+            <p className="text-xs font-bold text-slate-400 mb-3 uppercase tracking-wider">สรุปการเข้าร่วม</p>
             <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-green-50 border border-green-100">
+              <div className="flex items-center justify-between px-3 py-2.5 rounded-xl bg-green-50 border border-green-200">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-green-500" />
-                  <span className="text-xs font-semibold text-green-700">มาวอ</span>
+                  <span className="text-xs font-bold text-green-700">มาวอ</span>
                 </div>
-                <span className="text-lg font-extrabold text-green-700">{countMa}</span>
+                <span className="text-xl font-black text-green-700">{countMa}</span>
               </div>
-              <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-red-50 border border-red-100">
-                <div className="flex items-center gap-2">
-                  <XCircle className="w-4 h-4 text-red-400" />
-                  <span className="text-xs font-semibold text-red-600">ขาดวอ</span>
-                </div>
-                <span className="text-lg font-extrabold text-red-600">{countKhad}</span>
-              </div>
-              <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-yellow-50 border border-yellow-100">
+              <div className="flex items-center justify-between px-3 py-2.5 rounded-xl bg-yellow-50 border border-yellow-200">
                 <div className="flex items-center gap-2">
                   <AlertCircle className="w-4 h-4 text-yellow-500" />
-                  <span className="text-xs font-semibold text-yellow-700">ลา</span>
+                  <span className="text-xs font-bold text-yellow-700">ลา</span>
                 </div>
-                <span className="text-lg font-extrabold text-yellow-600">{countLa}</span>
+                <span className="text-xl font-black text-yellow-600">{countLa}</span>
+              </div>
+              <div className="flex items-center justify-between px-3 py-2.5 rounded-xl bg-red-50 border border-red-200">
+                <div className="flex items-center gap-2">
+                  <XCircle className="w-4 h-4 text-red-400" />
+                  <span className="text-xs font-bold text-red-600">ขาดวอ</span>
+                </div>
+                <span className="text-xl font-black text-red-600">{countKhad}</span>
+              </div>
+              <div className="flex items-center justify-between px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                <div className="flex items-center gap-2">
+                  <Users className="w-4 h-4 text-slate-400" />
+                  <span className="text-xs font-bold text-slate-500">ยังไม่เช็ค</span>
+                </div>
+                <span className="text-xl font-black text-slate-500">{countOffline}</span>
               </div>
             </div>
           </div>
 
+          {/* รายชื่อผู้ลา */}
           {laList.length > 0 && (
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
-              <p className="text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wide">รายชื่อผู้ลา</p>
-              <div className="flex flex-col gap-1.5 max-h-60 overflow-y-auto">
+              <p className="text-xs font-bold text-yellow-600 mb-2.5 flex items-center gap-1.5">
+                <AlertCircle className="w-3.5 h-3.5" /> รายชื่อผู้ลา ({laList.length})
+              </p>
+              <div className="flex flex-col gap-1.5 max-h-48 overflow-y-auto">
                 {laList.map((r, i) => (
-                  <div key={i} className="flex items-center gap-2 px-2 py-1.5 bg-yellow-50 rounded-lg border border-yellow-100">
-                    <span className="text-yellow-500 text-xs">🟡</span>
-                    <div>
-                      <p className="text-xs font-semibold text-slate-700">{r.name}</p>
-                      <p className="text-[10px] font-medium" style={{ color: JOB_COLORS[r.job] ?? "#64748b" }}>{r.job}</p>
+                  <div key={i} className="flex items-center gap-2 px-2.5 py-1.5 bg-yellow-50 rounded-lg border border-yellow-100">
+                    <div className="w-1.5 h-1.5 rounded-full bg-yellow-400 flex-shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-slate-700 truncate">{r.name}</p>
+                      <p className="text-[10px] font-medium truncate" style={{ color: JOB_COLORS[r.job] ?? "#64748b" }}>{r.job}</p>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
           )}
+
+          {/* ออฟไลน์ / ยังไม่เช็ค */}
+          {offlineList.length > 0 && selectedDate && (
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
+              <p className="text-xs font-bold text-slate-400 mb-2.5 flex items-center gap-1.5">
+                <Users className="w-3.5 h-3.5" /> ออฟไลน์ / ยังไม่เช็ค ({offlineList.length})
+              </p>
+              <div className="flex flex-col gap-1.5 max-h-48 overflow-y-auto">
+                {offlineList.map((r, i) => (
+                  <div key={i} className="flex items-center gap-2 px-2.5 py-1.5 bg-slate-50 rounded-lg border border-slate-100">
+                    <div className="w-1.5 h-1.5 rounded-full bg-slate-300 flex-shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-slate-600 truncate">{r.name}</p>
+                      <p className="text-[10px] font-medium truncate" style={{ color: JOB_COLORS[r.job] ?? "#64748b" }}>{r.job}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
         </div>
       </div>
       {/* Import Modal */}
