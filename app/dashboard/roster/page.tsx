@@ -193,23 +193,25 @@ export default function RosterPage() {
         </button>
       </div>
 
-      {/* Summary Pills (Click to Filter) */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+      {/* Summary Pills (Horizontal scrollable bar matching screenshot) */}
+      <div className="flex items-center gap-2.5 overflow-x-auto pb-3 pt-1 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
         {/* All jobs button */}
         <button 
           onClick={() => setSelectedJob("ทั้งหมด")}
-          className={`rounded-xl p-3.5 flex items-center justify-between shadow-sm border transition-all ${
+          className={`rounded-2xl px-4 py-2 flex items-center gap-2.5 shadow-sm border transition-all flex-shrink-0 cursor-pointer ${
             selectedJob === "ทั้งหมด" 
-              ? "bg-[#0b3d63] dark:bg-[#3B66D1] border-[#0b3d63] dark:border-[#4D73CD] text-white ring-2 ring-offset-2 ring-[#0b3d63] dark:ring-[#4D73CD] dark:ring-offset-[#1c1c1c]" 
-              : "bg-theme-panel border-theme-border hover:border-[#0b3d63] dark:hover:border-sky-500 hover:shadow-md text-theme-text"
+              ? "bg-[#14161D] border-[#C9A15C] text-[#E5B555] ring-1 ring-[#C9A15C]/40" 
+              : "bg-[#14161D] border-[#262A35] hover:border-slate-500 text-slate-300"
           }`}
         >
-          <div className="flex items-center space-x-2 font-bold text-sm lg:text-base">
-            <span>ทั้งหมด</span>
-          </div>
-          <div className={`px-3 py-1 rounded-lg text-sm font-bold ${selectedJob === "ทั้งหมด" ? "bg-white/20 dark:bg-black/20 text-white" : "bg-theme-divider text-theme-text"}`}>
+          <span className="font-bold text-sm">ทั้งหมด</span>
+          <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+            selectedJob === "ทั้งหมด" 
+              ? "bg-[#241F1A] text-[#E5B555] border border-[#C9A15C]/30" 
+              : "bg-[#1E2330] text-slate-400"
+          }`}>
             {totalMembers}
-          </div>
+          </span>
         </button>
 
         {sortedJobs.map(job => {
@@ -222,28 +224,26 @@ export default function RosterPage() {
             <button 
               key={`pill-${job}`} 
               onClick={() => setSelectedJob(isSelected ? "ทั้งหมด" : job)}
-              className={`bg-theme-panel rounded-xl p-3.5 flex items-center justify-between shadow-sm border transition-all hover:shadow-md cursor-pointer text-left ${
+              className={`rounded-2xl px-4 py-2 flex items-center gap-2.5 shadow-sm border transition-all hover:border-slate-400 flex-shrink-0 cursor-pointer ${
                 isSelected 
-                  ? "border-[#4D73CD] ring-2 ring-[#4D73CD]/30 dark:ring-[#4D73CD]/40" 
-                  : "border-theme-border hover:border-[#4D73CD]/50"
+                  ? "bg-[#14161D] border-[#4D73CD] ring-1 ring-[#4D73CD]/50" 
+                  : "bg-[#14161D] border-[#262A35]"
               }`}
             >
-              <div className="flex items-center space-x-2 font-bold text-sm lg:text-base min-w-0" style={{ color: color }}>
+              <div className="flex items-center space-x-2 font-bold text-sm text-slate-200">
                 <span className="w-2.5 h-2.5 rounded-full shadow-sm shrink-0" style={{ backgroundColor: color }}></span>
-                <span className="truncate">{job}</span>
+                <span>{job}</span>
               </div>
-              <div 
-                className="px-3 py-1 rounded-lg text-sm font-bold bg-theme-input text-theme-text shrink-0"
-              >
+              <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-[#1E2330] text-slate-400">
                 {count}
-              </div>
+              </span>
             </button>
           );
         })}
       </div>
 
       {/* Tables Grid (Separated by Class) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-5">
         {displayJobs.map(job => {
           const rawMembers = roster?.[job] || [];
           
@@ -263,58 +263,95 @@ export default function RosterPage() {
           return (
             <div 
               key={`col-${job}`} 
-              className="bg-theme-panel rounded-2xl shadow-sm border border-theme-border overflow-hidden flex flex-col transition-all hover:shadow-md"
+              className="bg-[#14161D] rounded-2xl shadow-sm border border-[#262A35] overflow-hidden flex flex-col transition-all hover:shadow-md"
+              style={{ borderTop: `3px solid ${color}` }}
             >
               {/* Header */}
-              <div className="px-5 py-4 flex items-center justify-between border-b border-theme-border/50 bg-theme-panel">
-                <div className="flex items-center space-x-2 font-bold text-base lg:text-lg min-w-0" style={{ color: color }}>
-                  <span className="w-3 h-3 rounded-full shadow-sm shrink-0" style={{ backgroundColor: color }}></span>
+              <div className="px-5 py-4 flex items-center justify-between border-b border-[#232938]">
+                <div className="flex items-center space-x-2.5 font-bold text-base text-white min-w-0">
+                  <span className="w-2.5 h-2.5 rounded-full shadow-sm shrink-0" style={{ backgroundColor: color }}></span>
                   <span className="truncate">{job}</span>
                 </div>
                 <div 
-                  className="px-3 py-1.5 rounded-xl text-xs font-bold text-theme-text shadow-sm tracking-wide bg-theme-input border border-theme-border shrink-0 ml-2"
+                  className="px-3 py-0.5 rounded-full text-xs font-medium text-slate-400 bg-[#1E2330] border border-[#2A3040] shrink-0 ml-2"
                 >
                   {members.length} คน
                 </div>
               </div>
 
               {/* Table Column Headers */}
-              <div className="grid grid-cols-12 gap-2 px-4 py-3 bg-theme-panel border-b border-theme-border/50 text-[11px] font-bold text-theme-textSecondary text-center">
+              <div className="grid grid-cols-12 gap-2 px-5 py-2.5 border-b border-[#232938] text-[11px] font-medium text-slate-500">
                 <div className="col-span-2 text-left">#</div>
                 <div className={isAdmin ? "col-span-4 text-left" : "col-span-6 text-left"}>ชื่อ</div>
-                <div className={isAdmin ? "col-span-3 text-center" : "col-span-4 text-center"}>ค่าพลัง</div>
+                <div className={isAdmin ? "col-span-3 text-right" : "col-span-4 text-right"}>คะแนน</div>
                 {isAdmin && <div className="col-span-3 text-center">จัดการ</div>}
               </div>
 
               {/* List */}
-              <div className="flex-1 p-0 bg-theme-panel">
+              <div className="flex-1 p-0 bg-[#14161D]">
                 {members.length === 0 ? (
-                  <div className="p-8 text-center text-sm text-theme-textMuted font-medium bg-theme-bg/50">
-                    ไม่มีข้อมูลสมาชิก
+                  <div className="py-12 flex flex-col items-center justify-center">
+                    <div className="w-10 h-10 rounded-full border border-dashed border-[#262A35] flex items-center justify-center mb-2.5">
+                      <span className="text-slate-600 text-sm font-bold">—</span>
+                    </div>
+                    <p className="text-xs text-slate-500 font-medium">ไม่มีข้อมูลสมาชิก</p>
                   </div>
                 ) : (
-                  <ul className="divide-y divide-theme-divider/60">
-                    {members.map((m: any, idx: number) => (
-                      <li key={m.name || idx} className="grid grid-cols-12 gap-2 px-4 py-3.5 items-center hover:bg-theme-bg transition-colors text-[13px] group">
-                        <div className="col-span-2 text-theme-textSecondary text-left">{idx + 1}</div>
-                        <div className={`${isAdmin ? "col-span-4" : "col-span-6"} text-left truncate text-theme-text font-semibold text-[13.5px]`}>
-                          {m.name || "Unknown"}
-                        </div>
-                        <div className={`${isAdmin ? "col-span-3" : "col-span-4"} text-center font-medium tracking-tight`} style={{ color: color }}>
-                          {m.power != null ? Number(m.power).toLocaleString('en-US') : '-'}
-                        </div>
-                        {isAdmin && (
-                          <div className="col-span-3 flex justify-center opacity-90 group-hover:opacity-100 transition-opacity">
-                            <button 
-                              onClick={() => openEditModal(m, job)}
-                              className="px-3 py-1.5 bg-theme-panel border border-[#2D3342] hover:border-[#4D73CD] rounded-md text-[11px] font-bold text-white shadow-sm hover:bg-[#3B66D1] transition-colors"
-                            >
-                              แก้ไข
-                            </button>
+                  <ul className="divide-y divide-[#232938]/60">
+                    {members.map((m: any, idx: number) => {
+                      const rank = idx + 1;
+                      return (
+                        <li key={m.name || idx} className="grid grid-cols-12 gap-2 px-5 py-3.5 items-center hover:bg-[#1A1F2C] transition-colors text-[13px] group">
+                          {/* Rank Badge */}
+                          <div className="col-span-2 flex items-center">
+                            {rank === 1 ? (
+                              <div className="w-6 h-6 rounded-md bg-[#C9A15C]/20 border border-[#C9A15C]/60 text-[#E5B555] font-bold text-xs flex items-center justify-center shadow-sm">
+                                1
+                              </div>
+                            ) : rank === 2 ? (
+                              <div className="w-6 h-6 rounded-md bg-slate-500/20 border border-slate-400/50 text-slate-300 font-bold text-xs flex items-center justify-center shadow-sm">
+                                2
+                              </div>
+                            ) : rank === 3 ? (
+                              <div className="w-6 h-6 rounded-md bg-amber-800/25 border border-amber-600/50 text-amber-400 font-bold text-xs flex items-center justify-center shadow-sm">
+                                3
+                              </div>
+                            ) : (
+                              <div className="w-6 h-6 text-slate-500 font-mono text-xs flex items-center justify-center">
+                                {rank}
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </li>
-                    ))}
+
+                          {/* Member Name */}
+                          <div className={`${isAdmin ? "col-span-4" : "col-span-6"} text-left truncate text-white font-bold text-sm`}>
+                            {m.name || "Unknown"}
+                          </div>
+
+                          {/* Score / Power */}
+                          <div className={`${isAdmin ? "col-span-3" : "col-span-4"} text-right tabular-nums flex items-baseline justify-end`}>
+                            <span className="font-bold text-white text-sm">
+                              {m.power != null ? Number(m.power).toLocaleString('en-US') : '-'}
+                            </span>
+                            <span className="text-[11px] text-slate-400 font-normal ml-1">
+                              หน่วย
+                            </span>
+                          </div>
+
+                          {/* Admin Management Button */}
+                          {isAdmin && (
+                            <div className="col-span-3 flex justify-center opacity-80 group-hover:opacity-100 transition-opacity">
+                              <button 
+                                onClick={() => openEditModal(m, job)}
+                                className="px-2.5 py-1 bg-[#1E2330] border border-[#2D3342] hover:border-[#4D73CD] rounded-md text-[11px] font-bold text-slate-300 hover:text-white shadow-sm hover:bg-[#3B66D1] transition-colors"
+                              >
+                                แก้ไข
+                              </button>
+                            </div>
+                          )}
+                        </li>
+                      );
+                    })}
                   </ul>
                 )}
               </div>
