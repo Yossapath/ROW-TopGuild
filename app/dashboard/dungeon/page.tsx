@@ -384,32 +384,53 @@ export default function DungeonPage() {
 
             {!formCollapsed && <div className="p-5 flex flex-col gap-4">
               {/* Name */}
-              <div>
+              <div className="relative">
                 <label className="block text-xs font-semibold text-slate-600 dark:text-white mb-1">
                   ชื่อตัวละคร <span className="text-red-500">*</span>
                 </label>
                 {isAdmin ? (
-                  <>
+                  <div className="relative">
                     <input
-                      list="roster-names"
                       value={formName}
                       onChange={(e) => {
                         const val = e.target.value;
                         setFormName(val);
-                        const member = rosterMembers.find((m) => m.name === val);
-                        if (member) {
-                          setFormJob(member.job);
-                        }
+                      }}
+                      onFocus={() => {
+                        const dropdownState = document.getElementById("roster-dropdown");
+                        if(dropdownState) dropdownState.style.display = "block";
+                      }}
+                      onBlur={() => {
+                        setTimeout(() => {
+                          const dropdownState = document.getElementById("roster-dropdown");
+                          if(dropdownState) dropdownState.style.display = "none";
+                        }, 200);
                       }}
                       placeholder="พิมพ์หรือเลือกชื่อ…"
                       className="w-full border border-slate-200 dark:border-[#2D3342] rounded-lg px-3 py-2 text-sm bg-white dark:bg-[#272C38] text-slate-800 dark:text-white placeholder:text-slate-400 dark:placeholder:text-[#6B7280] focus:outline-none focus:ring-2 focus:ring-[#4D73CD] dark:focus:ring-[#4D73CD]"
                     />
-                    <datalist id="roster-names">
-                      {rosterMembers.map((m) => (
-                        <option key={m.name} value={m.name} />
+                    <div id="roster-dropdown" className="hidden absolute z-50 w-full mt-1 bg-white dark:bg-[#272C38] border border-slate-200 dark:border-[#2D3342] rounded-lg shadow-lg max-h-60 overflow-auto">
+                      {rosterMembers
+                        .filter(m => !queues.some(q => (q.status === 'waiting' || q.status === 'active') && q.name === m.name))
+                        .filter(m => formName === "" || m.name.toLowerCase().includes(formName.toLowerCase()))
+                        .map((m) => (
+                        <div 
+                          key={m.name} 
+                          className="px-3 py-2 text-sm cursor-pointer hover:bg-slate-100 dark:hover:bg-[#323847] text-slate-800 dark:text-white flex items-center justify-between"
+                          onClick={() => {
+                            setFormName(m.name);
+                            setFormJob(m.job);
+                          }}
+                        >
+                          <span className="font-medium">{m.name}</span>
+                          <span className="text-xs opacity-60 flex items-center gap-1">
+                            <span className="w-2 h-2 rounded-full inline-block" style={{ backgroundColor: JOB_COLORS[m.job] || '#888' }} />
+                            {m.job}
+                          </span>
+                        </div>
                       ))}
-                    </datalist>
-                  </>
+                    </div>
+                  </div>
                 ) : (
                   <div>
                     <input

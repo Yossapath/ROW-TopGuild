@@ -42,14 +42,11 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
     // ── Action handlers ────────────────────────────────────────
     if (action === "startRun") {
-      // Mark this queue item as actively running; record start time
       update.status = "active";
       update.startTime = Date.now();
     } else if (action === "skip") {
-      update.status = "skipped";
+      update.timestamp = Date.now();
     } else if (action === "unskip") {
-      // Give a fresh timestamp so the player re-queues AFTER current active players
-      // (sorting is by timestamp ascending; active items already have lower timestamps)
       update.timestamp = Date.now();
       const allDone = totalRounds === 1 ? newRound1 : newRound1 && newRound2;
       update.status = allDone ? "done" : "waiting";
@@ -61,15 +58,28 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       const allDone = totalRounds === 1 ? newRound1 : newRound1 && newRound2;
       update.status = allDone ? "done" : data.status === "active" ? "active" : "waiting";
     } else {
-      // Normal mark round done — does NOT change waiting→active; only active→done
       if (round === 1) { update.round1 = true; newRound1 = true; }
       if (round === 2) { update.round2 = true; newRound2 = true; }
       const allDone = totalRounds === 1 ? newRound1 : newRound1 && newRound2;
-      // Keep existing status unless all done (then set done)
       update.status = allDone ? "done" : data.status;
     }
 
-    await docRef.update(update);
+    const db = dungeonsRef().firestore;
+    const batch = db.batch();
+    batch.update(docRef, update);
+
+    if (action === "skip") {
+      // Also update queuedAt for queue items to move them to the bottom
+      const qItemsSnap = await dungeonsRef().collection("dungeon_queue_items")
+        .where("bookingId", "==", id)
+        .where("status", "==", "WAITING")
+        .get();
+      qItemsSnap.docs.forEach(doc => {
+        batch.update(doc.ref, { queuedAt: Date.now() });
+      });
+    }
+
+    await batch.commit();
 
     // ── Audit log ──────────────────────────────────────────────
     let logDetail = "";
@@ -119,7 +129,16 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
     if (!snap.exists) return err("Queue item not found", 404);
 
     const qData = snap.data() as any;
-    await docRef.delete();
+    
+    const db = dungeonsRef().firestore;
+    const batch = db.batch();
+    batch.delete(docRef);
+    
+    // Also delete associated queue_items
+    const qItemsSnap = await dungeonsRef().collection("dungeon_queue_items").where("bookingId", "==", id).get();
+    qItemsSnap.docs.forEach(doc => batch.delete(doc.ref));
+    
+    await batch.commit();
 
     // Save audit log to database
     logAction({

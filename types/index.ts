@@ -181,4 +181,5 @@ export interface DungeonTeamResource {
   estimatedDurationSeconds: number;
   activeMembers: ActiveTeamMember[];
   completedRounds: number;
+  carriers?: string[];
 }

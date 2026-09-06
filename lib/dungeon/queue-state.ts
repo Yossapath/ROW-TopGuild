@@ -2,7 +2,7 @@ import { DungeonTeamResource, DungeonQueueItem } from "@/types";
 
 export const QUEUE_CONSTANTS = {
   MAX_TEAM_MEMBERS: 3,
-  BASE_ESTIMATED_DURATION_SECONDS: 5 * 60, // 5 minutes base time
+  BASE_ESTIMATED_DURATION_SECONDS: 10 * 60, // 10 minutes base time
 };
 
 export const createInitialTeam = (id: string, dungeon: any): DungeonTeamResource => ({
@@ -15,4 +15,5 @@ export const createInitialTeam = (id: string, dungeon: any): DungeonTeamResource
   estimatedDurationSeconds: QUEUE_CONSTANTS.BASE_ESTIMATED_DURATION_SECONDS,
   activeMembers: [],
   completedRounds: 0,
+  carriers: [],
 });

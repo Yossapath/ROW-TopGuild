@@ -10,20 +10,30 @@ export async function GET() {
     const snap = await dungeonsRef().collection("dungeon_teams").get();
     let teams: DungeonTeamResource[] = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() } as DungeonTeamResource));
 
-    // If no teams exist, let's initialize Team 1 and 2 automatically for backward compatibility
-    if (teams.length === 0) {
-      const db = dungeonsRef().firestore;
-      const batch = db.batch();
-      
-      const team1 = createInitialTeam("team-1", "ดันมายา (Maya)");
-      const team2 = createInitialTeam("team-2", "ดันมายา (Maya)");
-      
-      batch.set(dungeonsRef().collection("dungeon_teams").doc("team-1"), team1);
-      batch.set(dungeonsRef().collection("dungeon_teams").doc("team-2"), team2);
-      
-      await batch.commit();
-      teams = [team1, team2];
+    const scheduleDoc = await dungeonsRef().parent.doc("dungeon_schedule").get();
+    const carryTeamsCount = scheduleDoc.exists ? (scheduleDoc.data()?.carryTeamsCount || 1) : 1;
+
+    // Create teams if missing
+    let teamsCreated = false;
+    const batch = dungeonsRef().firestore.batch();
+    
+    for (let i = 1; i <= carryTeamsCount; i++) {
+      const teamId = `team-${i}`;
+      if (!teams.find(t => t.id === teamId)) {
+        const newTeam = createInitialTeam(teamId, "ดันมายา (Maya)");
+        batch.set(dungeonsRef().collection("dungeon_teams").doc(teamId), newTeam);
+        teams.push(newTeam as DungeonTeamResource);
+        teamsCreated = true;
+      }
     }
+
+    if (teamsCreated) {
+      await batch.commit();
+    }
+
+    // Filter to exactly carryTeamsCount
+    const validIds = Array.from({ length: carryTeamsCount }).map((_, i) => `team-${i + 1}`);
+    teams = teams.filter(t => validIds.includes(t.id));
 
     // Sort by team ID
     teams.sort((a, b) => a.id.localeCompare(b.id));

@@ -14,10 +14,18 @@ export async function POST(
 
     const teamId = params.id;
     const body = await req.json();
-    const { action } = body; // "start" | "pause" | "complete" | "assign"
+    const { action, carriers } = body; // "start" | "pause" | "complete" | "assign" | "update-carriers"
 
-    if (!["start", "pause", "complete", "assign"].includes(action)) {
+    if (!["start", "pause", "complete", "assign", "update-carriers"].includes(action)) {
       return err("Invalid action", 400);
+    }
+
+    if (action === "update-carriers") {
+      const { dungeonsRef } = require("@/lib/firebase-admin");
+      await dungeonsRef().collection("dungeon_teams").doc(teamId).update({
+        carriers: Array.isArray(carriers) ? carriers : []
+      });
+      return ok({ message: "Updated carriers" });
     }
 
     if (action === "assign") {
