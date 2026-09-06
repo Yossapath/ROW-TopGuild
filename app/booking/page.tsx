@@ -117,6 +117,14 @@ export default function BookingPage() {
     return () => clearInterval(timer);
   }, []);
 
+  // ── ค่า "เวลา" แบบอัปเดตช้า สำหรับใช้คำนวณ estimates เท่านั้น ──
+  // เดิม estimates (useMemo ด้านล่าง) ผูกกับ `now` ที่ tick ทุกวินาที ทำให้
+  // คำนวณคิว/เวลาโดยประมาณใหม่ทั้งหมดทุกวินาทีโดยไม่จำเป็น (ตัวเลขหน่วยนาที
+  // ไม่ต้องละเอียดระดับวินาที) และลาก re-render รายการคิวทั้งหมดตามไปด้วย
+  // อัปเดตค่านี้พร้อมกับรอบ fetchQueues (ทุก 15 วินาที) แทน ส่วนตัวนับถอยหลัง
+  // ของคนที่ "กำลังลง" ยังคงใช้ `now` ตรงๆ แยกต่างหากเหมือนเดิม ไม่กระทบ
+  const [estimateNow, setEstimateNow] = useState(Date.now());
+
   // ── Fetch schedule ───────────────────────────────────────────
   useEffect(() => {
     fetch("/api/dungeon/schedule")
@@ -125,14 +133,16 @@ export default function BookingPage() {
         const sched = d.data ?? d;
         if (sched) {
           setSchedule(sched);
-          if (sched.carryTeamsCount) {
+          // เดิมเช็ค if (sched.carryTeamsCount) ทำให้ค่า 0 (falsy) ถูกมองข้าม
+          // และยังคงใช้ default = 1 อยู่ดี ทั้งที่แอดมินอาจตั้งใจให้เป็น 0
+          if (typeof sched.carryTeamsCount === "number") {
             setCarryTeamsCount(sched.carryTeamsCount);
           }
-          if (sched.openDate) {
-            setBookingStatus(isBookingOpen(sched));
-          } else {
+          if (!sched.openDate) {
             setBookingStatus({ open: true });
           }
+          // ถ้ามี openDate ปล่อยให้ effect ด้านล่าง (ที่ผูกกับ `now`) เป็นคนคำนวณ
+          // สถานะเปิด/ปิดแทน จะได้อัปเดตตามเวลาจริงด้วย ไม่ใช่แค่ตอน mount ครั้งเดียว
         } else {
           // No schedule set — show as open (no time limit)
           setBookingStatus({ open: true });
@@ -140,6 +150,16 @@ export default function BookingPage() {
       })
       .catch(() => setBookingStatus({ open: false, reason: "ไม่สามารถโหลดข้อมูลได้" }));
   }, []);
+
+  // ── Re-check เวลาเปิด/ปิดจองทุกวินาที ─────────────────────────
+  // เดิมเช็ค isBookingOpen แค่ครั้งเดียวตอน fetch schedule เสร็จ ทำให้ถ้าเวลา
+  // ปิดรับจองมาถึงระหว่างที่ผู้ใช้เปิดหน้าค้างไว้ (ไม่ refresh) ปุ่ม "จองคิว"
+  // จะยังดูเหมือนกดได้อยู่ (แม้ server จะ reject ก็ตาม แต่ UX สับสน)
+  useEffect(() => {
+    if (schedule?.openDate) {
+      setBookingStatus(isBookingOpen(schedule));
+    }
+  }, [schedule, now]);
 
   // ── Fetch queue preview ──────────────────────────────────────
   function fetchQueues() {
@@ -150,6 +170,7 @@ export default function BookingPage() {
         const all: DungeonQueue[] = d.data ?? [];
         setQueues(all);
         setLastRefresh(Date.now());
+        setEstimateNow(Date.now());
       })
       .catch(() => {})
       .finally(() => setQueuesLoading(false));
@@ -234,8 +255,8 @@ export default function BookingPage() {
   const [selectedCheckName, setSelectedCheckName] = useState<string>("");
 
   const estimates = useMemo(() => {
-    return calculateDungeonEstimates(queues, new Date(now), carryTeamsCount);
-  }, [queues, carryTeamsCount, now]);
+    return calculateDungeonEstimates(queues, new Date(estimateNow), carryTeamsCount);
+  }, [queues, carryTeamsCount, estimateNow]);
 
   const inspectedName = selectedCheckName || success?.name || user?.gameUsername || "";
   const myQueueEstimate = useMemo(() => {
