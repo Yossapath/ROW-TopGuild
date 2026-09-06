@@ -14,7 +14,8 @@ export interface AssignmentResult {
 export const assignPlayersToTeam = (
   team: DungeonTeamResource,
   allQueueItems: DungeonQueueItem[],
-  previousTeamMembers?: { name: string; job: string; roundNumber: number }[]
+  previousTeamMembers?: { name: string; job: string; roundNumber: number }[],
+  rosterJobs?: Record<string, string>
 ): AssignmentResult => {
   if (team.status !== "AVAILABLE") {
     return { updatedTeam: { ...team }, updatedItems: [] };
@@ -23,16 +24,32 @@ export const assignPlayersToTeam = (
   // Filter and sort eligible waiting items
   let waitingItems = sortQueueItems(getWaitingItems(allQueueItems));
   
-  // Exclude items that are already active in another team
-  // Actually, waiting items shouldn't be active anywhere else, but let's be safe.
-  
   const newlyAssignedItems: DungeonQueueItem[] = [];
   const newActiveMembers: { queueItemId: string; name: string; job: string; roundNumber: 1 | 2 }[] = [];
   
+  // Calculate how many slots are available
+  // Max team size is 5. Subtract carriers.
+  const carrierCount = team.carriers?.length || 0;
+  const maxQueueMembers = Math.max(0, 5 - carrierCount);
+
+  // Check if carriers have a Priest
+  let hasCarrierPriest = false;
+  if (team.carriers && rosterJobs) {
+    for (const c of team.carriers) {
+      if (rosterJobs[c] === "Priest") {
+        hasCarrierPriest = true;
+        break;
+      }
+    }
+  }
+
+  let assignedPriestCount = 0;
+  const maxPriest = hasCarrierPriest ? 0 : 1;
+
   // 1. Priest Continuous Rule
-  if (previousTeamMembers && previousTeamMembers.length > 0) {
+  if (previousTeamMembers && previousTeamMembers.length > 0 && maxPriest > 0) {
     const continuousPriest = findContinuousPriest(previousTeamMembers, waitingItems);
-    if (continuousPriest) {
+    if (continuousPriest && newActiveMembers.length < maxQueueMembers) {
       newlyAssignedItems.push({ ...continuousPriest, status: "ASSIGNED", assignedTeamId: team.id });
       newActiveMembers.push({
         queueItemId: continuousPriest.id,
@@ -40,6 +57,7 @@ export const assignPlayersToTeam = (
         job: continuousPriest.job,
         roundNumber: continuousPriest.roundNumber,
       });
+      assignedPriestCount++;
       // Remove this priest from waiting list for subsequent generic assignments
       waitingItems = waitingItems.filter((item) => item.id !== continuousPriest.id);
     }
@@ -47,21 +65,30 @@ export const assignPlayersToTeam = (
 
   // 2. Fill remaining slots sequentially
   for (const item of waitingItems) {
-    if (newActiveMembers.length >= QUEUE_CONSTANTS.MAX_TEAM_MEMBERS) {
+    if (newActiveMembers.length >= maxQueueMembers) {
       break;
     }
     
     // Check if team already has this person (to prevent double assigning the same person in weird edge cases)
     const isAlreadyInTeam = newActiveMembers.some(m => m.name === item.name);
-    if (!isAlreadyInTeam) {
-      newlyAssignedItems.push({ ...item, status: "ASSIGNED", assignedTeamId: team.id });
-      newActiveMembers.push({
-        queueItemId: item.id,
-        name: item.name,
-        job: item.job,
-        roundNumber: item.roundNumber,
-      });
+    if (isAlreadyInTeam) continue;
+
+    // Check Priest limit
+    if (item.job === "Priest") {
+      if (assignedPriestCount >= maxPriest) {
+        continue; // Skip this Priest, team is full of Priests
+      } else {
+        assignedPriestCount++;
+      }
     }
+
+    newlyAssignedItems.push({ ...item, status: "ASSIGNED", assignedTeamId: team.id });
+    newActiveMembers.push({
+      queueItemId: item.id,
+      name: item.name,
+      job: item.job,
+      roundNumber: item.roundNumber,
+    });
   }
 
   const updatedTeam: DungeonTeamResource = {

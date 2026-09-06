@@ -29,12 +29,16 @@ export function isBookingOpen(schedule?: {
   carryTeamsCount?: number;
 } | null): { open: boolean; reason?: string } {
   if (!schedule) {
+    return { open: false, reason: "ระบบยังไม่เปิดให้จอง" };
+  }
+
+  const isUnlimited = !schedule.openTime && !schedule.closeTime && !schedule.openDate;
+  if (isUnlimited) {
     return { open: true };
   }
 
-  // If no date restriction is set, booking is open (no date limit)
   if (!schedule.openDate || !schedule.openDate.trim()) {
-    return { open: true };
+    return { open: false, reason: "ระบบยังไม่เปิดให้จอง" };
   }
 
   const nowBkk = new Date(
@@ -58,7 +62,7 @@ export function isBookingOpen(schedule?: {
     };
   }
 
-  // If time is not restricted, open all day
+  // If time is not restricted but date is set, open all day
   if (!schedule.openTime || !schedule.closeTime) {
     return { open: true };
   }

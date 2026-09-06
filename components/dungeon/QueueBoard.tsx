@@ -6,8 +6,9 @@ import { useState } from "react";
 import { DungeonQueueItem } from "@/types";
 import { JOB_COLORS } from "@/lib/utils";
 import { useAuthStore } from "@/stores/useAuthStore";
+import type { QueueEstimate } from "@/lib/dungeon-estimator";
 
-export function QueueBoard() {
+export function QueueBoard({ userEstimate }: { userEstimate?: QueueEstimate | null }) {
   const [search, setSearch] = useState("");
   const user = useAuthStore((s) => s.user);
   const isAdmin = user?.role === "admin" || user?.role === "owner";
@@ -41,6 +42,20 @@ export function QueueBoard() {
     }
   });
 
+  const editRoundsMutation = useMutation({
+    mutationFn: async ({ id, rounds }: { id: string; rounds: 1 | 2 }) => {
+      const res = await fetch(`/api/dungeon/queues/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "updateRounds", rounds })
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["dungeon_queue_items"] });
+    }
+  });
+
   const filteredItems = (queueItems || []).filter((q) => {
     return !search || q.name.toLowerCase().includes(search.toLowerCase());
   });
@@ -62,17 +77,23 @@ export function QueueBoard() {
         <div className="space-y-2">
           {items.map((q) => {
             const currentIdx = globalIdx++;
+            const isOwner = user?.gameUsername === q.name;
             return (
               <QueueItemCard 
                 key={q.id} 
                 q={q} 
                 idx={currentIdx} 
                 isAdmin={isAdmin}
+                isOwner={isOwner}
                 onAction={(action) => {
                   if (action === 'delete' && !confirm('แน่ใจที่จะลบคิวนี้ใช่ไหม?')) return;
                   actionMutation.mutate({ id: q.bookingId, action });
                 }}
-                isLoading={actionMutation.isPending}
+                onEditRounds={(newRounds) => {
+                  if (!confirm(`แน่ใจที่จะเปลี่ยนเป็น ${newRounds} รอบใช่ไหม?`)) return;
+                  editRoundsMutation.mutate({ id: q.bookingId, rounds: newRounds });
+                }}
+                isLoading={actionMutation.isPending || editRoundsMutation.isPending}
               />
             );
           })}
@@ -83,6 +104,33 @@ export function QueueBoard() {
 
   return (
     <div className="flex-1 min-w-0">
+      {/* User Estimate Banner */}
+      {userEstimate && userEstimate.status !== 'done' && userEstimate.status !== 'skipped' && (
+        <div className="mb-5 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 shadow-sm">
+          <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+            <div>
+              <h3 className="font-bold text-blue-900 dark:text-blue-100 flex items-center gap-2">
+                <span className="inline-block w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+                สถานะคิวของคุณ ({userEstimate.name})
+              </h3>
+              <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                {userEstimate.status === 'active' 
+                  ? "กำลังลงดันเจี้ยน" 
+                  : userEstimate.queuesAhead === 0
+                    ? "คิวต่อไป (พร้อมลงทันทีเมื่อทีมว่าง)"
+                    : `เหลืออีก ${userEstimate.queuesAhead} คิว ก่อนถึงคิวคุณ`}
+              </p>
+            </div>
+            <div className="bg-white dark:bg-[#232733] px-4 py-2 rounded-lg shadow-sm border border-blue-100 dark:border-blue-800 text-center">
+              <div className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">เวลาโดยประมาณ</div>
+              <div className="font-mono font-bold text-blue-700 dark:text-blue-400">
+                {userEstimate.status === 'active' ? "Now" : userEstimate.estimatedStartTimeText}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
         <div className="flex items-center gap-2 flex-wrap">
@@ -133,11 +181,13 @@ export function QueueBoard() {
   );
 }
 
-function QueueItemCard({ q, idx, isAdmin, onAction, isLoading }: { 
+function QueueItemCard({ q, idx, isAdmin, isOwner, onAction, onEditRounds, isLoading }: { 
   q: DungeonQueueItem; 
   idx: number; 
   isAdmin: boolean;
+  isOwner: boolean;
   onAction: (action: "delete" | "skip") => void;
+  onEditRounds: (newRounds: 1 | 2) => void;
   isLoading: boolean;
 }) {
   const jobColor = JOB_COLORS[q.job] ?? "#888";
@@ -184,10 +234,25 @@ function QueueItemCard({ q, idx, isAdmin, onAction, isLoading }: {
                   ข้าม
                 </button>
             )}
+          </div>
+        )}
+        
+        {(isAdmin || isOwner) && (
+          <div className="flex items-center gap-1 border-l border-slate-200 dark:border-slate-700 pl-2">
+            {!isAssigned && (
+               <button 
+                 onClick={() => onEditRounds(q.roundNumber === 1 ? 2 : 1)} 
+                 disabled={isLoading}
+                 className="px-2 py-1 text-xs font-bold bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600 rounded transition" 
+                 title="เปลี่ยนจำนวนรอบ"
+               >
+                 สลับเป็น {q.roundNumber === 1 ? 2 : 1} รอบ
+               </button>
+            )}
             <button 
               onClick={() => onAction("delete")} 
               disabled={isLoading}
-              className="p-1.5 text-red-500 hover:bg-red-100 rounded transition" 
+              className="p-1.5 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/40 rounded transition" 
               title="ลบคิว"
             >
               <Trash2 size={14} />

@@ -17,6 +17,10 @@ type Params = { params: { id: string } };
 //  - action อื่นๆ ทั้งหมด (startRun / skip / unskip / mark round done): แอดมินเท่านั้น
 export async function PATCH(req: NextRequest, { params }: Params) {
   try {
+    const { requireAuth } = await import("@/lib/auth");
+    const auth = await requireAuth();
+    if (auth.errorResponse) return auth.errorResponse;
+
     const { id } = params;
     const body = await req.json();
     const validation = validateBody(dungeonQueuePatchSchema, body);
@@ -29,6 +33,16 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     const docRef = dungeonsRef().collection("queues").doc(id);
     const snap = await docRef.get();
     if (!snap.exists) return err("Queue item not found", 404);
+
+    const qData = snap.data() as { name?: string };
+    
+    // Check permission
+    const isAdmin = auth.user.role === "admin" || auth.user.role === "owner";
+    if (!isAdmin) {
+      if (action !== "updateRounds" || auth.user.gameUsername !== qData.name) {
+        return err("Permission denied", 403);
+      }
+    }
 
     const data = snap.data() as {
       name?: string;
@@ -86,6 +100,32 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     const batch = db.batch();
     batch.update(docRef, update);
 
+    if (action === "updateRounds") {
+      const qItemsSnap = await dungeonsRef().collection("dungeon_queue_items").where("bookingId", "==", id).get();
+      const currentItems = qItemsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const hasRound2 = currentItems.find(i => i.roundNumber === 2);
+      
+      if (newRounds === 1 && hasRound2) {
+        // Delete round 2
+        batch.delete(dungeonsRef().collection("dungeon_queue_items").doc(hasRound2.id));
+      } else if (newRounds === 2 && !hasRound2) {
+        // Add round 2
+        const itemRef = dungeonsRef().collection("dungeon_queue_items").doc();
+        batch.set(itemRef, {
+          bookingId: id,
+          name: data.name,
+          job: data.job,
+          power: data.power || 0,
+          dungeon: data.dungeon || "ดันมายา (Maya)",
+          roundNumber: 2,
+          status: update.status === "active" ? "ASSIGNED" : "WAITING",
+          queuedAt: data.timestamp + 1,
+          assignedTeamId: null,
+          completedAt: null
+        });
+      }
+    }
+
     if (action === "skip") {
       // Also update queuedAt for queue items to move them to the bottom
       const qItemsSnap = await dungeonsRef().collection("dungeon_queue_items")
@@ -138,7 +178,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 // DELETE /api/dungeon/queues/[id]
 export async function DELETE(_req: NextRequest, { params }: Params) {
   try {
-    const auth = await requireAdmin();
+    const { requireAuth } = await import("@/lib/auth");
+    const auth = await requireAuth();
     if (auth.errorResponse) return auth.errorResponse;
 
     const { id } = params;
@@ -148,6 +189,12 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
 
     const qData = snap.data() as any;
     
+    // Check permission
+    const isAdmin = auth.user.role === "admin" || auth.user.role === "owner";
+    if (!isAdmin && auth.user.gameUsername !== qData.name) {
+      return err("Permission denied", 403);
+    }
+
     const db = dungeonsRef().firestore;
     const batch = db.batch();
     batch.delete(docRef);

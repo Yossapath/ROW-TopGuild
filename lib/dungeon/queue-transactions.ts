@@ -44,8 +44,21 @@ export const autoAssignTeamTransaction = async (
       allQueueItems.push({ id: doc.id, ...doc.data() } as DungeonQueueItem);
     });
 
+    // 2.5 Fetch Roster to know carrier jobs
+    const { rosterRef } = require("../firebase-admin");
+    const rosterSnap = await t.get(rosterRef());
+    let rosterJobs: Record<string, string> = {};
+    if (rosterSnap.exists) {
+      const rosterData = rosterSnap.data() as Record<string, { name: string }[]>;
+      for (const [job, members] of Object.entries(rosterData)) {
+        for (const m of members) {
+          rosterJobs[m.name] = job;
+        }
+      }
+    }
+
     // 3. Process Assignment Logic
-    const { updatedTeam, updatedItems } = assignPlayersToTeam(team, allQueueItems, previousTeamMembers);
+    const { updatedTeam, updatedItems } = assignPlayersToTeam(team, allQueueItems, previousTeamMembers, rosterJobs);
 
     if (updatedItems.length === 0) {
       // No one assigned

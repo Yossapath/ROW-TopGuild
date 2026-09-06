@@ -47,8 +47,9 @@ export default function DungeonPage() {
   const user = useAuthStore((s) => s.user);
   const isAdmin = user?.role === "admin" || user?.role === "owner";
 
-  // Queue state
+  const [schedule, setSchedule] = useState<DungeonSchedule | null>(null);
   const [queues, setQueues] = useState<DungeonQueue[]>([]);
+  const [teams, setTeams] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [carryTeamsCount, setCarryTeamsCount] = useState<number>(1);
 
@@ -107,10 +108,17 @@ export default function DungeonPage() {
   // ── Fetch queues ──────────────────────────────────────────
   const fetchQueues = useCallback(async () => {
     try {
-      const res = await fetch("/api/dungeon/queues");
-      const json = await res.json();
-      if (json.ok && Array.isArray(json.data)) {
-        setQueues(json.data as DungeonQueue[]);
+      const [resQ, resT] = await Promise.all([
+        fetch("/api/dungeon/queues"),
+        fetch("/api/dungeon/teams")
+      ]);
+      const jsonQ = await resQ.json();
+      if (jsonQ.ok && Array.isArray(jsonQ.data)) {
+        setQueues(jsonQ.data as DungeonQueue[]);
+      }
+      const jsonT = await resT.json();
+      if (jsonT.ok && Array.isArray(jsonT.data)) {
+        setTeams(jsonT.data);
       }
     } catch {
       /* silent */
@@ -351,7 +359,7 @@ export default function DungeonPage() {
 
   // ── Booking status ────────────────────────────────────────
   const bookingStatus = isBookingOpen(schedule);
-  const isUnlimited = !schedule.openTime && !schedule.closeTime;
+  const isUnlimited = !schedule.openTime && !schedule.closeTime && !schedule.openDate;
 
   // Collapsible panels
   const [formCollapsed, setFormCollapsed] = useState(false);
@@ -423,8 +431,25 @@ export default function DungeonPage() {
                     />
                     <div id="roster-dropdown" className="hidden absolute z-50 w-full mt-1 bg-white dark:bg-[#272C38] border border-slate-200 dark:border-[#2D3342] rounded-lg shadow-lg max-h-60 overflow-auto">
                       {rosterMembers
-                        .filter(m => !queues.some(q => (q.status === 'waiting' || q.status === 'active') && q.name === m.name))
-                        .filter(m => formName === "" || m.name.toLowerCase().includes(formName.toLowerCase()))
+                        .filter((m) => {
+                          // ไม่ให้คนแบกจองคิว
+                          const isCarrier = teams.some(t => t.carriers?.includes(m.name));
+                          if (isCarrier) return false;
+                          
+                          // ฟิลเตอร์คนที่มีคิวอยู่แล้ว (active หรือ waiting หรือ old active that is not really done)
+                          const hasActiveQueue = queues.some(
+                            (q) => {
+                               if (q.name !== m.name) return false;
+                               const r1 = q.round1 || false;
+                               const r2 = q.round2 || false;
+                               const isDone = q.rounds === 1 ? r1 : (r1 && r2);
+                               return !isDone; // If not done, they are still active
+                            }
+                          );
+                          if (hasActiveQueue) return false;
+
+                          return formName === "" || m.name.toLowerCase().includes(formName.toLowerCase());
+                        })
                         .map((m) => (
                         <div 
                           key={m.name} 
@@ -691,7 +716,7 @@ export default function DungeonPage() {
              </div>
           )}
           <TeamBoard />
-          <QueueBoard />
+          <QueueBoard userEstimate={user?.gameUsername ? estimates.estimatesByName[user.gameUsername.toLowerCase()] : null} />
         </div>
       </div>
     </div>

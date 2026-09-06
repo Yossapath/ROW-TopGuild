@@ -162,24 +162,38 @@ function TeamCard({ team, index, isAdmin, rosterMembers, onAction, isLoading }: 
       </div>
       
       {/* Carriers Section */}
-      <div className="mb-4 bg-white/40 dark:bg-black/20 p-2 rounded-lg">
+      <div className="flex flex-col gap-1.5 mb-4 px-1">
         <div className="text-xs font-bold mb-1 opacity-70">คนแบก (Carriers)</div>
-        <div className="flex flex-wrap gap-1 mb-2">
-          {(!team.carriers || team.carriers.length === 0) ? (
-            <span className="text-xs opacity-50 italic">ยังไม่มีคนแบก</span>
-          ) : (
-            team.carriers.map((c, i) => (
-              <span key={i} className="inline-flex items-center gap-1 text-xs font-bold bg-white dark:bg-[#323847] px-2 py-0.5 rounded shadow-sm">
-                {c}
-                {isAdmin && (
-                  <button onClick={() => handleRemoveCarrier(i)} className="text-red-500 hover:text-red-700"><X size={12}/></button>
-                )}
-              </span>
-            ))
-          )}
-        </div>
+        {(!team.carriers || team.carriers.length === 0) ? (
+          <div className="text-sm opacity-60 italic py-1">ยังไม่มีคนแบก...</div>
+        ) : (
+          team.carriers.map((c, i) => {
+            const rosterMember = rosterMembers.find(m => m.name === c);
+            const job = rosterMember?.job || "Unknown";
+            return (
+              <div key={i} className="flex justify-between items-center text-sm bg-white/60 dark:bg-black/20 px-2 py-1.5 rounded border border-slate-200/50 dark:border-slate-700/50">
+                <span className="font-bold flex items-center">
+                  <span className="inline-block w-2 h-2 rounded-full mr-2" style={{ backgroundColor: JOB_COLORS[job] || '#888' }} />
+                  {c}
+                </span>
+                <div className="flex items-center gap-2">
+                  <span className="opacity-70 text-xs font-medium bg-black/10 px-1.5 py-0.5 rounded">{job}</span>
+                  {isAdmin && (
+                    <button 
+                      onClick={() => handleRemoveCarrier(i)} 
+                      className="text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30 p-0.5 rounded transition-all"
+                      title="ลบคนแบกออก"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })
+        )}
         {isAdmin && (
-          <div className="flex gap-1 relative">
+          <div className="flex gap-1 relative mt-1">
             <div className="flex-1 relative">
               <input 
                 type="text" 
@@ -195,13 +209,14 @@ function TeamCard({ team, index, isAdmin, rosterMembers, onAction, isLoading }: 
                     if(dropdownState) dropdownState.style.display = "none";
                   }, 200);
                 }}
-                placeholder="เพิ่มชื่อคนแบก..." 
-                className="w-full text-xs px-2 py-1.5 rounded border border-transparent bg-white/60 dark:bg-black/30 focus:outline-none focus:bg-white dark:focus:bg-[#232733]"
+                placeholder="พิมพ์ชื่อคนแบก..." 
+                className="w-full text-xs px-2 py-1.5 rounded border border-slate-200/50 dark:border-slate-700/50 bg-white/60 dark:bg-black/20 focus:outline-none focus:bg-white dark:focus:bg-[#232733]"
                 onKeyDown={(e) => { if (e.key === 'Enter') handleAddCarrier(); }}
               />
               <div id={`carrier-dropdown-${index}`} className="hidden absolute z-50 w-full mt-1 bg-white dark:bg-[#272C38] border border-slate-200 dark:border-[#2D3342] rounded-lg shadow-lg max-h-48 overflow-auto">
                 {rosterMembers
                   .filter(m => newCarrier === "" || m.name.toLowerCase().includes(newCarrier.toLowerCase()))
+                  .filter(m => !(team.carriers || []).includes(m.name))
                   .map((m) => (
                   <div 
                     key={m.name} 
@@ -231,13 +246,13 @@ function TeamCard({ team, index, isAdmin, rosterMembers, onAction, isLoading }: 
       </div>
 
       {/* Players Section */}
-      <div className="flex flex-col gap-2 mb-4">
-        <div className="text-xs font-bold mb-0 opacity-70">ผู้เล่นในคิว (Players)</div>
+      <div className="flex flex-col gap-1.5 mb-4 px-1">
+        <div className="text-xs font-bold mb-1 opacity-70">ผู้เล่นในคิว (Players)</div>
         {team.activeMembers.length === 0 ? (
           <div className="text-sm opacity-60 italic py-1">รอการจัดคิว...</div>
         ) : (
           team.activeMembers.map((m) => (
-            <div key={m.queueItemId} className="flex justify-between items-center text-sm bg-white/40 dark:bg-black/20 px-2 py-1.5 rounded group">
+            <div key={m.queueItemId} className="flex justify-between items-center text-sm bg-white/60 dark:bg-black/20 px-2 py-1.5 rounded border border-slate-200/50 dark:border-slate-700/50">
               <span className="font-bold flex items-center">
                 <span className="inline-block w-2 h-2 rounded-full mr-2" style={{ backgroundColor: JOB_COLORS[m.job] || '#888' }} />
                 {m.name}
@@ -247,7 +262,7 @@ function TeamCard({ team, index, isAdmin, rosterMembers, onAction, isLoading }: 
                 {isAdmin && (team.status === "AVAILABLE" || team.status === "PAUSED") && (
                   <button 
                     onClick={() => onAction("eject", { queueItemId: m.queueItemId })}
-                    className="opacity-0 group-hover:opacity-100 text-red-500 hover:bg-red-100 p-0.5 rounded transition-all"
+                    className="text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30 p-0.5 rounded transition-all"
                     title="เตะออกจากทีม (กลับไปต่อคิว)"
                   >
                     <X size={14} />
