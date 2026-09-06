@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { RefreshCw, Search, Trash2, ArrowDownToLine } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { DungeonQueueItem } from "@/types";
 import { JOB_COLORS } from "@/lib/utils";
 import { useAuthStore } from "@/stores/useAuthStore";
@@ -239,31 +239,42 @@ function EditRoundsModal({
   onConfirm: (rounds: 1|2) => void; 
   currentRounds: 1|2; 
 }) {
+  // Use state to track the selection before confirming
+  const [selected, setSelected] = useState<1|2>(currentRounds);
+
+  // Sync state if currentRounds changes while open
+  useEffect(() => {
+    setSelected(currentRounds);
+  }, [currentRounds]);
+
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
       <div className="bg-white dark:bg-[#232733] rounded-xl shadow-xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200 border border-slate-200 dark:border-[#2D3342]">
         <div className="px-5 py-4 border-b border-slate-200 dark:border-[#2D3342]">
           <h3 className="font-bold text-lg text-slate-800 dark:text-white">แก้ไขจำนวนรอบ</h3>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">เลือกจำนวนรอบใหม่ที่ต้องการแก้ไข</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">เลือกรอบที่ต้องการแล้วกดยืนยัน</p>
         </div>
         <div className="p-5 flex gap-3">
           <button
-            onClick={() => onConfirm(1)}
-            className={`flex-1 py-2.5 rounded-lg border-2 font-bold transition-all ${currentRounds === 1 ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400' : 'border-slate-200 dark:border-[#2D3342] text-slate-600 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-500'}`}
+            onClick={() => setSelected(1)}
+            className={`flex-1 py-2.5 rounded-lg border-2 font-bold transition-all ${selected === 1 ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400' : 'border-slate-200 dark:border-[#2D3342] text-slate-600 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-500'}`}
           >
             1 รอบ
           </button>
           <button
-            onClick={() => onConfirm(2)}
-            className={`flex-1 py-2.5 rounded-lg border-2 font-bold transition-all ${currentRounds === 2 ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400' : 'border-slate-200 dark:border-[#2D3342] text-slate-600 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-500'}`}
+            onClick={() => setSelected(2)}
+            className={`flex-1 py-2.5 rounded-lg border-2 font-bold transition-all ${selected === 2 ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400' : 'border-slate-200 dark:border-[#2D3342] text-slate-600 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-500'}`}
           >
             2 รอบ
           </button>
         </div>
-        <div className="px-5 py-3 bg-slate-50 dark:bg-[#1E212B] flex justify-end">
+        <div className="px-5 py-3 bg-slate-50 dark:bg-[#1E212B] flex justify-end gap-2">
           <button onClick={onClose} className="px-4 py-2 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-[#2D3342] rounded-lg transition-colors">
             ยกเลิก
+          </button>
+          <button onClick={() => onConfirm(selected)} className="px-4 py-2 text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
+            ยืนยัน
           </button>
         </div>
       </div>
