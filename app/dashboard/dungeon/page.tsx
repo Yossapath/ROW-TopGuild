@@ -47,7 +47,6 @@ export default function DungeonPage() {
   const user = useAuthStore((s) => s.user);
   const isAdmin = user?.role === "admin" || user?.role === "owner";
 
-  const [schedule, setSchedule] = useState<DungeonSchedule | null>(null);
   const [queues, setQueues] = useState<DungeonQueue[]>([]);
   const [teams, setTeams] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
