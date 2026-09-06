@@ -85,6 +85,8 @@ export function QueueBoard({ userEstimate }: { userEstimate?: QueueEstimate | nu
                 const isOwner = user?.gameUsername === q.name;
                 const isDraggable = isAdmin && q.status === "WAITING";
                 
+                const hasR2 = filteredItems.some(i => i.bookingId === q.bookingId && i.roundNumber === 2);
+                
                 const card = (
                   <QueueItemCard 
                     key={q.id} 
@@ -92,12 +94,14 @@ export function QueueBoard({ userEstimate }: { userEstimate?: QueueEstimate | nu
                     idx={currentIdx} 
                     isAdmin={isAdmin}
                     isOwner={isOwner}
+                    totalRounds={hasR2 ? 2 : 1}
                     onAction={(action) => {
                       if (action === 'delete' && !confirm('แน่ใจที่จะลบคิวนี้ใช่ไหม?')) return;
                       actionMutation.mutate({ id: q.bookingId, action });
                     }}
                     onEditRounds={() => {
-                      setEditingQueueId({ id: q.bookingId, rounds: q.roundNumber });
+                      const hasR2 = filteredItems.some(i => i.bookingId === q.bookingId && i.roundNumber === 2);
+                      setEditingQueueId({ id: q.bookingId, rounds: hasR2 ? 2 : 1 });
                     }}
                     isLoading={actionMutation.isPending || editRoundsMutation.isPending}
                   />
@@ -267,11 +271,12 @@ function EditRoundsModal({
   );
 }
 
-function QueueItemCard({ q, idx, isAdmin, isOwner, onAction, onEditRounds, isLoading }: { 
+function QueueItemCard({ q, idx, isAdmin, isOwner, totalRounds, onAction, onEditRounds, isLoading }: { 
   q: DungeonQueueItem; 
   idx: number; 
   isAdmin: boolean;
   isOwner: boolean;
+  totalRounds: 1 | 2;
   onAction: (action: "delete" | "skip") => void;
   onEditRounds: () => void;
   isLoading: boolean;
@@ -297,7 +302,7 @@ function QueueItemCard({ q, idx, isAdmin, isOwner, onAction, onEditRounds, isLoa
             {q.job}
           </span>
           <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${q.roundNumber === 1 ? "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200" : "bg-purple-200 text-purple-700 dark:bg-purple-900 dark:text-purple-300"}`}>
-            รอบ {q.roundNumber}
+            {totalRounds === 2 ? `รอบ ${q.roundNumber}/2` : `รอบ ${q.roundNumber}`}
           </span>
         </div>
       </div>
