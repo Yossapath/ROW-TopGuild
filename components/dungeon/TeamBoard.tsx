@@ -94,10 +94,8 @@ function TeamCard({ team, index, isAdmin, rosterMembers, onAction, isLoading }: 
   }, []);
 
   const getStatusColor = () => {
-    if (team.status === "AVAILABLE") return "bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400 border-green-200 dark:border-green-800";
-    if (team.status === "RUNNING") return "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400 border-blue-200 dark:border-blue-800";
-    if (team.status === "PAUSED") return "bg-slate-100 text-slate-700 dark:bg-[#272C38] dark:text-slate-300 border-slate-200 dark:border-[#2D3342]"; // Changed from yellow to slate
-    return "bg-slate-100 text-slate-700 dark:bg-[#272C38] dark:text-slate-300 border-slate-200 dark:border-[#2D3342]";
+    // User requested to use default colors for all statuses (no color changes on AVAILABLE/RUNNING)
+    return "bg-white text-slate-800 dark:bg-[#232733] dark:text-white border-slate-200 dark:border-[#2D3342]";
   };
 
   const getStatusLabel = () => {
