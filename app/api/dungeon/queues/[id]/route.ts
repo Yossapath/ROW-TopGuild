@@ -51,6 +51,9 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       round1?: boolean;
       round2?: boolean;
       status: string;
+      power?: number;
+      dungeon?: string;
+      timestamp?: number;
     };
 
     if (action === "updateRounds") {
@@ -102,7 +105,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
     if (action === "updateRounds") {
       const qItemsSnap = await dungeonsRef().collection("dungeon_queue_items").where("bookingId", "==", id).get();
-      const currentItems = qItemsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const currentItems = qItemsSnap.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
       const hasRound2 = currentItems.find(i => i.roundNumber === 2);
       
       if (newRounds === 1 && hasRound2) {
@@ -119,7 +122,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
           dungeon: data.dungeon || "ดันมายา (Maya)",
           roundNumber: 2,
           status: update.status === "active" ? "ASSIGNED" : "WAITING",
-          queuedAt: data.timestamp + 1,
+          queuedAt: (data.timestamp || Date.now()) + 1,
           assignedTeamId: null,
           completedAt: null
         });

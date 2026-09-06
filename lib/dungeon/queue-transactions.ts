@@ -1,5 +1,5 @@
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
-import { dungeonsRef } from "../firebase-admin";
+import { dungeonsRef, rosterRef } from "../firebase-admin";
 import { DungeonTeamResource, DungeonQueueItem } from "@/types";
 import { assignPlayersToTeam } from "./queue-engine";
 
@@ -45,7 +45,6 @@ export const autoAssignTeamTransaction = async (
     });
 
     // 2.5 Fetch Roster to know carrier jobs
-    const { rosterRef } = require("../firebase-admin");
     const rosterSnap = await t.get(rosterRef());
     let rosterJobs: Record<string, string> = {};
     if (rosterSnap.exists) {
