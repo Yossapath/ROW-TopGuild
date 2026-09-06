@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://row-topguild.vercel.app";
 
 export const metadata: Metadata = {
-  title: "เข้าสู่ระบบ | TopGuild",
+  title: "เข้าสู่ระบบ",
   description: "ระบบจัดการกิลด์ TopGuild เข้าสู่ระบบสำหรับสมาชิกและผู้ดูแล",
   openGraph: {
     title: "เข้าสู่ระบบ | TopGuild",

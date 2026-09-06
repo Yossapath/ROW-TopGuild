@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://row-topguild.vercel.app";
 
 export const metadata: Metadata = {
-  title: "จองคิวดันเจี้ยน | TopGuild",
+  title: "จองคิวดันเจี้ยน",
   description: "ระบบจองคิวดันเจี้ยนกิลด์ ตรวจสอบสถานะ คิวที่กำลังลง และเวลาประมาณการ Real-time",
   openGraph: {
     title: "จองคิวดันเจี้ยน | TopGuild",
