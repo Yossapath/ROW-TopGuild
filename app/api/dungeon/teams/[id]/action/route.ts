@@ -14,15 +14,28 @@ export async function POST(
 
     const teamId = params.id;
     const body = await req.json();
-    const { action, carriers, queueItemId } = body; // "start" | "pause" | "complete" | "assign" | "update-carriers" | "eject"
+    const { action, carriers, queueItemId } = body;
 
-    if (!["start", "pause", "complete", "assign", "update-carriers", "eject"].includes(action)) {
+    if (!["start", "pause", "complete", "assign", "manual-assign", "update-carriers", "eject"].includes(action)) {
       return err("Invalid action", 400);
     }
 
     if (action === "eject" && queueItemId) {
       const { team } = await ejectMemberTransaction(teamId, queueItemId);
       return ok({ message: "Ejected player", data: team });
+    }
+
+    if (action === "manual-assign" && queueItemId) {
+      const { manualAssignTeamTransaction } = require("@/lib/dungeon/queue-transactions");
+      const { team } = await manualAssignTeamTransaction(teamId, queueItemId);
+      logAction({
+        module: "DUNGEON_TEAM",
+        action: "MANUAL_ASSIGN",
+        actor: auth.user.discordUsername,
+        target: teamId,
+        detail: `Manually assigned player to ${teamId}`,
+      });
+      return ok({ message: "Manually assigned player", data: team });
     }
 
     if (action === "update-carriers") {

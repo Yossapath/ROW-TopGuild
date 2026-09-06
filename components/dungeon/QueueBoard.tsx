@@ -8,6 +8,8 @@ import { JOB_COLORS } from "@/lib/utils";
 import { useAuthStore } from "@/stores/useAuthStore";
 import type { QueueEstimate } from "@/lib/dungeon-estimator";
 
+import { Droppable, Draggable } from "@hello-pangea/dnd";
+
 export function QueueBoard({ userEstimate }: { userEstimate?: QueueEstimate | null }) {
   const [search, setSearch] = useState("");
   const user = useAuthStore((s) => s.user);
@@ -74,30 +76,57 @@ export function QueueBoard({ userEstimate }: { userEstimate?: QueueEstimate | nu
     return (
       <div className="mb-4 last:mb-0">
         <div className={`text-xs font-bold ${titleColorCls} mb-2 px-1`}>{title} ({items.length})</div>
-        <div className="space-y-2">
-          {items.map((q) => {
-            const currentIdx = globalIdx++;
-            const isOwner = user?.gameUsername === q.name;
-            return (
-              <QueueItemCard 
-                key={q.id} 
-                q={q} 
-                idx={currentIdx} 
-                isAdmin={isAdmin}
-                isOwner={isOwner}
-                onAction={(action) => {
-                  if (action === 'delete' && !confirm('แน่ใจที่จะลบคิวนี้ใช่ไหม?')) return;
-                  actionMutation.mutate({ id: q.bookingId, action });
-                }}
-                onEditRounds={(newRounds) => {
-                  if (!confirm(`แน่ใจที่จะเปลี่ยนเป็น ${newRounds} รอบใช่ไหม?`)) return;
-                  editRoundsMutation.mutate({ id: q.bookingId, rounds: newRounds });
-                }}
-                isLoading={actionMutation.isPending || editRoundsMutation.isPending}
-              />
-            );
-          })}
-        </div>
+        <Droppable droppableId={`queue_group_${title.replace(/\s+/g, '')}`} isDropDisabled={true}>
+          {(provided) => (
+            <div className="space-y-2" ref={provided.innerRef} {...provided.droppableProps}>
+              {items.map((q) => {
+                const currentIdx = globalIdx++;
+                const isOwner = user?.gameUsername === q.name;
+                const isDraggable = isAdmin && q.status === "WAITING";
+                
+                const card = (
+                  <QueueItemCard 
+                    key={q.id} 
+                    q={q} 
+                    idx={currentIdx} 
+                    isAdmin={isAdmin}
+                    isOwner={isOwner}
+                    onAction={(action) => {
+                      if (action === 'delete' && !confirm('แน่ใจที่จะลบคิวนี้ใช่ไหม?')) return;
+                      actionMutation.mutate({ id: q.bookingId, action });
+                    }}
+                    onEditRounds={(newRounds) => {
+                      if (!confirm(`ยืนยันการแก้ไขเป็น ${newRounds} รอบ? (กดยกเลิกเพื่อยกเลิกการแก้ไข)`)) return;
+                      editRoundsMutation.mutate({ id: q.bookingId, rounds: newRounds });
+                    }}
+                    isLoading={actionMutation.isPending || editRoundsMutation.isPending}
+                  />
+                );
+
+                if (!isDraggable) return card;
+
+                return (
+                  <Draggable key={q.id} draggableId={q.id} index={currentIdx}>
+                    {(provided, snapshot) => (
+                      <div
+                        ref={provided.innerRef}
+                        {...provided.draggableProps}
+                        {...provided.dragHandleProps}
+                        style={{
+                          ...provided.draggableProps.style,
+                          opacity: snapshot.isDragging ? 0.8 : 1,
+                        }}
+                      >
+                        {card}
+                      </div>
+                    )}
+                  </Draggable>
+                );
+              })}
+              {provided.placeholder}
+            </div>
+          )}
+        </Droppable>
       </div>
     );
   };
@@ -244,9 +273,9 @@ function QueueItemCard({ q, idx, isAdmin, isOwner, onAction, onEditRounds, isLoa
                  onClick={() => onEditRounds(q.roundNumber === 1 ? 2 : 1)} 
                  disabled={isLoading}
                  className="px-2 py-1 text-xs font-bold bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600 rounded transition" 
-                 title="เปลี่ยนจำนวนรอบ"
+                 title="แก้ไขจำนวนรอบ"
                >
-                 สลับเป็น {q.roundNumber === 1 ? 2 : 1} รอบ
+                 แก้ไขรอบ
                </button>
             )}
             <button 

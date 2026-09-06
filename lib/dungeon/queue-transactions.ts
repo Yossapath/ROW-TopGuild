@@ -259,3 +259,66 @@ export const ejectMemberTransaction = async (
     return { team: { ...team, activeMembers: updatedMembers } as DungeonTeamResource };
   });
 };
+
+/**
+ * Transaction to manually assign a specific player to a team
+ */
+export const manualAssignTeamTransaction = async (
+  teamId: string,
+  queueItemId: string
+): Promise<{ team: DungeonTeamResource }> => {
+  const db = getFirestore();
+  const dRef = dungeonsRef();
+
+  return await db.runTransaction(async (t) => {
+    const teamRef = dRef.collection("dungeon_teams").doc(teamId);
+    const teamSnap = await t.get(teamRef);
+
+    if (!teamSnap.exists) {
+      throw new Error(`Team ${teamId} does not exist`);
+    }
+
+    const team = teamSnap.data() as DungeonTeamResource;
+    
+    // Check if team is full (max 5 minus carriers)
+    const carrierCount = team.carriers?.length || 0;
+    if (team.activeMembers.length >= (5 - carrierCount)) {
+      throw new Error("Team is already full");
+    }
+
+    const itemRef = dRef.collection("dungeon_queue_items").doc(queueItemId);
+    const itemSnap = await t.get(itemRef);
+
+    if (!itemSnap.exists) {
+      throw new Error("Queue item does not exist");
+    }
+
+    const item = itemSnap.data() as DungeonQueueItem;
+    
+    if (item.status !== "WAITING") {
+      throw new Error(`Cannot assign item with status ${item.status}`);
+    }
+
+    // Check if player is already in team
+    if (team.activeMembers.some(m => m.queueItemId === queueItemId)) {
+      return { team };
+    }
+
+    // Update team
+    const updatedMembers = [...team.activeMembers, {
+      queueItemId: item.id || queueItemId,
+      name: item.name,
+      job: item.job,
+      roundNumber: item.roundNumber,
+    }];
+    t.update(teamRef, { activeMembers: updatedMembers });
+
+    // Update queue item
+    t.update(itemRef, {
+      status: "ASSIGNED",
+      assignedTeamId: teamId,
+    });
+
+    return { team: { ...team, activeMembers: updatedMembers } as DungeonTeamResource };
+  });
+};

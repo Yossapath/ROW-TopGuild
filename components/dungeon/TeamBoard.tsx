@@ -6,6 +6,7 @@ import { DungeonTeamResource } from "@/types";
 import { JOB_COLORS } from "@/lib/utils";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useEffect, useState, useMemo } from "react";
+import { Droppable } from "@hello-pangea/dnd";
 
 export function TeamBoard() {
   const queryClient = useQueryClient();
@@ -248,30 +249,41 @@ function TeamCard({ team, index, isAdmin, rosterMembers, onAction, isLoading }: 
       {/* Players Section */}
       <div className="flex flex-col gap-1.5 mb-4 px-1">
         <div className="text-xs font-bold mb-1 opacity-70">ผู้เล่นในคิว (Players)</div>
-        {team.activeMembers.length === 0 ? (
-          <div className="text-sm opacity-60 italic py-1">รอการจัดคิว...</div>
-        ) : (
-          team.activeMembers.map((m) => (
-            <div key={m.queueItemId} className="flex justify-between items-center text-sm bg-white/60 dark:bg-black/20 px-2 py-1.5 rounded border border-slate-200/50 dark:border-slate-700/50">
-              <span className="font-bold flex items-center">
-                <span className="inline-block w-2 h-2 rounded-full mr-2" style={{ backgroundColor: JOB_COLORS[m.job] || '#888' }} />
-                {m.name}
-              </span>
-              <div className="flex items-center gap-2">
-                <span className="opacity-70 text-xs font-medium bg-black/10 px-1.5 py-0.5 rounded">รอบ {m.roundNumber} ({m.job})</span>
-                {isAdmin && (team.status === "AVAILABLE" || team.status === "PAUSED") && (
-                  <button 
-                    onClick={() => onAction("eject", { queueItemId: m.queueItemId })}
-                    className="text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30 p-0.5 rounded transition-all"
-                    title="เตะออกจากทีม (กลับไปต่อคิว)"
-                  >
-                    <X size={14} />
-                  </button>
-                )}
-              </div>
+        <Droppable droppableId={`team_${team.id}`}>
+          {(provided, snapshot) => (
+            <div 
+              ref={provided.innerRef} 
+              {...provided.droppableProps}
+              className={`min-h-[40px] rounded-lg transition-colors ${snapshot.isDraggingOver ? 'bg-blue-100/50 dark:bg-blue-900/30' : ''}`}
+            >
+              {team.activeMembers.length === 0 ? (
+                <div className="text-sm opacity-60 italic py-1">รอการจัดคิว...</div>
+              ) : (
+                team.activeMembers.map((m) => (
+                  <div key={m.queueItemId} className="flex justify-between items-center text-sm bg-white/60 dark:bg-black/20 px-2 py-1.5 rounded border border-slate-200/50 dark:border-slate-700/50 mb-1.5 last:mb-0">
+                    <span className="font-bold flex items-center">
+                      <span className="inline-block w-2 h-2 rounded-full mr-2" style={{ backgroundColor: JOB_COLORS[m.job] || '#888' }} />
+                      {m.name}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="opacity-70 text-xs font-medium bg-black/10 px-1.5 py-0.5 rounded">รอบ {m.roundNumber} ({m.job})</span>
+                      {isAdmin && (team.status === "AVAILABLE" || team.status === "PAUSED") && (
+                        <button 
+                          onClick={() => onAction("eject", { queueItemId: m.queueItemId })}
+                          className="text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30 p-0.5 rounded transition-all"
+                          title="เตะออกจากทีม (กลับไปต่อคิว)"
+                        >
+                          <X size={14} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+              {provided.placeholder}
             </div>
-          ))
-        )}
+          )}
+        </Droppable>
       </div>
 
       <div className="flex items-center justify-between mt-auto">

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
+import { useQueryClient, useMutation } from "@tanstack/react-query";
 import {
   Swords,
   ListPlus,
@@ -18,6 +19,7 @@ import {
   Play,
   AlertCircle,
 } from "lucide-react";
+import { DragDropContext, DropResult } from "@hello-pangea/dnd";
 import { useAuthStore } from "@/stores/useAuthStore";
 import {
   JOB_COLORS,
@@ -46,6 +48,31 @@ const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
 export default function DungeonPage() {
   const user = useAuthStore((s) => s.user);
   const isAdmin = user?.role === "admin" || user?.role === "owner";
+  const queryClient = useQueryClient();
+
+  const assignMutation = useMutation({
+    mutationFn: async ({ teamId, queueItemId }: { teamId: string; queueItemId: string }) => {
+      const res = await fetch(`/api/dungeon/teams/${teamId}/action`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "manual-assign", queueItemId }),
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["dungeon_teams"] });
+      queryClient.invalidateQueries({ queryKey: ["dungeon_queue_items"] });
+    },
+  });
+
+  const onDragEnd = (result: DropResult) => {
+    if (!result.destination) return;
+    if (result.source.droppableId.startsWith("queue_group_") && result.destination.droppableId.startsWith("team_")) {
+      const teamId = result.destination.droppableId.replace("team_", "");
+      const queueItemId = result.draggableId;
+      assignMutation.mutate({ teamId, queueItemId });
+    }
+  };
 
   const [queues, setQueues] = useState<DungeonQueue[]>([]);
   const [teams, setTeams] = useState<any[]>([]);
@@ -705,18 +732,20 @@ export default function DungeonPage() {
         {/* ═══════════════════════════════════════════════════
             RIGHT PANEL — Team & Queue List
         ═══════════════════════════════════════════════════ */}
-        <div className="flex-1 min-w-0 relative">
-          {/* Global Loading State for Right Panel */}
-          {loading && (
-             <div className="absolute inset-0 bg-white/50 dark:bg-black/50 z-50 flex items-center justify-center rounded-2xl backdrop-blur-[1px]">
-               <div className="bg-white dark:bg-[#272C38] px-4 py-2 rounded-lg shadow border border-slate-200 dark:border-[#2D3342] flex items-center gap-2 font-medium text-sm text-[#3B66D1]">
-                 <RefreshCw className="animate-spin" size={16} /> กำลังโหลด...
+        <DragDropContext onDragEnd={onDragEnd}>
+          <div className="flex-1 min-w-0 relative">
+            {/* Global Loading State for Right Panel */}
+            {loading && (
+               <div className="absolute inset-0 bg-white/50 dark:bg-black/50 z-50 flex items-center justify-center rounded-2xl backdrop-blur-[1px]">
+                 <div className="bg-white dark:bg-[#272C38] px-4 py-2 rounded-lg shadow border border-slate-200 dark:border-[#2D3342] flex items-center gap-2 font-medium text-sm text-[#3B66D1]">
+                   <RefreshCw className="animate-spin" size={16} /> กำลังโหลด...
+                 </div>
                </div>
-             </div>
-          )}
-          <TeamBoard />
-          <QueueBoard userEstimate={user?.gameUsername ? estimates.estimatesByName[user.gameUsername.toLowerCase()] : null} />
-        </div>
+            )}
+            <TeamBoard />
+            <QueueBoard userEstimate={user?.gameUsername ? estimates.estimatesByName[user.gameUsername.toLowerCase()] : null} />
+          </div>
+        </DragDropContext>
       </div>
     </div>
   );
