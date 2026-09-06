@@ -316,7 +316,7 @@ export default function DungeonPage() {
     setSchedSaving(true);
     setSchedMsg(null);
     try {
-      const body: DungeonSchedule = { openDate: "", openTime: "", closeTime: "", carryTeamsCount };
+      const body: DungeonSchedule = { openDate: "", openTime: "06:00", closeTime: "23:59", carryTeamsCount };
       const res = await fetch("/api/dungeon/schedule", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
