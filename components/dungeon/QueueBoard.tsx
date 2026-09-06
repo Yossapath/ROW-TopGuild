@@ -175,14 +175,14 @@ function QueueItemCard({ q, idx, isAdmin, onAction, isLoading }: {
         {isAdmin && (
           <div className="flex items-center gap-1">
             {!isAssigned && (
-              <button 
-                onClick={() => onAction("skip")} 
-                disabled={isLoading}
-                className="p-1.5 text-amber-600 hover:bg-amber-100 rounded transition" 
-                title="ดันรายชื่อไปต่อท้ายสุด (ข้ามคิว)"
-              >
-                <ArrowDownToLine size={14} />
-              </button>
+                <button 
+                  onClick={() => onAction("skip")} 
+                  disabled={isLoading}
+                  className="px-2 py-1 text-xs font-bold bg-amber-100 text-amber-700 hover:bg-amber-200 rounded transition" 
+                  title="ดันรายชื่อไปต่อท้ายสุด (ข้ามคิว)"
+                >
+                  ข้าม
+                </button>
             )}
             <button 
               onClick={() => onAction("delete")} 

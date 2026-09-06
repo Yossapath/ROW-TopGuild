@@ -83,6 +83,7 @@ export default function DungeonPage() {
   const [schedClose, setSchedClose] = useState("23:59");
   const [schedUnlimited, setSchedUnlimited] = useState(false);
   const [schedSaving, setSchedSaving] = useState(false);
+  const [carrySaving, setCarrySaving] = useState(false);
   const [schedMsg, setSchedMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
   // Roster autocomplete
@@ -142,14 +143,19 @@ export default function DungeonPage() {
   const updateCarryTeamsCount = async (count: number) => {
     const validCount = Math.max(1, count);
     setCarryTeamsCount(validCount);
+    setCarrySaving(true);
     try {
       await fetch("/api/dungeon/schedule", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ carryTeamsCount: validCount }),
       });
+      // also refetch teams so they are instantly created
+      await fetch("/api/dungeon/teams");
     } catch {
       /* silent */
+    } finally {
+      setCarrySaving(false);
     }
   };
 
@@ -520,7 +526,7 @@ export default function DungeonPage() {
               <button
                 type="button"
                 onClick={() => setSchedCollapsed(c => !c)}
-                className="w-full px-5 py-4 border-b border-slate-200 dark:border-[#2D3342] flex items-center justify-between hover:bg-[#e5edf5] dark:hover:bg-[#2A2F3E] transition-colors"
+                className="w-full px-5 py-4 flex items-center justify-between hover:bg-[#e5edf5] dark:hover:bg-[#2A2F3E] transition-colors"
               >
                 <div className="flex items-center gap-2">
                   <Clock size={16} className="text-[#0b3d63] dark:text-white" />
@@ -529,7 +535,7 @@ export default function DungeonPage() {
                 <span className="text-[#0b3d63] dark:text-white text-lg">{schedCollapsed ? "▸" : "▾"}</span>
               </button>
 
-              {!schedCollapsed && <div className="p-5 flex flex-col gap-3">
+              {!schedCollapsed && <div className="px-5 pb-5 flex flex-col gap-3">
                 {/* Open date */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 dark:text-white mb-1">
@@ -581,48 +587,14 @@ export default function DungeonPage() {
                   <span className="text-xs text-slate-600 dark:text-white">เปิดจองไม่จำกัดเวลา</span>
                 </label>
 
-                {/* Carry Teams setting */}
-                <div className="pt-2 border-t border-slate-200 dark:border-[#2D3342]">
-                  <label className="block text-xs font-semibold text-slate-600 dark:text-white mb-1.5 flex items-center justify-between">
-                    <span>จำนวนทีมแบก (Carry Teams)</span>
-                    <span className="text-[#3B66D1] dark:text-[#82A0F5] font-bold">{carryTeamsCount} ทีม</span>
-                  </label>
-                  <div className="grid grid-cols-4 gap-1.5 mb-2">
-                    {[1, 2, 3, 4].map((num) => (
-                      <button
-                        key={num}
-                        type="button"
-                        onClick={() => updateCarryTeamsCount(num)}
-                        className={`py-1.5 text-xs font-bold rounded-lg border transition-all ${
-                          carryTeamsCount === num
-                            ? "bg-[#0b3d63] dark:bg-[#3B66D1] text-white border-transparent shadow-xs"
-                            : "bg-white dark:bg-[#272C38] text-slate-700 dark:text-slate-300 border-slate-200 dark:border-[#2D3342] hover:bg-slate-50 dark:hover:bg-[#2F3547]"
-                        }`}
-                      >
-                        {num} ทีม
-                      </button>
-                    ))}
-                  </div>
-                  <div className="bg-blue-50/80 dark:bg-[#202636] border border-blue-100 dark:border-[#2D3342] rounded-lg p-2 text-[11px] text-slate-600 dark:text-slate-300">
-                    <p className="font-semibold text-blue-800 dark:text-[#82A0F5]">
-                      กำลังแบก: {carryTeamsCount} ทีม (~11-12 นาที/รอบ)
-                    </p>
-                    <p className="text-[10px] text-slate-500 dark:text-[#8B93A7] mt-0.5">
-                      • พระ {carryTeamsCount * 1} คน/รอบ (ทีมละ 1)
-                      {" • "}
-                      อาชีพอื่น {carryTeamsCount * 2} คน/รอบ (ทีมละ 2)
-                    </p>
-                  </div>
-                </div>
-
                 {/* Save button */}
                 <button
                   onClick={handleSaveSchedule}
                   disabled={schedSaving}
                   className="flex items-center justify-center gap-2 bg-[#3B66D1] hover:bg-[#4D73CD] text-white rounded-lg py-2 text-sm font-semibold transition-colors disabled:opacity-50 mt-1"
                 >
-                  <CheckCircle size={14} />
-                  {schedSaving ? "กำลังบันทึก…" : "บันทึกตั้งค่า"}
+                  {schedSaving ? <RefreshCw size={14} className="animate-spin" /> : <CheckCircle size={14} />}
+                  {schedSaving ? "กำลังบันทึก…" : "บันทึกตั้งค่าเวลา"}
                 </button>
 
                 {/* Schedule message */}
@@ -654,12 +626,64 @@ export default function DungeonPage() {
               </div>}
             </div>
           )}
+
+          {/* Carry Teams Card (admin/owner only) */}
+          {isAdmin && (
+            <div className="bg-[#eef3f8] dark:bg-[#232733] rounded-2xl border border-slate-200 dark:border-[#2D3342] overflow-hidden">
+              <div className="px-5 py-4 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Shield size={16} className="text-[#0b3d63] dark:text-white" />
+                  <h3 className="font-bold text-sm text-[#0b3d63] dark:text-white flex items-center gap-2">
+                    ตั้งค่าจำนวนทีมแบก
+                    {carrySaving && <RefreshCw size={12} className="animate-spin text-[#3B66D1]" />}
+                  </h3>
+                </div>
+                <span className="text-[#3B66D1] dark:text-[#82A0F5] font-bold text-sm">{carryTeamsCount} ทีม</span>
+              </div>
+              <div className="px-5 pb-5 flex flex-col gap-3">
+                <div className="grid grid-cols-4 gap-1.5 mb-1">
+                  {[1, 2, 3, 4].map((num) => (
+                    <button
+                      key={num}
+                      type="button"
+                      onClick={() => updateCarryTeamsCount(num)}
+                      className={`py-2 text-xs font-bold rounded-lg border transition-all ${
+                        carryTeamsCount === num
+                          ? "bg-[#0b3d63] dark:bg-[#3B66D1] text-white border-transparent shadow-xs"
+                          : "bg-white dark:bg-[#272C38] text-slate-700 dark:text-slate-300 border-slate-200 dark:border-[#2D3342] hover:bg-slate-50 dark:hover:bg-[#2F3547]"
+                      }`}
+                    >
+                      {num}
+                    </button>
+                  ))}
+                </div>
+                <div className="bg-blue-50/80 dark:bg-[#202636] border border-blue-100 dark:border-[#2D3342] rounded-lg p-2.5 text-[11px] text-slate-600 dark:text-slate-300">
+                  <p className="font-semibold text-blue-800 dark:text-[#82A0F5] mb-1">
+                    รองรับผู้เล่นจากคิว:
+                  </p>
+                  <p className="text-[11px] text-slate-600 dark:text-[#8B93A7]">
+                    • พระ {carryTeamsCount * 1} คน / รอบ
+                    <br/>
+                    • อาชีพอื่น {carryTeamsCount * 2} คน / รอบ
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* ═══════════════════════════════════════════════════
             RIGHT PANEL — Team & Queue List
         ═══════════════════════════════════════════════════ */}
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 relative">
+          {/* Global Loading State for Right Panel */}
+          {loading && (
+             <div className="absolute inset-0 bg-white/50 dark:bg-black/50 z-50 flex items-center justify-center rounded-2xl backdrop-blur-[1px]">
+               <div className="bg-white dark:bg-[#272C38] px-4 py-2 rounded-lg shadow border border-slate-200 dark:border-[#2D3342] flex items-center gap-2 font-medium text-sm text-[#3B66D1]">
+                 <RefreshCw className="animate-spin" size={16} /> กำลังโหลด...
+               </div>
+             </div>
+          )}
           <TeamBoard />
           <QueueBoard />
         </div>

@@ -146,6 +146,7 @@ export const teamControlTransaction = async (
         team.activeMembers.map(member => t.get(queueItemsRef.doc(member.queueItemId)))
       );
 
+      const queueDocSnaps = new Map<string, any>();
       for (const itemSnap of itemSnaps) {
         if (itemSnap.exists) {
           const itemData = itemSnap.data() as DungeonQueueItem;
@@ -153,6 +154,11 @@ export const teamControlTransaction = async (
           if (itemData.roundNumber === 1) current.r1 = true;
           if (itemData.roundNumber === 2) current.r2 = true;
           bookingsToUpdate.set(itemData.bookingId, current);
+
+          if (!queueDocSnaps.has(itemData.bookingId)) {
+             const qDoc = await t.get(dRef.collection("queues").doc(itemData.bookingId));
+             if (qDoc.exists) queueDocSnaps.set(itemData.bookingId, qDoc.data());
+          }
         }
       }
 
@@ -168,12 +174,21 @@ export const teamControlTransaction = async (
       }
 
       const queuesRef = dRef.collection("queues");
-      const entries = Array.from(bookingsToUpdate.entries());
-      for (const [bookingId, rounds] of entries) {
+      for (const [bookingId, rounds] of Array.from(bookingsToUpdate.entries())) {
         const queueDocRef = queuesRef.doc(bookingId);
+        const qData = queueDocSnaps.get(bookingId);
+        
         const updates: any = {};
-        if (rounds.r1) updates.round1 = true;
-        if (rounds.r2) updates.round2 = true;
+        let r1 = qData?.round1 || false;
+        let r2 = qData?.round2 || false;
+        
+        if (rounds.r1) { updates.round1 = true; r1 = true; }
+        if (rounds.r2) { updates.round2 = true; r2 = true; }
+        
+        const totalRounds = qData?.rounds || 1;
+        const allDone = (totalRounds === 1) ? r1 : (r1 && r2);
+        
+        updates.status = allDone ? "done" : "active";
         t.update(queueDocRef, updates);
       }
 
