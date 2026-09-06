@@ -130,7 +130,8 @@ export default function DungeonPage() {
         setSchedDate(s.openDate ?? "");
         setSchedOpen(s.openTime ?? "06:00");
         setSchedClose(s.closeTime ?? "23:59");
-        if (s.carryTeamsCount) {
+        // เดิมเช็ค if (s.carryTeamsCount) ทำให้ค่า 0 (falsy) ถูกมองข้าม เหมือนบั๊กเดียวกับหน้า booking
+        if (typeof s.carryTeamsCount === "number") {
           setCarryTeamsCount(s.carryTeamsCount);
         }
       }
@@ -327,10 +328,15 @@ export default function DungeonPage() {
   const handleDelete = async (queueId: string) => {
     if (!confirm("ลบรายการนี้ออกจากคิว?")) return;
     try {
-      await fetch(`/api/dungeon/queues/${queueId}`, { method: "DELETE" });
-      fetchQueues();
+      const res = await fetch(`/api/dungeon/queues/${queueId}`, { method: "DELETE" });
+      const json = await res.json();
+      if (json.ok) {
+        fetchQueues();
+      } else {
+        alert(json.error ?? "ลบไม่สำเร็จ กรุณาลองใหม่");
+      }
     } catch {
-      /* silent */
+      alert("ไม่สามารถเชื่อมต่อได้ กรุณาลองใหม่");
     }
   };
 
