@@ -1,6 +1,6 @@
 import { requireAdmin } from "@/lib/auth";
 import { ok, err, handleServerError, logAction } from "@/lib/server-utils";
-import { teamControlTransaction, autoAssignTeamTransaction } from "@/lib/dungeon/queue-transactions";
+import { teamControlTransaction, autoAssignTeamTransaction, ejectMemberTransaction } from "@/lib/dungeon/queue-transactions";
 
 export const dynamic = "force-dynamic";
 
@@ -14,10 +14,15 @@ export async function POST(
 
     const teamId = params.id;
     const body = await req.json();
-    const { action, carriers } = body; // "start" | "pause" | "complete" | "assign" | "update-carriers"
+    const { action, carriers, queueItemId } = body; // "start" | "pause" | "complete" | "assign" | "update-carriers" | "eject"
 
-    if (!["start", "pause", "complete", "assign", "update-carriers"].includes(action)) {
+    if (!["start", "pause", "complete", "assign", "update-carriers", "eject"].includes(action)) {
       return err("Invalid action", 400);
+    }
+
+    if (action === "eject" && queueItemId) {
+      const { team } = await ejectMemberTransaction(teamId, queueItemId);
+      return ok({ message: "Ejected player", data: team });
     }
 
     if (action === "update-carriers") {

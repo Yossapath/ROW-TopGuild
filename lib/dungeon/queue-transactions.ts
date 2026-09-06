@@ -137,20 +137,16 @@ export const teamControlTransaction = async (
         completedRounds: team.completedRounds + 1,
       };
       
-      t.update(teamRef, updates);
-
       // Update the assigned queue items to COMPLETED
       const queueItemsRef = dRef.collection("dungeon_queue_items");
       const bookingsToUpdate = new Map<string, { r1?: boolean; r2?: boolean }>();
 
-      for (const member of team.activeMembers) {
-        const itemRef = queueItemsRef.doc(member.queueItemId);
-        t.update(itemRef, {
-          status: "COMPLETED",
-          completedAt: now,
-        });
+      // First, perform all reads (t.get)
+      const itemSnaps = await Promise.all(
+        team.activeMembers.map(member => t.get(queueItemsRef.doc(member.queueItemId)))
+      );
 
-        const itemSnap = await t.get(itemRef);
+      for (const itemSnap of itemSnaps) {
         if (itemSnap.exists) {
           const itemData = itemSnap.data() as DungeonQueueItem;
           const current = bookingsToUpdate.get(itemData.bookingId) || {};
@@ -158,6 +154,17 @@ export const teamControlTransaction = async (
           if (itemData.roundNumber === 2) current.r2 = true;
           bookingsToUpdate.set(itemData.bookingId, current);
         }
+      }
+
+      // Then, perform all writes (t.update)
+      t.update(teamRef, updates);
+
+      for (const member of team.activeMembers) {
+        const itemRef = queueItemsRef.doc(member.queueItemId);
+        t.update(itemRef, {
+          status: "COMPLETED",
+          completedAt: now,
+        });
       }
 
       const queuesRef = dRef.collection("queues");
@@ -173,6 +180,55 @@ export const teamControlTransaction = async (
       return { team: { ...team, ...updates } as DungeonTeamResource, previousMembers };
     }
 
+    if (action === "eject") {
+      // Not used here, implemented below
+      throw new Error("Invalid action for this transaction");
+    }
+
     throw new Error("Invalid action");
+  });
+};
+
+/**
+ * Transaction to eject a specific player from a team back to the queue
+ */
+export const ejectMemberTransaction = async (
+  teamId: string,
+  queueItemId: string
+): Promise<{ team: DungeonTeamResource }> => {
+  const db = getFirestore();
+  const dRef = dungeonsRef();
+
+  return await db.runTransaction(async (t) => {
+    const teamRef = dRef.collection("dungeon_teams").doc(teamId);
+    const teamSnap = await t.get(teamRef);
+
+    if (!teamSnap.exists) {
+      throw new Error(`Team ${teamId} does not exist`);
+    }
+
+    const team = teamSnap.data() as DungeonTeamResource;
+    
+    // Find the member
+    const memberIndex = team.activeMembers.findIndex(m => m.queueItemId === queueItemId);
+    if (memberIndex === -1) {
+      // Member not in team, maybe already ejected. Just return current team.
+      return { team };
+    }
+
+    // Update team
+    const updatedMembers = [...team.activeMembers];
+    updatedMembers.splice(memberIndex, 1);
+    t.update(teamRef, { activeMembers: updatedMembers });
+
+    // Update queue item
+    const itemRef = dRef.collection("dungeon_queue_items").doc(queueItemId);
+    t.update(itemRef, {
+      status: "WAITING",
+      assignedTeamId: null,
+      queuedAt: Date.now(), // Put them at the end of the line? Or keep original? The user asked to just remove them from team. It's safer to use Date.now() so they don't instantly get re-assigned if we auto-assign again, giving admin time to skip/delete them.
+    });
+
+    return { team: { ...team, activeMembers: updatedMembers } as DungeonTeamResource };
   });
 };

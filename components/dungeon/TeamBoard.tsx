@@ -5,7 +5,7 @@ import { Play, Pause, CheckCircle, RefreshCw, Users, Shield, Plus, X } from "luc
 import { DungeonTeamResource } from "@/types";
 import { JOB_COLORS } from "@/lib/utils";
 import { useAuthStore } from "@/stores/useAuthStore";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 
 export function TeamBoard() {
   const queryClient = useQueryClient();
@@ -37,6 +37,26 @@ export function TeamBoard() {
     },
   });
 
+  const { data: rosterData } = useQuery({
+    queryKey: ["roster"],
+    queryFn: async () => {
+      const res = await fetch("/api/roster");
+      const json = await res.json();
+      return json.data;
+    }
+  });
+
+  const rosterMembers = useMemo(() => {
+    if (!rosterData) return [];
+    const members: {name: string, job: string}[] = [];
+    for (const [job, arr] of Object.entries(rosterData as Record<string, { name: string }[]>)) {
+      for (const m of arr) {
+        members.push({ name: m.name, job });
+      }
+    }
+    return members;
+  }, [rosterData]);
+
   if (isLoading) return <div className="text-center py-4"><RefreshCw className="animate-spin inline mr-2" /> โหลดข้อมูลทีม...</div>;
   if (!teams || teams.length === 0) return null;
 
@@ -48,6 +68,7 @@ export function TeamBoard() {
           team={team} 
           index={idx + 1} 
           isAdmin={isAdmin}
+          rosterMembers={rosterMembers}
           onAction={(action, payload) => actionMutation.mutate({ teamId: team.id, action, payload })}
           isLoading={actionMutation.isPending}
         />
@@ -56,10 +77,11 @@ export function TeamBoard() {
   );
 }
 
-function TeamCard({ team, index, isAdmin, onAction, isLoading }: { 
+function TeamCard({ team, index, isAdmin, rosterMembers, onAction, isLoading }: { 
   team: DungeonTeamResource; 
   index: number; 
   isAdmin: boolean;
+  rosterMembers: {name: string, job: string}[];
   onAction: (action: string, payload?: any) => void;
   isLoading: boolean;
 }) {
@@ -159,15 +181,46 @@ function TeamCard({ team, index, isAdmin, onAction, isLoading }: {
           )}
         </div>
         {isAdmin && (
-          <div className="flex gap-1">
-            <input 
-              type="text" 
-              value={newCarrier}
-              onChange={(e) => setNewCarrier(e.target.value)}
-              placeholder="เพิ่มชื่อคนแบก..." 
-              className="text-xs px-2 py-1 flex-1 rounded border border-transparent bg-white/60 dark:bg-black/30 focus:outline-none focus:bg-white dark:focus:bg-[#232733]"
-              onKeyDown={(e) => { if (e.key === 'Enter') handleAddCarrier(); }}
-            />
+          <div className="flex gap-1 relative">
+            <div className="flex-1 relative">
+              <input 
+                type="text" 
+                value={newCarrier}
+                onChange={(e) => setNewCarrier(e.target.value)}
+                onFocus={() => {
+                  const dropdownState = document.getElementById(`carrier-dropdown-${index}`);
+                  if(dropdownState) dropdownState.style.display = "block";
+                }}
+                onBlur={() => {
+                  setTimeout(() => {
+                    const dropdownState = document.getElementById(`carrier-dropdown-${index}`);
+                    if(dropdownState) dropdownState.style.display = "none";
+                  }, 200);
+                }}
+                placeholder="เพิ่มชื่อคนแบก..." 
+                className="w-full text-xs px-2 py-1.5 rounded border border-transparent bg-white/60 dark:bg-black/30 focus:outline-none focus:bg-white dark:focus:bg-[#232733]"
+                onKeyDown={(e) => { if (e.key === 'Enter') handleAddCarrier(); }}
+              />
+              <div id={`carrier-dropdown-${index}`} className="hidden absolute z-50 w-full mt-1 bg-white dark:bg-[#272C38] border border-slate-200 dark:border-[#2D3342] rounded-lg shadow-lg max-h-48 overflow-auto">
+                {rosterMembers
+                  .filter(m => newCarrier === "" || m.name.toLowerCase().includes(newCarrier.toLowerCase()))
+                  .map((m) => (
+                  <div 
+                    key={m.name} 
+                    className="px-3 py-1.5 text-xs cursor-pointer hover:bg-slate-100 dark:hover:bg-[#323847] text-slate-800 dark:text-white flex items-center justify-between"
+                    onClick={() => {
+                      setNewCarrier(m.name);
+                    }}
+                  >
+                    <span className="font-medium">{m.name}</span>
+                    <span className="opacity-60 flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ backgroundColor: JOB_COLORS[m.job] || '#888' }} />
+                      {m.job}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
             <button 
               onClick={handleAddCarrier}
               disabled={isLoading || !newCarrier.trim()}
@@ -186,12 +239,23 @@ function TeamCard({ team, index, isAdmin, onAction, isLoading }: {
           <div className="text-sm opacity-60 italic py-1">รอการจัดคิว...</div>
         ) : (
           team.activeMembers.map((m) => (
-            <div key={m.queueItemId} className="flex justify-between items-center text-sm bg-white/40 dark:bg-black/20 px-2 py-1.5 rounded">
+            <div key={m.queueItemId} className="flex justify-between items-center text-sm bg-white/40 dark:bg-black/20 px-2 py-1.5 rounded group">
               <span className="font-bold flex items-center">
                 <span className="inline-block w-2 h-2 rounded-full mr-2" style={{ backgroundColor: JOB_COLORS[m.job] || '#888' }} />
                 {m.name}
               </span>
-              <span className="opacity-70 text-xs font-medium bg-black/10 px-1.5 py-0.5 rounded">รอบ {m.roundNumber} ({m.job})</span>
+              <div className="flex items-center gap-2">
+                <span className="opacity-70 text-xs font-medium bg-black/10 px-1.5 py-0.5 rounded">รอบ {m.roundNumber} ({m.job})</span>
+                {isAdmin && (team.status === "AVAILABLE" || team.status === "PAUSED") && (
+                  <button 
+                    onClick={() => onAction("eject", { queueItemId: m.queueItemId })}
+                    className="opacity-0 group-hover:opacity-100 text-red-500 hover:bg-red-100 p-0.5 rounded transition-all"
+                    title="เตะออกจากทีม (กลับไปต่อคิว)"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
             </div>
           ))
         )}

@@ -13,21 +13,30 @@ export async function GET() {
     const scheduleDoc = await dungeonsRef().parent.doc("dungeon_schedule").get();
     const carryTeamsCount = scheduleDoc.exists ? (scheduleDoc.data()?.carryTeamsCount || 1) : 1;
 
-    // Create teams if missing
-    let teamsCreated = false;
+    // Create teams if missing or fix existing durations
+    let needsUpdate = false;
     const batch = dungeonsRef().firestore.batch();
     
     for (let i = 1; i <= carryTeamsCount; i++) {
       const teamId = `team-${i}`;
-      if (!teams.find(t => t.id === teamId)) {
+      const existingTeam = teams.find(t => t.id === teamId);
+      
+      if (!existingTeam) {
         const newTeam = createInitialTeam(teamId, "ดันมายา (Maya)");
         batch.set(dungeonsRef().collection("dungeon_teams").doc(teamId), newTeam);
         teams.push(newTeam as DungeonTeamResource);
-        teamsCreated = true;
+        needsUpdate = true;
+      } else if (existingTeam.estimatedDurationSeconds !== 600) {
+        // Enforce 10 minutes (600s) for existing teams
+        batch.update(dungeonsRef().collection("dungeon_teams").doc(teamId), {
+          estimatedDurationSeconds: 600
+        });
+        existingTeam.estimatedDurationSeconds = 600;
+        needsUpdate = true;
       }
     }
 
-    if (teamsCreated) {
+    if (needsUpdate) {
       await batch.commit();
     }
 
