@@ -9,8 +9,10 @@ const prompt = Prompt({
   variable: "--font-prompt",
 });
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://row-topguild.vercel.app";
+
 export const metadata: Metadata = {
-  metadataBase: new URL("https://rowtopguild.vercel.app"),
+  metadataBase: new URL(siteUrl),
   title: {
     default: "TopGuild - ระบบข้อมูลกิลด์",
     template: "%s | TopGuild",
@@ -21,7 +23,7 @@ export const metadata: Metadata = {
     title: "TopGuild - ระบบข้อมูลกิลด์",
     description:
       "ระบบจัดการสมาชิกกิลด์ จัดทีมสนามหลัก-สนามรอง จองคิวดันเจี้ยน และเชื่อมต่อฐานข้อมูล Firebase Real-time",
-    url: "https://rowtopguild.vercel.app",
+    url: siteUrl,
     siteName: "TopGuild",
     images: [
       {
@@ -29,6 +31,7 @@ export const metadata: Metadata = {
         width: 1200,
         height: 630,
         alt: "TopGuild Banner",
+        type: "image/png",
       },
     ],
     locale: "th_TH",
