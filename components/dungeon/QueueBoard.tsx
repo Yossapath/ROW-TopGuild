@@ -12,6 +12,7 @@ import { Droppable, Draggable } from "@hello-pangea/dnd";
 
 export function QueueBoard({ userEstimate }: { userEstimate?: QueueEstimate | null }) {
   const [search, setSearch] = useState("");
+  const [editingQueueId, setEditingQueueId] = useState<{ id: string; rounds: 1|2 } | null>(null);
   const user = useAuthStore((s) => s.user);
   const isAdmin = user?.role === "admin" || user?.role === "owner";
   const queryClient = useQueryClient();
@@ -95,9 +96,8 @@ export function QueueBoard({ userEstimate }: { userEstimate?: QueueEstimate | nu
                       if (action === 'delete' && !confirm('แน่ใจที่จะลบคิวนี้ใช่ไหม?')) return;
                       actionMutation.mutate({ id: q.bookingId, action });
                     }}
-                    onEditRounds={(newRounds) => {
-                      if (!confirm(`ยืนยันการแก้ไขเป็น ${newRounds} รอบ? (กดยกเลิกเพื่อยกเลิกการแก้ไข)`)) return;
-                      editRoundsMutation.mutate({ id: q.bookingId, rounds: newRounds });
+                    onEditRounds={() => {
+                      setEditingQueueId({ id: q.bookingId, rounds: q.roundNumber });
                     }}
                     isLoading={actionMutation.isPending || editRoundsMutation.isPending}
                   />
@@ -206,6 +206,63 @@ export function QueueBoard({ userEstimate }: { userEstimate?: QueueEstimate | nu
           </div>
         )}
       </div>
+
+      {editingQueueId && (
+        <EditRoundsModal
+          isOpen={!!editingQueueId}
+          currentRounds={editingQueueId.rounds}
+          onClose={() => setEditingQueueId(null)}
+          onConfirm={(newRounds) => {
+            if (newRounds !== editingQueueId.rounds) {
+               editRoundsMutation.mutate({ id: editingQueueId.id, rounds: newRounds });
+            }
+            setEditingQueueId(null);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function EditRoundsModal({ 
+  isOpen, 
+  onClose, 
+  onConfirm, 
+  currentRounds 
+}: { 
+  isOpen: boolean; 
+  onClose: () => void; 
+  onConfirm: (rounds: 1|2) => void; 
+  currentRounds: 1|2; 
+}) {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
+      <div className="bg-white dark:bg-[#232733] rounded-xl shadow-xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200 border border-slate-200 dark:border-[#2D3342]">
+        <div className="px-5 py-4 border-b border-slate-200 dark:border-[#2D3342]">
+          <h3 className="font-bold text-lg text-slate-800 dark:text-white">แก้ไขจำนวนรอบ</h3>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">เลือกจำนวนรอบใหม่ที่ต้องการแก้ไข</p>
+        </div>
+        <div className="p-5 flex gap-3">
+          <button
+            onClick={() => onConfirm(1)}
+            className={`flex-1 py-2.5 rounded-lg border-2 font-bold transition-all ${currentRounds === 1 ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400' : 'border-slate-200 dark:border-[#2D3342] text-slate-600 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-500'}`}
+          >
+            1 รอบ
+          </button>
+          <button
+            onClick={() => onConfirm(2)}
+            className={`flex-1 py-2.5 rounded-lg border-2 font-bold transition-all ${currentRounds === 2 ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400' : 'border-slate-200 dark:border-[#2D3342] text-slate-600 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-500'}`}
+          >
+            2 รอบ
+          </button>
+        </div>
+        <div className="px-5 py-3 bg-slate-50 dark:bg-[#1E212B] flex justify-end">
+          <button onClick={onClose} className="px-4 py-2 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-[#2D3342] rounded-lg transition-colors">
+            ยกเลิก
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -216,7 +273,7 @@ function QueueItemCard({ q, idx, isAdmin, isOwner, onAction, onEditRounds, isLoa
   isAdmin: boolean;
   isOwner: boolean;
   onAction: (action: "delete" | "skip") => void;
-  onEditRounds: (newRounds: 1 | 2) => void;
+  onEditRounds: () => void;
   isLoading: boolean;
 }) {
   const jobColor = JOB_COLORS[q.job] ?? "#888";
@@ -270,7 +327,7 @@ function QueueItemCard({ q, idx, isAdmin, isOwner, onAction, onEditRounds, isLoa
           <div className="flex items-center gap-1 border-l border-slate-200 dark:border-slate-700 pl-2">
             {!isAssigned && (
                <button 
-                 onClick={() => onEditRounds(q.roundNumber === 1 ? 2 : 1)} 
+                 onClick={() => onEditRounds()} 
                  disabled={isLoading}
                  className="px-2 py-1 text-xs font-bold bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600 rounded transition" 
                  title="แก้ไขจำนวนรอบ"
