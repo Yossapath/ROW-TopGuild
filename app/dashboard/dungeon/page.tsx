@@ -311,6 +311,35 @@ export default function DungeonPage() {
     }
   };
 
+  const handleCloseBooking = async () => {
+    if (!confirm("แน่ใจที่จะปิดจองดันเจี้ยนใช่ไหม? (ข้อมูลเวลาจะถูกล้าง)")) return;
+    setSchedSaving(true);
+    setSchedMsg(null);
+    try {
+      const body: DungeonSchedule = { openDate: "", openTime: "", closeTime: "", carryTeamsCount };
+      const res = await fetch("/api/dungeon/schedule", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const json = await res.json();
+      if (json.ok) {
+        setSchedule(body);
+        setSchedDate("");
+        setSchedOpen("06:00");
+        setSchedClose("23:59");
+        setSchedUnlimited(false);
+        setSchedMsg({ type: "ok", text: "ปิดจองสำเร็จ" });
+      } else {
+        setSchedMsg({ type: "err", text: json.error ?? "เกิดข้อผิดพลาด" });
+      }
+    } catch {
+      setSchedMsg({ type: "err", text: "ไม่สามารถเชื่อมต่อได้" });
+    } finally {
+      setSchedSaving(false);
+    }
+  };
+
   // ── Mark round done ───────────────────────────────────────
   const handleRound = async (queueId: string, round: 1 | 2) => {
     try {
@@ -645,14 +674,24 @@ export default function DungeonPage() {
                 </label>
 
                 {/* Save button */}
-                <button
-                  onClick={handleSaveSchedule}
-                  disabled={schedSaving}
-                  className="flex items-center justify-center gap-2 bg-[#3B66D1] hover:bg-[#4D73CD] text-white rounded-lg py-2 text-sm font-semibold transition-colors disabled:opacity-50 mt-1"
-                >
-                  {schedSaving ? <RefreshCw size={14} className="animate-spin" /> : <CheckCircle size={14} />}
-                  {schedSaving ? "กำลังบันทึก…" : "บันทึกตั้งค่าเวลา"}
-                </button>
+                <div className="flex flex-col gap-2 mt-1">
+                  <button
+                    onClick={handleSaveSchedule}
+                    disabled={schedSaving}
+                    className="flex items-center justify-center gap-2 bg-[#3B66D1] hover:bg-[#4D73CD] text-white rounded-lg py-2 text-sm font-semibold transition-colors disabled:opacity-50"
+                  >
+                    {schedSaving ? <RefreshCw size={14} className="animate-spin" /> : <CheckCircle size={14} />}
+                    {schedSaving ? "กำลังบันทึก…" : "บันทึกตั้งค่าเวลา"}
+                  </button>
+
+                  <button
+                    onClick={handleCloseBooking}
+                    disabled={schedSaving}
+                    className="flex items-center justify-center gap-2 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg py-2 text-sm font-semibold transition-colors disabled:opacity-50"
+                  >
+                    ปิดจองดันเจี้ยน
+                  </button>
+                </div>
 
                 {/* Schedule message */}
                 {schedMsg && (
