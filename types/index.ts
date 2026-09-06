@@ -143,3 +143,42 @@ export interface ApiResponse<T = unknown> {
   data?: T;
   error?: string;
 }
+
+// ── Automated Dungeon Queue Engine ───────────────────────────
+
+export type QueueItemStatus = "WAITING" | "ASSIGNED" | "COMPLETED" | "SKIPPED";
+
+export interface DungeonQueueItem {
+  id: string;
+  bookingId: string;
+  name: string;
+  job: string;
+  power: number;
+  dungeon: DungeonType;
+  roundNumber: 1 | 2;
+  status: QueueItemStatus;
+  queuedAt: number;
+  assignedTeamId: string | null;
+  completedAt: number | null;
+}
+
+export type TeamStatus = "AVAILABLE" | "RUNNING" | "PAUSED";
+
+export interface ActiveTeamMember {
+  queueItemId: string;
+  name: string;
+  job: string;
+  roundNumber: 1 | 2;
+}
+
+export interface DungeonTeamResource {
+  id: string;
+  dungeon: DungeonType;
+  status: TeamStatus;
+  startedAt: number | null;
+  pausedAt: number | null;
+  pausedDuration: number;
+  estimatedDurationSeconds: number;
+  activeMembers: ActiveTeamMember[];
+  completedRounds: number;
+}

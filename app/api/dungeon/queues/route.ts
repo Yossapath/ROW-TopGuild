@@ -51,6 +51,7 @@ export async function POST(req: Request) {
     }
 
     // 3. บันทึกข้อมูลคิว
+    const timestamp = Date.now();
     const newQueue = {
       name: validData.name,
       job: validData.job,
@@ -60,10 +61,35 @@ export async function POST(req: Request) {
       rounds: validData.rounds,
       round1: false,
       round2: false,
-      timestamp: Date.now(),
+      timestamp,
     };
 
-    const docRef = await dungeonsRef().collection("queues").add(newQueue);
+    const db = dungeonsRef().firestore;
+    const batch = db.batch();
+    
+    // Create Main Booking Doc
+    const bookingRef = dungeonsRef().collection("queues").doc();
+    batch.set(bookingRef, newQueue);
+
+    // Create Queue Item Docs (1 per round)
+    const queueItemsRef = dungeonsRef().collection("dungeon_queue_items");
+    for (let i = 1; i <= validData.rounds; i++) {
+      const itemRef = queueItemsRef.doc();
+      batch.set(itemRef, {
+        bookingId: bookingRef.id,
+        name: validData.name,
+        job: validData.job,
+        power: Number(validData.power) || 0,
+        dungeon: validData.dungeon,
+        roundNumber: i,
+        status: "WAITING",
+        queuedAt: timestamp + (i - 1), // R2 is technically queued right after R1
+        assignedTeamId: null,
+        completedAt: null
+      });
+    }
+
+    await batch.commit();
 
     // Save audit log to database
     logAction({
@@ -75,7 +101,7 @@ export async function POST(req: Request) {
       extra: { name: validData.name, job: validData.job, dungeon: validData.dungeon, rounds: validData.rounds },
     });
 
-    return ok({ id: docRef.id, ...newQueue });
+    return ok({ id: bookingRef.id, ...newQueue });
   } catch (e: unknown) {
     return handleServerError(e, "Failed to book dungeon queue");
   }
