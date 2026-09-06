@@ -3,13 +3,18 @@ export const dynamic = "force-dynamic";
 import { NextRequest } from "next/server";
 import { ok, err, handleServerError, logAction } from "@/lib/server-utils";
 import { dungeonsRef } from "@/lib/firebase-admin";
-import { requireAdmin } from "@/lib/auth";
+import { requireAuth, requireAdmin } from "@/lib/auth";
 import { dungeonQueuePatchSchema, validateBody } from "@/lib/validations";
 
 type Params = { params: { id: string } };
 
 // PATCH /api/dungeon/queues/[id]
 // Body: { round: 1 | 2 } or { action: "updateRounds"|"skip"|"unskip"|"startRun", rounds?: 1|2 }
+//
+// เดิม endpoint นี้ไม่มีการเช็คสิทธิ์เลยแม้แต่ requireAuth ทำให้ยิงตรงมา
+// ข้าม/เริ่มรัน/มาร์กเสร็จคิวของคนอื่นได้โดยไม่ต้อง login เลย ตอนนี้แยกสิทธิ์เป็น:
+//  - "updateRounds": เจ้าของคิวเอง (คนที่ login แล้วชื่อใน token ตรงกับคิวนั้น) แก้ได้
+//  - action อื่นๆ ทั้งหมด (startRun / skip / unskip / mark round done): แอดมินเท่านั้น
 export async function PATCH(req: NextRequest, { params }: Params) {
   try {
     const { id } = params;
@@ -33,6 +38,19 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       round2?: boolean;
       status: string;
     };
+
+    if (action === "updateRounds") {
+      // สมาชิกแก้ไขจำนวนรอบของคิว "ตัวเอง" ได้ ต้อง login และชื่อต้องตรงกับคิว
+      const auth = await requireAuth();
+      if (auth.errorResponse) return auth.errorResponse;
+      if (!auth.user.gameUsername || auth.user.gameUsername.trim() !== (data.name ?? "").trim()) {
+        return err("คุณไม่มีสิทธิ์แก้ไขคิวนี้", 403);
+      }
+    } else {
+      // startRun / skip / unskip / mark round done — แอดมินเท่านั้น
+      const auth = await requireAdmin();
+      if (auth.errorResponse) return auth.errorResponse;
+    }
 
     const update: Record<string, unknown> = {};
 
