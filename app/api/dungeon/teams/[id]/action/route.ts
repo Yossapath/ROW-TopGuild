@@ -6,13 +6,13 @@ export const dynamic = "force-dynamic";
 
 export async function POST(
   req: Request,
-  { params }: { params: { teamId: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
     const auth = await requireAdmin();
     if (auth.errorResponse) return auth.errorResponse;
 
-    const { teamId } = params;
+    const teamId = params.id;
     const body = await req.json();
     const { action } = body; // "start" | "pause" | "complete" | "assign"
 
