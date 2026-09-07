@@ -196,9 +196,12 @@ export default function BookingPage() {
       if (res.ok) {
         setSuccess((prev) => (prev ? { ...prev, rounds: newRounds } : prev));
         fetchQueues();
+      } else {
+        const data = await res.json();
+        alert(data.error || "ไม่สามารถแก้ไขจำนวนรอบได้");
       }
     } catch {
-      /* silent */
+      alert("เกิดข้อผิดพลาดในการเชื่อมต่อ");
     }
   }
 

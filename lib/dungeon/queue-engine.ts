@@ -25,7 +25,7 @@ export const assignPlayersToTeam = (
   let waitingItems = sortQueueItems(getWaitingItems(allQueueItems));
   
   const newlyAssignedItems: DungeonQueueItem[] = [];
-  const newActiveMembers: { queueItemId: string; name: string; job: string; roundNumber: 1 | 2 }[] = [];
+  const newActiveMembers: { queueItemId: string; name: string; job: string; roundNumber: 1 | 2 }[] = [...team.activeMembers];
   
   // Calculate how many slots are available
   // Max team size is 5. Subtract carriers.
@@ -43,7 +43,7 @@ export const assignPlayersToTeam = (
     }
   }
 
-  let assignedPriestCount = 0;
+  let assignedPriestCount = team.activeMembers.filter(m => m.job === "Priest").length;
   const maxPriest = hasCarrierPriest ? 0 : 1;
 
   // 1. Priest Continuous Rule
@@ -89,6 +89,10 @@ export const assignPlayersToTeam = (
       job: item.job,
       roundNumber: item.roundNumber,
     });
+  }
+
+  if (maxPriest > 0 && assignedPriestCount === 0) {
+    throw new Error("ทีมขาดพระ ต้องการพระ priest");
   }
 
   const updatedTeam: DungeonTeamResource = {

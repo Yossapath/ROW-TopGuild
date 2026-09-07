@@ -304,6 +304,26 @@ export const manualAssignTeamTransaction = async (
       return { team };
     }
 
+    // Check for Priest requirement
+    const rosterSnap = await t.get(rosterRef());
+    let rosterJobs: Record<string, string> = {};
+    if (rosterSnap.exists) {
+      const rosterData = rosterSnap.data() as Record<string, { name: string }[]>;
+      for (const [job, members] of Object.entries(rosterData)) {
+        for (const m of members) {
+          rosterJobs[m.name] = job;
+        }
+      }
+    }
+
+    const carrierHasPriest = (team.carriers || []).some(c => rosterJobs[c] === "Priest");
+    const activeMembersHasPriest = team.activeMembers.some(m => m.job === "Priest");
+    const incomingIsPriest = item.job === "Priest";
+
+    if (!carrierHasPriest && !activeMembersHasPriest && !incomingIsPriest) {
+      throw new Error("ทีมขาดพระ ต้องการพระ priest");
+    }
+
     // Update team
     const updatedMembers = [...team.activeMembers, {
       queueItemId: item.id || queueItemId,

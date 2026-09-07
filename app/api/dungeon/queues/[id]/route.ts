@@ -57,10 +57,11 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     };
 
     if (action === "updateRounds") {
-      // สมาชิกแก้ไขจำนวนรอบของคิว "ตัวเอง" ได้ ต้อง login และชื่อต้องตรงกับคิว
+      // สมาชิกแก้ไขจำนวนรอบของคิว "ตัวเอง" ได้ หรือแอดมินก็แก้ได้
       const auth = await requireAuth();
       if (auth.errorResponse) return auth.errorResponse;
-      if (!auth.user.gameUsername || auth.user.gameUsername.trim() !== (data.name ?? "").trim()) {
+      const isAdminCheck = auth.user.role === "admin" || auth.user.role === "owner";
+      if (!isAdminCheck && (!auth.user.gameUsername || auth.user.gameUsername.trim() !== (data.name ?? "").trim())) {
         return err("คุณไม่มีสิทธิ์แก้ไขคิวนี้", 403);
       }
     } else {

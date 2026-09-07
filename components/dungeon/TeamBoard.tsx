@@ -30,12 +30,19 @@ export function TeamBoard() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action, ...payload }),
       });
-      return res.json();
+      const json = await res.json();
+      if (!json.ok) {
+        throw new Error(json.error || "เกิดข้อผิดพลาด");
+      }
+      return json;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["dungeon_teams"] });
       queryClient.invalidateQueries({ queryKey: ["dungeon_queue_items"] });
     },
+    onError: (err: any) => {
+      alert(err.message);
+    }
   });
 
   const { data: rosterData } = useQuery({

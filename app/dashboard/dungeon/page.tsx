@@ -57,12 +57,19 @@ export default function DungeonPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "manual-assign", queueItemId }),
       });
-      return res.json();
+      const json = await res.json();
+      if (!json.ok) {
+        throw new Error(json.error || "เกิดข้อผิดพลาดในการดึงข้อมูล");
+      }
+      return json;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["dungeon_teams"] });
       queryClient.invalidateQueries({ queryKey: ["dungeon_queue_items"] });
     },
+    onError: (err: any) => {
+      alert(err.message);
+    }
   });
 
   const onDragEnd = (result: DropResult) => {
