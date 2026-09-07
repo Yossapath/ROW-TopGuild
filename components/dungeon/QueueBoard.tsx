@@ -80,7 +80,7 @@ export function QueueBoard({ userEstimate }: { userEstimate?: QueueEstimate | nu
         <Droppable droppableId={`queue_group_${title.replace(/\s+/g, '')}`} isDropDisabled={true}>
           {(provided) => (
             <div className="space-y-2" ref={provided.innerRef} {...provided.droppableProps}>
-              {items.map((q) => {
+              {items.map((q, localIdx) => {
                 const currentIdx = globalIdx++;
                 const isOwner = user?.gameUsername === q.name;
                 const isDraggable = isAdmin && q.status === "WAITING";
@@ -105,12 +105,8 @@ export function QueueBoard({ userEstimate }: { userEstimate?: QueueEstimate | nu
                     }}
                     isLoading={actionMutation.isPending || editRoundsMutation.isPending}
                   />
-                );
-
-                if (!isDraggable) return card;
-
                 return (
-                  <Draggable key={q.id} draggableId={q.id} index={currentIdx}>
+                  <Draggable key={q.id} draggableId={q.id} index={localIdx} isDragDisabled={!isDraggable}>
                     {(provided, snapshot) => (
                       <div
                         ref={provided.innerRef}
@@ -118,7 +114,7 @@ export function QueueBoard({ userEstimate }: { userEstimate?: QueueEstimate | nu
                         {...provided.dragHandleProps}
                         style={{
                           ...provided.draggableProps.style,
-                          opacity: snapshot.isDragging ? 0.8 : 1,
+                          opacity: snapshot.isDragging ? 0.8 : (isDraggable ? 1 : 0.9),
                         }}
                       >
                         {card}
