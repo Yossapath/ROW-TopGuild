@@ -105,6 +105,8 @@ export function QueueBoard({ userEstimate }: { userEstimate?: QueueEstimate | nu
                     }}
                     isLoading={actionMutation.isPending || editRoundsMutation.isPending}
                   />
+                );
+
                 return (
                   <Draggable key={q.id} draggableId={q.id} index={localIdx} isDragDisabled={!isDraggable}>
                     {(provided, snapshot) => (
