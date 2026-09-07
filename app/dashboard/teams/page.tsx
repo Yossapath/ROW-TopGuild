@@ -429,9 +429,12 @@ export default function TeamsPage() {
     }
 
     if (source.droppableId === "unassigned" && destination.droppableId === "unassigned") {
+      const realSourceIdx = newData.columns["unassigned"].memberIds.indexOf(draggableId);
       const newMemberIds = Array.from(newData.columns["unassigned"].memberIds);
-      newMemberIds.splice(source.index, 1);
-      newMemberIds.splice(destination.index, 0, draggableId);
+      if (realSourceIdx !== -1) {
+        newMemberIds.splice(realSourceIdx, 1);
+        newMemberIds.splice(destination.index, 0, draggableId);
+      }
       newData.columns["unassigned"].memberIds = newMemberIds;
       setData(newData);
       return;
@@ -449,12 +452,15 @@ export default function TeamsPage() {
     if (!isDestUnassigned && newData.columns[destColId].locked) return;
 
     if (isSourceUnassigned && !isDestUnassigned) {
-      const memberToMove = newData.columns["unassigned"].memberIds[source.index];
+      const memberToMove = draggableId;
+      const realSourceIdx = newData.columns["unassigned"].memberIds.indexOf(draggableId);
       const memberAtDest = newData.columns[destColId].memberIds[destSlotIdx];
       
-      newData.columns["unassigned"].memberIds.splice(source.index, 1);
-      if (memberAtDest) {
-         newData.columns["unassigned"].memberIds.splice(source.index, 0, memberAtDest);
+      if (realSourceIdx !== -1) {
+        newData.columns["unassigned"].memberIds.splice(realSourceIdx, 1);
+        if (memberAtDest) {
+           newData.columns["unassigned"].memberIds.splice(realSourceIdx, 0, memberAtDest);
+        }
       }
       newData.columns[destColId].memberIds[destSlotIdx] = memberToMove;
     } else if (!isSourceUnassigned && isDestUnassigned) {
