@@ -62,7 +62,25 @@ const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
 };
 
 export default function BookingPage() {
-  const user = useAuthStore(s => s.user);
+  const { user, setUser } = useAuthStore(s => ({ user: s.user, setUser: s.setUser }));
+  const [isAuthChecking, setIsAuthChecking] = useState(true);
+
+  // Restore session on mount if user is null
+  useEffect(() => {
+    if (!user) {
+      fetch("/api/auth/me")
+        .then(res => res.json())
+        .then(data => {
+          if (data.ok && data.data) {
+            setUser(data.data);
+          }
+        })
+        .catch(() => {})
+        .finally(() => setIsAuthChecking(false));
+    } else {
+      setIsAuthChecking(false);
+    }
+  }, [user, setUser]);
 
   // Schedule / open state
   const [schedule, setSchedule] = useState<DungeonSchedule | null>(null);
@@ -419,6 +437,11 @@ export default function BookingPage() {
                 </div>
               );
             })()
+          ) : isAuthChecking ? (
+            <div className="text-center py-12 flex flex-col items-center justify-center space-y-3">
+              <div className="w-8 h-8 border-4 border-blue-200 border-t-[#3B66D1] rounded-full animate-spin"></div>
+              <p className="text-sm font-bold text-slate-500">กำลังตรวจสอบข้อมูล...</p>
+            </div>
           ) : !user ? (
             <div className="text-center py-10 space-y-4">
               <Users size={48} className="mx-auto text-slate-300 dark:text-slate-600" />
