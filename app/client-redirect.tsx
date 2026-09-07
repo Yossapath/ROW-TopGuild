@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/stores/useAuthStore";
 import Link from "next/link";
@@ -8,15 +8,31 @@ import { Shield, Swords, LogIn } from "lucide-react";
 
 export default function ClientRedirect() {
   const router = useRouter();
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, setUser } = useAuthStore();
+  const [checking, setChecking] = useState(true);
 
   useEffect(() => {
     if (isAuthenticated) {
       router.replace("/dashboard/roster");
     } else {
-      router.replace("/login");
+      fetch("/api/auth/me")
+        .then(res => res.json())
+        .then(data => {
+          if (data.ok && data.data) {
+            setUser(data.data);
+            router.replace("/dashboard/roster");
+          } else {
+            router.replace("/login");
+          }
+        })
+        .catch(() => {
+          router.replace("/login");
+        })
+        .finally(() => {
+          setChecking(false);
+        });
     }
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, router, setUser]);
 
   return (
     <div className="min-h-screen bg-theme-bg text-theme-text flex flex-col items-center justify-center p-6 text-center">

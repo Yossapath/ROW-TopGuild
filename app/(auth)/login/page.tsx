@@ -2,11 +2,31 @@
 
 import { useSearchParams } from "next/navigation";
 import { Layers } from "lucide-react";
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuthStore } from "@/stores/useAuthStore";
 
 function LoginForm() {
   const searchParams = useSearchParams();
   const error = searchParams.get("error");
+  const router = useRouter();
+  const { isAuthenticated, setUser } = useAuthStore();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.replace("/dashboard/roster");
+    } else {
+      fetch("/api/auth/me")
+        .then(res => res.json())
+        .then(data => {
+          if (data.ok && data.data) {
+            setUser(data.data);
+            router.replace("/dashboard/roster");
+          }
+        })
+        .catch(() => {});
+    }
+  }, [isAuthenticated, router, setUser]);
 
   return (
     <div className="relative rounded-2xl bg-white dark:bg-[#232733] p-8 shadow-2xl overflow-hidden border border-slate-100 dark:border-[#2D3342] text-center">
