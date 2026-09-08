@@ -28,8 +28,12 @@ export function isBookingOpen(schedule?: {
   closeTime?: string;
   carryTeamsCount?: number;
 } | null): { open: boolean; reason?: string } {
+  // No schedule configured yet (or none of openDate/openTime/closeTime
+  // set) means the admin hasn't restricted booking at all — default to
+  // OPEN, not closed. This matches how the rest of the schedule form
+  // treats an unset field as "no restriction" rather than "blocked".
   if (!schedule) {
-    return { open: false, reason: "ระบบยังไม่เปิดให้จอง" };
+    return { open: true };
   }
 
   const isUnlimited = !schedule.openTime && !schedule.closeTime && !schedule.openDate;
@@ -38,7 +42,7 @@ export function isBookingOpen(schedule?: {
   }
 
   if (!schedule.openDate || !schedule.openDate.trim()) {
-    return { open: false, reason: "ระบบยังไม่เปิดให้จอง" };
+    return { open: true };
   }
 
   const nowBkk = new Date(

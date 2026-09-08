@@ -11,6 +11,12 @@ export const teamColumnSchema = z.object({
   locked: z.boolean().optional(),
 });
 
+// Precomputed display rows saved alongside the team layout so pages that
+// only need to *render* the war plan don't have to re-join columns with
+// members. Loosely typed (z.any()) since it's a denormalized read model,
+// not the source of truth.
+const teamZoneRowSchema = z.array(z.any()).max(200);
+
 export const teamDataSchema = z.object({
   members: z.record(
     z.string(),
@@ -21,11 +27,14 @@ export const teamDataSchema = z.object({
       power: z.number().nonnegative(),
       warRole: z.string().max(100).optional(),
     })
-  ),
+  ).optional(),
   columns: z.record(z.string(), teamColumnSchema),
   mainZone1Order: z.array(z.string().max(50)).max(50),
   mainZone2Order: z.array(z.string().max(50)).max(50),
   subOrder: z.array(z.string().max(50)).max(50),
+  offlineIds: z.array(z.string().max(100)).max(200).optional(),
+  main: z.array(teamZoneRowSchema).max(50).optional(),
+  sub: z.array(teamZoneRowSchema).max(50).optional(),
 });
 
 // ── Roster Member Update Schema ──────────────────────────────

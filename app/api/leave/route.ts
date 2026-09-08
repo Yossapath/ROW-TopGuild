@@ -30,6 +30,14 @@ export async function POST(req: Request) {
 
     const { name, job, date, day, reason } = validation.data;
 
+    // Authorization: a regular member may only submit leave for their own
+    // in-game character. This also gates the GVG auto-remove side effect
+    // below, which previously let anyone kick anyone out of the roster.
+    const isAdmin = auth.user.role === "admin" || auth.user.role === "owner";
+    if (!isAdmin && auth.user.gameUsername !== name) {
+      return err("คุณสามารถแจ้งลาได้เฉพาะตัวละครของตนเองเท่านั้น", 403);
+    }
+
     const newLeave = {
       name,
       job: job || "",

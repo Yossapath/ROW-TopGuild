@@ -1,12 +1,15 @@
 export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { teamsRef } from "@/lib/firebase-admin";
-import { requireAdmin } from "@/lib/auth";
+import { requireAuth, requireAdmin } from "@/lib/auth";
 import { err, ok, handleServerError, logAction } from "@/lib/server-utils";
 import { teamDataSchema, validateBody } from "@/lib/validations";
 
 export async function GET() {
   try {
+    const auth = await requireAuth();
+    if (auth.errorResponse) return auth.errorResponse;
+
     const snapshot = await teamsRef().get();
     if (!snapshot.exists) {
       return NextResponse.json({ main: [], sub: [], unassigned: [] });
