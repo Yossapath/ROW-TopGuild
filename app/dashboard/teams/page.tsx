@@ -8,6 +8,8 @@ import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea
 import { JOB_COLORS, JOB_LIST } from "@/lib/utils";
 import { useAuthStore } from "@/stores/useAuthStore";
 
+import { allocateTeams, AllocatorResult } from "@/lib/team-allocator";
+
 type Member = { id: string; name: string; job: string; power: number; };
 type Column = { id: string; title: string; memberIds: (string | null)[]; type: "main" | "sub" | "unassigned"; locked: boolean; };
 type DataState = {
@@ -35,6 +37,7 @@ export default function TeamsPage() {
   const [isUnassignedCollapsed, setIsUnassignedCollapsed] = useState(false);
   const [isAutoModalOpen, setIsAutoModalOpen] = useState(false);
   const [autoModalText, setAutoModalText] = useState("");
+  const [previewResult, setPreviewResult] = useState<AllocatorResult | null>(null);
   const [leaveRecords, setLeaveRecords] = useState<any[]>([]);
   
   const [unassignedSearch, setUnassignedSearch] = useState("");
@@ -205,95 +208,31 @@ export default function TeamsPage() {
 
   const handleProcessAutoMatch = () => {
     if (!data) return;
-    const names = autoModalText.split('\n').map(n => n.trim()).filter(n => n);
-    
-    if (names.length !== 60) {
-      if (!confirm(`คุณระบุรายชื่อมา ${names.length} คน (ต้องการ 60 คน) ต้องการดำเนินการต่อหรือไม่? ระบบจะพยายามจัดให้ดีที่สุด`)) return;
-    }
+    const names = autoModalText.split('\n').map(n => n.trim()).filter(Boolean);
 
-    const newData = { ...data };
-    const lockedMemberIds = new Set<string>();
-    Object.values(newData.columns).forEach(col => {
-      if (col.locked && col.type !== "unassigned") {
-        col.memberIds.forEach(id => { if (id) lockedMemberIds.add(id); });
-      }
+    const result = allocateTeams({
+      members: data.members as any,
+      columns: data.columns as any,
+      mainZone1Order: data.mainZone1Order,
+      mainZone2Order: data.mainZone2Order,
+      subOrder: data.subOrder,
+      offlineIds: data.offlineIds || [],
+      mainFieldNames: names,
     });
 
-    Object.keys(newData.columns).forEach(colId => {
-      if (!newData.columns[colId].locked && colId !== "unassigned") {
-        newData.columns[colId].memberIds = [null, null, null, null, null];
-      }
+    setPreviewResult(result);
+  };
+
+  const handleApplyAllocation = () => {
+    if (!previewResult || !data) return;
+    setData({
+      ...data,
+      columns: previewResult.columns as any,
+      mainZone1Order: previewResult.mainZone1Order,
+      mainZone2Order: previewResult.mainZone2Order,
+      subOrder: previewResult.subOrder,
     });
-
-    const mainFieldMembers = names
-      .map(name => newData.members[name])
-      .filter(m => m && !lockedMemberIds.has(m.id))
-      .sort((a, b) => b.power - a.power);
-
-    const mainFieldIdsSet = new Set(mainFieldMembers.map(m => m.id));
-    const subFieldMembers = Object.values(newData.members)
-      .filter(m => !mainFieldIdsSet.has(m.id) && !lockedMemberIds.has(m.id))
-      .sort((a, b) => b.power - a.power);
-
-    const mainPriests = mainFieldMembers.filter(m => m.job === "Priest");
-    const mainOthers = mainFieldMembers.filter(m => m.job !== "Priest");
-    
-    const mainCols = [...newData.mainZone1Order, ...newData.mainZone2Order];
-    
-    let pIdx = 0;
-    mainCols.forEach(colId => {
-      if (newData.columns[colId].locked) return;
-      const firstNull = newData.columns[colId].memberIds.indexOf(null);
-      if (pIdx < mainPriests.length && firstNull !== -1) {
-        newData.columns[colId].memberIds[firstNull] = mainPriests[pIdx].id;
-        pIdx++;
-      }
-    });
-    
-    const remainingToPlace = [...mainPriests.slice(pIdx), ...mainOthers].sort((a, b) => b.power - a.power);
-    
-    let mIdx = 0;
-    mainCols.forEach(colId => {
-      if (newData.columns[colId].locked) return;
-      for (let i = 0; i < 5; i++) {
-        if (newData.columns[colId].memberIds[i] === null && mIdx < remainingToPlace.length) {
-          newData.columns[colId].memberIds[i] = remainingToPlace[mIdx].id;
-          mIdx++;
-        }
-      }
-    });
-
-    let subTeamCount = 1;
-    newData.subOrder = [];
-    let sIdx = 0;
-    
-    const fillSubColumn = (colId: string) => {
-      if (newData.columns[colId].locked) return;
-      for (let i = 0; i < 5; i++) {
-        if (newData.columns[colId].memberIds[i] === null && sIdx < subFieldMembers.length) {
-          newData.columns[colId].memberIds[i] = subFieldMembers[sIdx].id;
-          sIdx++;
-        }
-      }
-    };
-
-    while (sIdx < subFieldMembers.length) {
-      const colId = `sub-${subTeamCount}`;
-      if (!newData.columns[colId]) newData.columns[colId] = { id: colId, title: `ทีม ${subTeamCount}`, memberIds: [null, null, null, null, null], type: "sub", locked: false };
-      newData.subOrder.push(colId);
-      fillSubColumn(colId);
-      subTeamCount++;
-    }
-
-    while (newData.subOrder.length < 5) {
-      const colId = `sub-${subTeamCount}`;
-      if (!newData.columns[colId]) newData.columns[colId] = { id: colId, title: `ทีม ${subTeamCount}`, memberIds: [null, null, null, null, null], type: "sub", locked: false };
-      if (!newData.subOrder.includes(colId)) newData.subOrder.push(colId);
-      subTeamCount++;
-    }
-
-    newData.columns["unassigned"].memberIds = [];
-    setData(newData);
+    setPreviewResult(null);
     setIsAutoModalOpen(false);
   };
 
@@ -555,34 +494,116 @@ export default function TeamsPage() {
       <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
         <div className="bg-theme-panel rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col border border-theme-border animate-in zoom-in-95 duration-200">
           <div className="p-4 border-b border-theme-border flex items-center justify-between">
-            <h3 className="font-bold text-lg text-theme-text">กำหนดรายชื่อสนามหลัก (60 คน) เพื่อจัดทีม</h3>
-            <button onClick={() => setIsAutoModalOpen(false)} className="text-theme-textSecondary hover:text-theme-text"><X size={20}/></button>
-          </div>
-          <div className="p-4 flex-1 flex flex-col gap-4">
-            <p className="text-sm text-theme-textSecondary">
-              ระบุหรือวางรายชื่อสมาชิก 60 คนสำหรับสนามหลัก (บรรทัดละ 1 ชื่อ) ระบบจะจัดสนามหลักตามรายชื่อนี้ และนำสมาชิกคนที่เหลือทั้งหมดไปจัดลงสนามรองตามกฏกิลด์ให้อัตโนมัติ
-            </p>
-            <div className="bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 rounded-lg p-3 text-sm text-[#0b3d63] dark:text-white flex items-start gap-2">
-              <span className="font-bold">คำแนะนำ:</span> จำนวนที่ดึงอัตโนมัติ จะคัดเลือกมี Priest 12 คนสำหรับสนามหลักให้อัตโนมัติ
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="font-bold text-sm text-theme-text">ตรวจพบรายชื่อ: {names.length} / 60 คน</span>
-              <button onClick={handlePullTop60} className="text-[#0b3d63] dark:text-white font-bold text-sm bg-[#0b3d63]/10 dark:bg-[#3B66D1]/20 px-4 py-1.5 rounded-lg hover:bg-[#0b3d63]/20 dark:hover:bg-[#4D73CD]/25 transition-colors border border-[#0b3d63]/20 dark:border-[#4D73CD]/40 flex items-center gap-1">
-                ดึง 60 พลังสูงสุดมาวางให้ก่อน
-              </button>
-            </div>
-            <textarea 
-              className="w-full h-[250px] bg-theme-bg border border-theme-border rounded-lg p-3 text-sm text-theme-text font-mono resize-none focus:ring-2 focus:ring-[#4D73CD] dark:focus:ring-[#4D73CD] outline-none"
-              value={autoModalText}
-              onChange={e => setAutoModalText(e.target.value)}
-              placeholder="วางรายชื่อที่นี่ (1 บรรทัดต่อ 1 ชื่อ)"
-            />
-          </div>
-          <div className="p-4 border-t border-theme-border flex items-center justify-end gap-3 bg-theme-bg/50">
-            <button onClick={() => setIsAutoModalOpen(false)} className="px-5 py-2 rounded-lg font-bold text-theme-textSecondary hover:bg-theme-border/50 transition-colors border border-theme-border bg-theme-panel">ยกเลิก</button>
-            <button onClick={handleProcessAutoMatch} className="px-5 py-2 rounded-lg font-bold text-white bg-[#10b981] hover:bg-[#059669] transition-colors shadow-sm flex items-center gap-2">
-              ประมวลผลและจัดทีมทันที
+            <h3 className="font-bold text-lg text-theme-text">
+              {previewResult ? "ตัวอย่างผลการจัดทีมอัตโนมัติ (Preview)" : "กำหนดรายชื่อสนามหลัก (60 คน) เพื่อจัดทีม"}
+            </h3>
+            <button
+              onClick={() => {
+                setIsAutoModalOpen(false);
+                setPreviewResult(null);
+              }}
+              className="text-theme-textSecondary hover:text-theme-text"
+            >
+              <X size={20} />
             </button>
+          </div>
+
+          {previewResult ? (
+            <div className="p-4 flex-1 flex flex-col gap-4 overflow-y-auto max-h-[70vh]">
+              <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 rounded-xl p-4">
+                <h4 className="font-bold text-emerald-800 dark:text-emerald-300 text-sm mb-3">
+                  ผลการคำนวณการจัดทีม
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="bg-white dark:bg-[#232733] p-3 rounded-lg border border-emerald-200/50 dark:border-[#2D3342]">
+                    <span className="text-slate-500 dark:text-slate-400 block text-xs">สนามหลัก (12 ทีม)</span>
+                    <span className="font-bold text-xl text-slate-800 dark:text-white">
+                      {previewResult.stats.mainTotal} / 60 คน
+                    </span>
+                    <span className="text-xs text-emerald-600 dark:text-emerald-400 block mt-1">
+                      มี Priest ประจำ {previewResult.stats.priestFullTeams} / 12 ทีม
+                    </span>
+                  </div>
+                  <div className="bg-white dark:bg-[#232733] p-3 rounded-lg border border-emerald-200/50 dark:border-[#2D3342]">
+                    <span className="text-slate-500 dark:text-slate-400 block text-xs">สนามรอง</span>
+                    <span className="font-bold text-xl text-slate-800 dark:text-white">
+                      {previewResult.stats.subTotal} คน
+                    </span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400 block mt-1">
+                      จัดได้ {previewResult.stats.subTeams} ทีม (ทีมละ 5 คน)
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {previewResult.warnings.length > 0 && (
+                <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-xl p-3 text-xs text-amber-800 dark:text-amber-300 space-y-1">
+                  <div className="font-bold mb-1">ข้อสังเกต / คำเตือน:</div>
+                  {previewResult.warnings.map((w, idx) => (
+                    <div key={idx}>• {w.message}</div>
+                  ))}
+                </div>
+              )}
+
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                กด &quot;ยืนยันนำไปใช้งาน&quot; เพื่อแทนที่การจัดทีมในหน้านี้ (คุณยังสามารถสลับตำแหน่งหรือปรับเปลี่ยนได้ตามต้องการก่อนกดบันทึกจริง)
+              </p>
+            </div>
+          ) : (
+            <div className="p-4 flex-1 flex flex-col gap-4">
+              <p className="text-sm text-theme-textSecondary">
+                ระบุหรือวางรายชื่อสมาชิก 60 คนสำหรับสนามหลัก (บรรทัดละ 1 ชื่อ) ระบบจะจัดสนามหลักตามรายชื่อนี้ และนำสมาชิกคนที่เหลือทั้งหมดไปจัดลงสนามรองตามกฏกิลด์ให้อัตโนมัติ
+              </p>
+              <div className="bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 rounded-lg p-3 text-sm text-[#0b3d63] dark:text-white flex items-start gap-2">
+                <span className="font-bold">คำแนะนำ:</span> จำนวนที่ดึงอัตโนมัติ จะคัดเลือกมี Priest 12 คนสำหรับสนามหลักให้อัตโนมัติ
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-sm text-theme-text">ตรวจพบรายชื่อ: {names.length} / 60 คน</span>
+                <button onClick={handlePullTop60} className="text-[#0b3d63] dark:text-white font-bold text-sm bg-[#0b3d63]/10 dark:bg-[#3B66D1]/20 px-4 py-1.5 rounded-lg hover:bg-[#0b3d63]/20 dark:hover:bg-[#4D73CD]/25 transition-colors border border-[#0b3d63]/20 dark:border-[#4D73CD]/40 flex items-center gap-1">
+                  ดึง 60 พลังสูงสุดมาวางให้ก่อน
+                </button>
+              </div>
+              <textarea 
+                className="w-full h-[250px] bg-theme-bg border border-theme-border rounded-lg p-3 text-sm text-theme-text font-mono resize-none focus:ring-2 focus:ring-[#4D73CD] dark:focus:ring-[#4D73CD] outline-none"
+                value={autoModalText}
+                onChange={e => setAutoModalText(e.target.value)}
+                placeholder="วางรายชื่อที่นี่ (1 บรรทัดต่อ 1 ชื่อ)"
+              />
+            </div>
+          )}
+
+          <div className="p-4 border-t border-theme-border flex items-center justify-end gap-3 bg-theme-bg/50">
+            {previewResult ? (
+              <>
+                <button
+                  onClick={() => setPreviewResult(null)}
+                  className="px-5 py-2 rounded-lg font-bold text-theme-textSecondary hover:bg-theme-border/50 transition-colors border border-theme-border bg-theme-panel text-sm"
+                >
+                  กลับไปแก้ไขรายชื่อ
+                </button>
+                <button
+                  onClick={handleApplyAllocation}
+                  className="px-5 py-2 rounded-lg font-bold text-white bg-[#10b981] hover:bg-[#059669] transition-colors shadow-sm flex items-center gap-2 text-sm"
+                >
+                  ยืนยันนำไปใช้งาน
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => setIsAutoModalOpen(false)}
+                  className="px-5 py-2 rounded-lg font-bold text-theme-textSecondary hover:bg-theme-border/50 transition-colors border border-theme-border bg-theme-panel text-sm"
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  onClick={handleProcessAutoMatch}
+                  className="px-5 py-2 rounded-lg font-bold text-white bg-[#3B66D1] hover:bg-[#4D73CD] transition-colors shadow-sm flex items-center gap-2 text-sm"
+                >
+                  ประมวลผลและดูตัวอย่าง (Preview)
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>
