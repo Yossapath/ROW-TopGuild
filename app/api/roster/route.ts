@@ -1,10 +1,13 @@
 export const dynamic = "force-dynamic";
 import { rosterRef, getDb, COLL_USER } from "@/lib/firebase-admin";
-import { requireAdmin } from "@/lib/auth";
+import { requireAuth, requireAdmin } from "@/lib/auth";
 import { ok, err, handleServerError } from "@/lib/server-utils";
 
 export async function GET() {
   try {
+    const auth = await requireAuth();
+    if (auth.errorResponse) return auth.errorResponse;
+
     const doc = await rosterRef().get();
     if (!doc.exists) {
       return ok({});

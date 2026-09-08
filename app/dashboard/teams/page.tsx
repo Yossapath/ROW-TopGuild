@@ -317,6 +317,7 @@ export default function TeamsPage() {
     setIsSaving(true);
     try {
       const payload = {
+        members: data.members,
         columns: data.columns,
         mainZone1Order: data.mainZone1Order,
         mainZone2Order: data.mainZone2Order,

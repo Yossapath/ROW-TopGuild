@@ -22,7 +22,7 @@ export async function POST(req: Request) {
     if (auth.errorResponse) return auth.errorResponse;
 
     const body = await req.json();
-    const { module, action, actor, target, detail, extra } = body;
+    const { module, action, target, detail, extra } = body;
 
     if (!module || !action || !detail) {
       return err("ข้อมูลไม่ครบถ้วน", 400);
@@ -31,7 +31,10 @@ export async function POST(req: Request) {
     const newLog = {
       module: String(module).slice(0, 50),
       action: String(action).slice(0, 50),
-      actor: actor ? String(actor).slice(0, 100) : (auth.user.gameUsername || auth.user.discordUsername || "System"),
+      // Always derive actor from the authenticated session, never trust
+      // the client-supplied value, or anyone can forge log entries as
+      // "Admin" / another user.
+      actor: auth.user.gameUsername || auth.user.discordUsername || "System",
       target: target ? String(target).slice(0, 100) : "",
       detail: String(detail).slice(0, 500),
       extra: extra || {},

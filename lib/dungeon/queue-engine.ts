@@ -91,9 +91,12 @@ export const assignPlayersToTeam = (
     });
   }
 
-  if (maxPriest > 0 && assignedPriestCount === 0) {
-    throw new Error("ทีมขาดพระ ต้องการพระ priest");
-  }
+  // NOTE: a team is allowed to be assigned without a Priest — the block
+  // above only *reserves priority* for a continuous priest and *caps* the
+  // number of priests per team at `maxPriest`, it never requires one.
+  // Previously this function threw here when no priest ended up assigned,
+  // which crashed the enclosing Firestore transaction (500 error) instead
+  // of letting the team run and simply wait for a priest to queue later.
 
   const updatedTeam: DungeonTeamResource = {
     ...team,
