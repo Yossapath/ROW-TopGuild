@@ -92,48 +92,50 @@ export async function GET(req: Request) {
       .filter(Boolean);
     const isConfiguredAdmin = adminIds.includes(discordId);
 
-    const db = getDb();
-    const userRef = db.collection(COLL_USER).doc(discordId);
-    const doc = await userRef.get();
-
-    let isProfileComplete = false;
-    let payload: AuthPayload;
-
     const defaultRole = isConfiguredAdmin ? "admin" : "member";
+    let isProfileComplete = false;
+    let payload: AuthPayload = {
+      discordId,
+      discordUsername,
+      role: defaultRole,
+      isProfileComplete: false,
+    };
 
-    if (doc.exists) {
-      const data = doc.data() as GuildUser;
-      const userRole = isConfiguredAdmin ? "admin" : (data.role || "member");
+    try {
+      const db = getDb();
+      const userRef = db.collection(COLL_USER).doc(discordId);
+      const doc = await userRef.get();
 
-      isProfileComplete = !!data.gameUsername && !!data.class && data.power !== undefined;
-      payload = {
-        discordId,
-        discordUsername: data.discordUsername || discordUsername,
-        gameUsername: data.gameUsername,
-        role: userRole,
-        class: data.class,
-        power: data.power,
-        isProfileComplete,
-      };
-      
-      if (data.discordUsername !== discordUsername || data.role !== userRole) {
-        await userRef.update({ discordUsername, role: userRole });
+      if (doc.exists) {
+        const data = doc.data() as GuildUser;
+        const userRole = isConfiguredAdmin ? "admin" : (data.role || "member");
+
+        isProfileComplete = !!data.gameUsername && !!data.class && data.power !== undefined;
+        payload = {
+          discordId,
+          discordUsername: data.discordUsername || discordUsername,
+          gameUsername: data.gameUsername,
+          role: userRole,
+          class: data.class,
+          power: data.power,
+          isProfileComplete,
+        };
+
+        if (data.discordUsername !== discordUsername || data.role !== userRole) {
+          await userRef.update({ discordUsername, role: userRole }).catch(() => {});
+        }
+      } else {
+        const newUser: GuildUser = {
+          discordId,
+          discordUsername,
+          role: defaultRole,
+          createdAt: Date.now(),
+        };
+        await userRef.set(newUser).catch(() => {});
       }
-    } else {
-      const newUser: GuildUser = {
-        discordId,
-        discordUsername,
-        role: defaultRole,
-        createdAt: Date.now(),
-      };
-      await userRef.set(newUser);
-      
-      payload = {
-        discordId,
-        discordUsername,
-        role: defaultRole,
-        isProfileComplete: false,
-      };
+    } catch (dbErr: any) {
+      console.warn("Firestore lookup failed during login (fallback used):", dbErr);
+      // Fallback allows user to log in via Discord even if Firestore quota is exhausted
     }
 
     const token = await signToken(payload);
