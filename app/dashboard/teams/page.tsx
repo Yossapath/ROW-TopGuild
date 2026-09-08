@@ -454,15 +454,37 @@ export default function TeamsPage() {
     if (isSourceUnassigned && !isDestUnassigned) {
       const memberToMove = draggableId;
       const realSourceIdx = newData.columns["unassigned"].memberIds.indexOf(draggableId);
-      const memberAtDest = newData.columns[destColId].memberIds[destSlotIdx];
       
       if (realSourceIdx !== -1) {
         newData.columns["unassigned"].memberIds.splice(realSourceIdx, 1);
-        if (memberAtDest) {
-           newData.columns["unassigned"].memberIds.splice(realSourceIdx, 0, memberAtDest);
-        }
       }
-      newData.columns[destColId].memberIds[destSlotIdx] = memberToMove;
+      
+      let currentMembers = [...newData.columns[destColId].memberIds];
+      if (currentMembers[destSlotIdx] !== null) {
+          // Target slot occupied: Insert and shift down
+          currentMembers.splice(destSlotIdx, 0, memberToMove);
+          
+          let nullIdx = -1;
+          for(let i = destSlotIdx + 1; i < currentMembers.length; i++) {
+              if (currentMembers[i] === null) {
+                  nullIdx = i;
+                  break;
+              }
+          }
+          
+          if (nullIdx !== -1) {
+              currentMembers.splice(nullIdx, 1);
+          } else {
+              const kickedMember = currentMembers.pop();
+              if (kickedMember) {
+                  newData.columns["unassigned"].memberIds.splice(realSourceIdx > -1 ? realSourceIdx : 0, 0, kickedMember);
+              }
+          }
+          newData.columns[destColId].memberIds = currentMembers;
+      } else {
+          newData.columns[destColId].memberIds[destSlotIdx] = memberToMove;
+      }
+      
     } else if (!isSourceUnassigned && isDestUnassigned) {
       const memberToMove = newData.columns[sourceColId].memberIds[sourceSlotIdx];
       newData.columns[sourceColId].memberIds[sourceSlotIdx] = null;
@@ -472,8 +494,45 @@ export default function TeamsPage() {
     } else if (!isSourceUnassigned && !isDestUnassigned) {
       const memberA = newData.columns[sourceColId].memberIds[sourceSlotIdx];
       const memberB = newData.columns[destColId].memberIds[destSlotIdx];
-      newData.columns[sourceColId].memberIds[sourceSlotIdx] = memberB;
-      newData.columns[destColId].memberIds[destSlotIdx] = memberA;
+      
+      if (memberB !== null && sourceColId === destColId) {
+          // Moving within same team to an occupied slot
+          let currentMembers = [...newData.columns[destColId].memberIds];
+          currentMembers.splice(sourceSlotIdx, 1);
+          currentMembers.splice(destSlotIdx, 0, memberA);
+          
+          // Ensure we still have 5 slots, padding with nulls if needed
+          while(currentMembers.length < 5) currentMembers.push(null);
+          newData.columns[destColId].memberIds = currentMembers.slice(0, 5);
+      } else if (memberB !== null && sourceColId !== destColId) {
+          // Moving between different teams to an occupied slot
+          newData.columns[sourceColId].memberIds[sourceSlotIdx] = null;
+          
+          let destMembers = [...newData.columns[destColId].memberIds];
+          destMembers.splice(destSlotIdx, 0, memberA);
+          
+          let nullIdx = -1;
+          for(let i = destSlotIdx + 1; i < destMembers.length; i++) {
+              if (destMembers[i] === null) {
+                  nullIdx = i;
+                  break;
+              }
+          }
+          
+          if (nullIdx !== -1) {
+              destMembers.splice(nullIdx, 1);
+          } else {
+              const kickedMember = destMembers.pop();
+              if (kickedMember) {
+                  newData.columns["unassigned"].memberIds.unshift(kickedMember);
+              }
+          }
+          newData.columns[destColId].memberIds = destMembers;
+      } else {
+          // Target is empty
+          newData.columns[sourceColId].memberIds[sourceSlotIdx] = null;
+          newData.columns[destColId].memberIds[destSlotIdx] = memberA;
+      }
     }
 
     setData(newData);
@@ -530,34 +589,34 @@ export default function TeamsPage() {
   };
 
   return (
-    <div className="space-y-6 bg-[#f0f6fc] dark:bg-[#1C1F27] min-h-screen p-4 lg:py-6 lg:px-6 2xl:px-8 relative" style={{ zoom: 0.85 }}>
+    <div className="space-y-6 bg-[#f0f6fc] dark:bg-[#1C1F27] min-h-screen p-3 sm:p-4 lg:py-6 lg:px-6 2xl:px-8 relative">
       <AutoMatchModal />
       
       {/* Header Card */}
-      <div className="bg-white dark:bg-[#232733] rounded-2xl shadow-sm border border-slate-200 dark:border-[#2D3342] p-5 mb-5 flex flex-col lg:flex-row items-center justify-between gap-4">
+      <div className="bg-white dark:bg-[#232733] rounded-2xl shadow-sm border border-slate-200 dark:border-[#2D3342] p-4 sm:p-5 mb-5 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
         <div className="flex items-center gap-3 w-full lg:w-auto">
           <div
-            className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 bg-[#0b3d63] dark:bg-[#3B66D1] shadow-sm"
+            className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center flex-shrink-0 bg-[#0b3d63] dark:bg-[#3B66D1] shadow-sm"
           >
-            <Shield className="w-6 h-6 text-white" />
+            <Shield className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-slate-800 dark:text-white">จัดทีม GVG</h1>
-            <p className="text-sm text-slate-500 dark:text-[#8B93A7]">
+            <h1 className="text-lg sm:text-xl font-bold text-slate-800 dark:text-white">จัดทีม GVG</h1>
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-[#8B93A7]">
               {isAdmin ? "ลากและวางเพื่อจัดทีม หรือใช้ออโต้แมตช์" : "รายชื่อและสมาชิกทีมสำหรับกิลด์วอร์"}
             </p>
           </div>
         </div>
         
         {isAdmin && (
-          <div className="flex items-center gap-3 w-full lg:w-auto justify-end flex-wrap">
-            <button onClick={handleClearAll} className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-[#272C38] text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/50 rounded-xl font-bold hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors text-sm shadow-sm">
+          <div className="flex items-center gap-2 sm:gap-3 w-full lg:w-auto justify-end flex-wrap">
+            <button onClick={handleClearAll} className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 sm:px-4 py-2 bg-white dark:bg-[#272C38] text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/50 rounded-xl font-bold hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors text-xs sm:text-sm shadow-sm">
               <span>ล้างทั้งหมด</span>
             </button>
-            <button onClick={() => setIsAutoModalOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-[#272C38] text-[#0b3d63] dark:text-white border border-[#0b3d63] dark:border-[#4D73CD] rounded-xl font-bold hover:bg-blue-50 dark:hover:bg-sky-950/30 transition-colors text-sm shadow-sm">
+            <button onClick={() => setIsAutoModalOpen(true)} className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 sm:px-4 py-2 bg-white dark:bg-[#272C38] text-[#0b3d63] dark:text-white border border-[#0b3d63] dark:border-[#4D73CD] rounded-xl font-bold hover:bg-blue-50 dark:hover:bg-sky-950/30 transition-colors text-xs sm:text-sm shadow-sm">
               <Wand2 size={16} /> <span>ออโต้จัดทีม (Auto)</span>
             </button>
-            <button onClick={handleSave} disabled={isSaving} className="flex items-center gap-2 px-5 py-2 bg-[#3B66D1] hover:bg-[#4D73CD] text-white rounded-xl font-bold transition-colors shadow-sm disabled:opacity-50 text-sm">
+            <button onClick={handleSave} disabled={isSaving} className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 sm:px-5 py-2 bg-[#3B66D1] hover:bg-[#4D73CD] text-white rounded-xl font-bold transition-colors shadow-sm disabled:opacity-50 text-xs sm:text-sm">
               {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} <span>บันทึกการจัดทีม</span>
             </button>
           </div>
@@ -565,9 +624,9 @@ export default function TeamsPage() {
       </div>
 
         <DragDropContext onDragEnd={onDragEnd}>
-          <div className="flex gap-4 items-start">
+          <div className="flex flex-col lg:flex-row gap-4 items-start">
             {isAdmin && !isUnassignedCollapsed && (
-              <div className="w-[260px] 2xl:w-[280px] flex-shrink-0 bg-white dark:bg-[#232733] rounded-2xl shadow-sm border border-slate-200 dark:border-[#2D3342] h-[calc(100vh-2rem)] flex flex-col sticky top-4 z-20 transition-all">
+              <div className="w-full lg:w-[260px] 2xl:w-[280px] flex-shrink-0 bg-white dark:bg-[#232733] rounded-2xl shadow-sm border border-slate-200 dark:border-[#2D3342] h-[400px] lg:h-[calc(100vh-2rem)] flex flex-col lg:sticky top-4 z-20 transition-all">
                 <div className="p-3 border-b border-slate-100 dark:border-[#2D3342] bg-slate-50/70 dark:bg-[#272C38]/50 rounded-t-2xl">
                   <div className="flex items-center justify-between mb-3">
                     <h2 className="font-bold text-slate-800 dark:text-white flex items-center gap-2 text-sm"><Users size={16} /> ยังไม่ได้จัด ({data.columns["unassigned"].memberIds.length})</h2>
@@ -691,31 +750,39 @@ export default function TeamsPage() {
             )}
             
             {isAdmin && isUnassignedCollapsed && (
-              <div className="flex-shrink-0 bg-white dark:bg-[#232733] rounded-2xl shadow-sm border border-slate-200 dark:border-[#2D3342] h-[calc(100vh-2rem)] flex flex-col items-center py-4 sticky top-4 z-10 w-12 cursor-pointer hover:bg-slate-50 dark:hover:bg-[#2A2F3E] transition-colors" onClick={() => setIsUnassignedCollapsed(false)}>
-                <ChevronRight size={20} className="text-slate-400 mb-4"/>
-                <Users size={18} className="text-slate-400 mb-2"/>
-                <span className="bg-[#0b3d63] dark:bg-[#3B66D1] text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">{data.columns["unassigned"].memberIds.length}</span>
+              <div 
+                className="w-full lg:w-12 flex-shrink-0 bg-white dark:bg-[#232733] rounded-2xl shadow-sm border border-slate-200 dark:border-[#2D3342] h-12 lg:h-[calc(100vh-2rem)] flex flex-row lg:flex-col items-center justify-between lg:justify-start px-4 lg:px-0 py-2 lg:py-4 sticky top-4 z-10 cursor-pointer hover:bg-slate-50 dark:hover:bg-[#2A2F3E] transition-colors" 
+                onClick={() => setIsUnassignedCollapsed(false)}
+              >
+                <div className="flex items-center gap-2">
+                  <Users size={18} className="text-slate-400"/>
+                  <span className="lg:hidden font-bold text-xs text-slate-700 dark:text-slate-300">แสดงรายชื่อที่ยังไม่ได้จัด</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="bg-[#0b3d63] dark:bg-[#3B66D1] text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{data.columns["unassigned"].memberIds.length}</span>
+                  <ChevronRight size={18} className="text-slate-400 lg:mt-4"/>
+                </div>
               </div>
             )}
 
-          <div className="flex-1 min-w-0 flex flex-col">
-            <div className="flex gap-2 mb-4 bg-white dark:bg-[#232733] p-1.5 rounded-xl border border-slate-200 dark:border-[#2D3342] shadow-sm self-start">
+          <div className="flex-1 min-w-0 flex flex-col w-full">
+            <div className="flex gap-2 mb-4 bg-white dark:bg-[#232733] p-1.5 rounded-xl border border-slate-200 dark:border-[#2D3342] shadow-sm self-start overflow-x-auto max-w-full">
               <button 
                 onClick={() => setActiveTab("main")}
-                className={`px-6 py-2 rounded-lg font-bold text-sm transition-all ${activeTab === 'main' ? 'bg-[#0b3d63] dark:bg-[#3B66D1] text-white shadow-sm' : 'text-slate-600 dark:text-white hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-[#2A2F3E]'}`}
+                className={`px-4 sm:px-6 py-2 rounded-lg font-bold text-xs sm:text-sm whitespace-nowrap transition-all ${activeTab === 'main' ? 'bg-[#0b3d63] dark:bg-[#3B66D1] text-white shadow-sm' : 'text-slate-600 dark:text-white hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-[#2A2F3E]'}`}
               >
                 สนามหลัก (60 คน)
               </button>
               <button 
                 onClick={() => setActiveTab("sub")}
-                className={`px-6 py-2 rounded-lg font-bold text-sm transition-all ${activeTab === 'sub' ? 'bg-[#0b3d63] dark:bg-[#3B66D1] text-white shadow-sm' : 'text-slate-600 dark:text-white hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-[#2A2F3E]'}`}
+                className={`px-4 sm:px-6 py-2 rounded-lg font-bold text-xs sm:text-sm whitespace-nowrap transition-all ${activeTab === 'sub' ? 'bg-[#0b3d63] dark:bg-[#3B66D1] text-white shadow-sm' : 'text-slate-600 dark:text-white hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-[#2A2F3E]'}`}
               >
                 สนามรอง ({Object.keys(data.members).length - 60 > 0 ? Object.keys(data.members).length - 60 : 0} คน)
               </button>
               {isAdmin && (
                 <button 
                   onClick={() => setActiveTab("leave")}
-                  className={`px-6 py-2 rounded-lg font-bold text-sm transition-all ${activeTab === 'leave' ? 'bg-red-600 text-white shadow-sm' : 'text-slate-600 dark:text-white hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-[#2A2F3E]'}`}
+                  className={`px-4 sm:px-6 py-2 rounded-lg font-bold text-xs sm:text-sm whitespace-nowrap transition-all ${activeTab === 'leave' ? 'bg-red-600 text-white shadow-sm' : 'text-slate-600 dark:text-white hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-[#2A2F3E]'}`}
                 >
                   ลา/ออฟไลน์
                 </button>
@@ -963,7 +1030,7 @@ function TeamCard({
             </div>
           </div>
           
-          <div className={`grid ${isAdmin ? 'grid-cols-[36px_minmax(0,1fr)_115px_60px_24px]' : 'grid-cols-[36px_minmax(0,1fr)_115px_60px]'} gap-2 px-3 py-2 bg-slate-50 dark:bg-[#272C38]/60 border-b border-slate-100 dark:border-[#2D3342] text-[11px] font-bold text-slate-500 dark:text-[#8B93A7]`}>
+          <div className={`grid ${isAdmin ? 'grid-cols-[30px_minmax(0,1fr)_85px_50px_22px] sm:grid-cols-[36px_minmax(0,1fr)_115px_60px_24px]' : 'grid-cols-[30px_minmax(0,1fr)_85px_50px] sm:grid-cols-[36px_minmax(0,1fr)_115px_60px]'} gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-2 bg-slate-50 dark:bg-[#272C38]/60 border-b border-slate-100 dark:border-[#2D3342] text-[10px] sm:text-[11px] font-bold text-slate-500 dark:text-[#8B93A7]`}>
             <div></div>
             <div>ชื่อ</div>
             <div className="text-center">อาชีพ</div>
@@ -998,10 +1065,10 @@ function TeamCard({
                                   <div 
                                     ref={prov.innerRef} 
                                     {...prov.draggableProps} 
-                                    className={`w-full h-[38px] grid ${isAdmin ? 'grid-cols-[36px_minmax(0,1fr)_115px_60px_24px]' : 'grid-cols-[36px_minmax(0,1fr)_115px_60px]'} gap-2 items-center px-2 py-1 rounded-xl bg-white dark:bg-[#272C38] hover:bg-slate-50 dark:hover:bg-[#2A2F3E] group border border-slate-100 dark:border-[#2D3342] ${snap.isDragging ? 'shadow-2xl border-blue-400 dark:border-[#4D73CD] ring-2 ring-[#0b3d63]/20 dark:ring-[#4D73CD]/20 z-[99999]' : 'shadow-xs'}`} 
+                                    className={`w-full h-[38px] grid ${isAdmin ? 'grid-cols-[30px_minmax(0,1fr)_85px_50px_22px] sm:grid-cols-[36px_minmax(0,1fr)_115px_60px_24px]' : 'grid-cols-[30px_minmax(0,1fr)_85px_50px] sm:grid-cols-[36px_minmax(0,1fr)_115px_60px]'} gap-1.5 sm:gap-2 items-center px-2 py-1 rounded-xl bg-white dark:bg-[#272C38] hover:bg-slate-50 dark:hover:bg-[#2A2F3E] group border border-slate-100 dark:border-[#2D3342] ${snap.isDragging ? 'shadow-2xl border-blue-400 dark:border-[#4D73CD] ring-2 ring-[#0b3d63]/20 dark:ring-[#4D73CD]/20 z-[99999]' : 'shadow-xs'}`} 
                                     style={prov.draggableProps.style}
                                   >
-                                    <div className="flex items-center gap-1 text-slate-400 dark:text-[#6B7280] cursor-grab" {...(isAdmin ? prov.dragHandleProps : {})}>
+                                    <div className="flex items-center gap-0.5 sm:gap-1 text-slate-400 dark:text-[#6B7280] cursor-grab touch-none p-1 -m-1" {...(isAdmin ? prov.dragHandleProps : {})}>
                                       {isAdmin ? <GripVertical size={14} className="text-sky-300 dark:text-sky-400 shrink-0" /> : null}
                                       <span className="text-xs font-bold text-sky-500 font-mono w-3 text-center">{slotIdx + 1}</span>
                                     </div>
@@ -1010,22 +1077,25 @@ function TeamCard({
                                     </div>
                                     {m && (
                                       <div 
-                                        className="h-[26px] px-3 rounded-full text-xs font-bold text-white flex items-center justify-center gap-1 shadow-sm shrink-0 w-[115px]" 
+                                        className="h-[24px] sm:h-[26px] px-1.5 sm:px-3 rounded-full text-[10px] sm:text-xs font-bold text-white flex items-center justify-center gap-1 shadow-sm shrink-0 w-[85px] sm:w-[115px]" 
                                         style={{ backgroundColor: color }}
                                       >
                                         <span className="truncate">{m.job}</span>
-                                        <ChevronDown size={11} className="opacity-80 shrink-0 stroke-[2.5]" />
+                                        <ChevronDown size={10} className="opacity-80 shrink-0 stroke-[2.5] hidden sm:inline-block" />
                                       </div>
                                     )}
-                                    {m && <div className="text-xs font-bold text-[#0b3d63] dark:text-white text-right tabular-nums shrink-0">{m.power.toLocaleString()}</div>}
+                                    {m && <div className="text-[10px] sm:text-xs font-bold text-[#0b3d63] dark:text-white text-right tabular-nums shrink-0">{m.power.toLocaleString()}</div>}
                                     {isAdmin && (
                                       <button 
-                                        onClick={() => removeMember(column.id, memberId)} 
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          removeMember(column.id, memberId);
+                                        }} 
                                         disabled={column.locked} 
-                                        className="text-sky-300 hover:text-red-500 dark:text-sky-400 dark:hover:text-red-400 opacity-60 hover:opacity-100 transition-opacity flex justify-center disabled:hidden"
+                                        className="text-sky-300 hover:text-red-500 dark:text-sky-400 dark:hover:text-red-400 opacity-60 hover:opacity-100 transition-opacity flex justify-center disabled:hidden p-0.5"
                                         title="นำออกจากทีม"
                                       >
-                                        <X size={15} strokeWidth={2.5} />
+                                        <X size={14} strokeWidth={2.5} />
                                       </button>
                                     )}
                                   </div>
@@ -1038,7 +1108,7 @@ function TeamCard({
                              }}
                            </Draggable>
                          )}
-                         <div className="hidden">{provided.placeholder}</div>
+                         <div className="absolute inset-0 opacity-0 pointer-events-none overflow-hidden">{provided.placeholder}</div>
                       </div>
                     )}
                   </Droppable>
@@ -1066,7 +1136,7 @@ function MemberCard({ member, index }: { member: Member; index: number; }) {
             ref={provided.innerRef}
             {...provided.draggableProps}
             {...provided.dragHandleProps}
-            className={`flex items-center justify-between p-2 rounded-xl border shadow-sm select-none transition-all ${
+            className={`flex items-center justify-between p-2 rounded-xl border shadow-sm select-none transition-all touch-none ${
               snapshot.isDragging
                 ? 'shadow-2xl border-[#0b3d63] dark:border-[#4D73CD] z-[99999] ring-2 ring-[#0b3d63]/20 dark:ring-[#4D73CD]/20 bg-white dark:bg-[#272C38]'
                 : 'border-slate-200 dark:border-[#2D3342] hover:border-slate-300 dark:hover:border-slate-600'
