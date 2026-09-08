@@ -1,0 +1,159 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700;900&display=swap');
+
+@layer base {
+  :root {
+    --background: 223 16% 13%;
+    --foreground: 0 0% 100%;
+    --card: 224 19% 17%;
+    --card-foreground: 0 0% 100%;
+    --popover: 224 19% 17%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 223 63% 53%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 224 18% 19%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 224 18% 19%;
+    --muted-foreground: 222 13% 60%;
+    --accent: 224 18% 19%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 221 19% 22%;
+    --input: 224 18% 19%;
+    --ring: 223 63% 53%;
+    --radius: 0.75rem;
+    --font-prompt: 'Prompt', sans-serif;
+
+    --theme-bg: #1c1f27;
+    --theme-sidebar: #171d27;
+    --theme-sidebar-active: #3b66d1;
+    --theme-sidebar-text-active: #ffffff;
+    --theme-sidebar-text: #8b93a7;
+    --theme-panel: #232733;
+    --theme-input: #272c38;
+    --theme-border: #2d3342;
+    --theme-border-hover: #3d4456;
+    --theme-divider: #1f2430;
+    --theme-text: #ffffff;
+    --theme-text-secondary: #8b93a7;
+    --theme-text-muted: #6b7280;
+    --theme-primary: #3b66d1;
+    --theme-primary-hover: #4d73cd;
+    --theme-accent: #4d73cd;
+    --theme-success: #10b981;
+    --theme-warning: #f59e0b;
+    --theme-danger: #ef4444;
+    --theme-purple: #8b5cf6;
+  }
+}
+
+@layer base {
+  * { @apply border-border; }
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-prompt), sans-serif;
+  }
+}
+
+/* Job class colors */
+.job-lk      { color: #c13829; }
+.job-paladin { color: #e18028; }
+.job-hw      { color: #2c7eb9; }
+.job-sniper  { color: #d4a015; }
+.job-priest  { color: #25ae62; }
+.job-champ   { color: #15a083; }
+.job-sin     { color: #8b46af; }
+.job-merch   { color: #c2185d; }
+.job-gun     { color: #894517; }
+.job-druid   { color: #41b388; }
+
+@layer base {
+  .dark {
+    --background: 223 16% 13%;
+    --foreground: 0 0% 100%;
+    --card: 224 19% 17%;
+    --card-foreground: 0 0% 100%;
+    --popover: 224 19% 17%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 223 63% 53%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 224 18% 19%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 224 18% 19%;
+    --muted-foreground: 222 13% 60%;
+    --accent: 224 18% 19%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 221 19% 22%;
+    --input: 224 18% 19%;
+    --ring: 223 63% 53%;
+
+    --theme-bg: #1c1f27;
+    --theme-sidebar: #171d27;
+    --theme-sidebar-active: #3b66d1;
+    --theme-sidebar-text-active: #ffffff;
+    --theme-sidebar-text: #8b93a7;
+    --theme-panel: #232733;
+    --theme-input: #272c38;
+    --theme-border: #2d3342;
+    --theme-border-hover: #3d4456;
+    --theme-divider: #1f2430;
+    --theme-text: #ffffff;
+    --theme-text-secondary: #8b93a7;
+    --theme-text-muted: #6b7280;
+    --theme-primary: #3b66d1;
+    --theme-primary-hover: #4d73cd;
+    --theme-accent: #4d73cd;
+    --theme-success: #10b981;
+    --theme-warning: #f59e0b;
+    --theme-danger: #ef4444;
+    --theme-purple: #8b5cf6;
+  }
+
+  .light {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 207 83% 32%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 207 83% 32%;
+
+    --theme-bg: #f0f6fc;
+    --theme-sidebar: #0b3d63;
+    --theme-sidebar-active: #ffffff;
+    --theme-sidebar-text-active: #0b3d63;
+    --theme-sidebar-text: #bfdbfe;
+    --theme-panel: #ffffff;
+    --theme-input: #ffffff;
+    --theme-border: #e2e8f0;
+    --theme-border-hover: #cbd5e1;
+    --theme-divider: #f1f5f9;
+    --theme-text: #1e293b;
+    --theme-text-secondary: #64748b;
+    --theme-text-muted: #94a3b8;
+    --theme-primary: #0b3d63;
+    --theme-primary-hover: #0f4b7a;
+    --theme-success: #10b981;
+    --theme-warning: #f59e0b;
+    --theme-danger: #ef4444;
+    --theme-purple: #8b5cf6;
+  }
+}
