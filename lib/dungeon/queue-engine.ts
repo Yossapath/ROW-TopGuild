@@ -29,7 +29,7 @@ export const assignPlayersToTeam = (
   
   // Calculate how many slots are available
   // Max team size is 5. Subtract carriers.
-  const carrierCount = team.carriers?.length || 0;
+  const carrierCount = team.carriers?.length ?? 2;
   const maxQueueMembers = Math.max(0, 5 - carrierCount);
 
   // Check if carriers have a Priest
