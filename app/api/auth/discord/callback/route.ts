@@ -52,7 +52,16 @@ export async function GET(req: Request) {
     const tokenData = await tokenResponse.json();
 
     if (tokenData.error) {
-      const res = NextResponse.redirect(new URL(`/login?error=${tokenData.error}`, req.url));
+      console.error("Discord OAuth Token Error:", tokenData);
+      const desc = tokenData.error_description || tokenData.error;
+      const res = NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(desc)}`, req.url));
+      res.cookies.set({ name: "oauth_state", value: "", maxAge: 0, path: "/" });
+      return res;
+    }
+
+    if (!tokenData.access_token) {
+      console.error("Discord OAuth Missing Token:", tokenData);
+      const res = NextResponse.redirect(new URL("/login?error=MissingAccessToken", req.url));
       res.cookies.set({ name: "oauth_state", value: "", maxAge: 0, path: "/" });
       return res;
     }
@@ -64,6 +73,15 @@ export async function GET(req: Request) {
     });
 
     const userData = await userResponse.json();
+
+    if (!userResponse.ok || !userData || !userData.id) {
+      console.error("Discord OAuth User Fetch Error:", userData);
+      const errorMsg = userData?.message || "DiscordUserFetchFailed";
+      const res = NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(errorMsg)}`, req.url));
+      res.cookies.set({ name: "oauth_state", value: "", maxAge: 0, path: "/" });
+      return res;
+    }
+
     const discordId = userData.id;
     const discordUsername = userData.username;
 
@@ -127,7 +145,8 @@ export async function GET(req: Request) {
 
   } catch (err: any) {
     console.error("Discord OAuth Error:", err);
-    const res = NextResponse.redirect(new URL("/login?error=OAuthFailed", req.url));
+    const errorMsg = err?.message ? encodeURIComponent(err.message) : "OAuthFailed";
+    const res = NextResponse.redirect(new URL(`/login?error=${errorMsg}`, req.url));
     res.cookies.set({ name: "oauth_state", value: "", maxAge: 0, path: "/" });
     return res;
   }

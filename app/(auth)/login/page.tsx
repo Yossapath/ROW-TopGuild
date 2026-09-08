@@ -39,8 +39,11 @@ function LoginForm() {
       </div>
 
       {error && (
-        <div className="mb-6 rounded-lg border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950/40 p-4 text-sm text-red-600 dark:text-red-400">
-          เกิดข้อผิดพลาดในการเข้าสู่ระบบด้วย Discord: {error}
+        <div className="mb-6 rounded-lg border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950/40 p-4 text-sm text-red-600 dark:text-red-400 text-left">
+          <div className="font-bold mb-1">เกิดข้อผิดพลาดในการเข้าสู่ระบบด้วย Discord:</div>
+          <div className="font-mono text-xs bg-red-100/50 dark:bg-black/30 p-2 rounded break-all">
+            {decodeURIComponent(error)}
+          </div>
         </div>
       )}
 
