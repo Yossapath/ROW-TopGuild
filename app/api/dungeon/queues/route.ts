@@ -39,12 +39,13 @@ export async function POST(req: Request) {
     }
 
     // 1. ตรวจสอบเวลาเปิดจอง (Validation on Backend - ป้องกันการโกง 100%)
+    //    ใช้เวลา Server เสมอ ไม่เชื่อ timestamp จาก client
     const schedSnap = await scheduleRef().get();
     if (schedSnap.exists) {
       const sched = schedSnap.data() as any;
       const check = isBookingOpen(sched);
       if (!check.open) {
-        return err(check.reason || "ระบบจองปิดอยู่");
+        return err(check.reason || "ระบบจองปิดอยู่", 403);
       }
     }
 

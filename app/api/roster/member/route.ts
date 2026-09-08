@@ -49,11 +49,13 @@ export async function PUT(req: Request) {
       // Retain existing role if not admin
       let existingWarRole = "อิสระ (ให้ระบบจัดให้)";
 
-      if (originalJob && rosterData[originalJob]) {
-        const idx = rosterData[originalJob].findIndex((m: any) => m.discordId === targetDiscordId || m.name === originalName);
-        if (idx !== -1) {
-          existingWarRole = rosterData[originalJob][idx].role || existingWarRole;
-          rosterData[originalJob].splice(idx, 1);
+      for (const j of Object.keys(rosterData)) {
+        if (Array.isArray(rosterData[j])) {
+          const idx = rosterData[j].findIndex((m: any) => m.discordId === targetDiscordId || (originalName && m.name === originalName));
+          if (idx !== -1) {
+            existingWarRole = rosterData[j][idx].role || existingWarRole;
+            rosterData[j].splice(idx, 1);
+          }
         }
       }
 

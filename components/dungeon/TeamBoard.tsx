@@ -1,27 +1,23 @@
 "use client";
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Play, Pause, CheckCircle, RefreshCw, Users, Shield, Plus, X } from "lucide-react";
 import { DungeonTeamResource } from "@/types";
 import { JOB_COLORS } from "@/lib/utils";
 import { useAuthStore } from "@/stores/useAuthStore";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { Droppable } from "@hello-pangea/dnd";
 
-export function TeamBoard() {
+interface TeamBoardProps {
+  teams: DungeonTeamResource[];
+  isLoading: boolean;
+  rosterMembers: { name: string; job: string }[];
+}
+
+export function TeamBoard({ teams, isLoading, rosterMembers }: TeamBoardProps) {
   const queryClient = useQueryClient();
   const user = useAuthStore((s) => s.user);
   const isAdmin = user?.role === "admin" || user?.role === "owner";
-
-  const { data: teams, isLoading } = useQuery<DungeonTeamResource[]>({
-    queryKey: ["dungeon_teams"],
-    queryFn: async () => {
-      const res = await fetch("/api/dungeon/teams");
-      const json = await res.json();
-      return json.data;
-    },
-    refetchInterval: 5000,
-  });
 
   const actionMutation = useMutation({
     mutationFn: async ({ teamId, action, payload }: { teamId: string; action: string; payload?: any }) => {
@@ -37,33 +33,13 @@ export function TeamBoard() {
       return json;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["dungeon_teams"] });
-      queryClient.invalidateQueries({ queryKey: ["dungeon_queue_items"] });
+      // Invalidate the unified dungeon data query so the parent re-fetches
+      queryClient.invalidateQueries({ queryKey: ["dungeon_data"] });
     },
     onError: (err: any) => {
       alert(err.message);
-    }
+    },
   });
-
-  const { data: rosterData } = useQuery({
-    queryKey: ["roster"],
-    queryFn: async () => {
-      const res = await fetch("/api/roster");
-      const json = await res.json();
-      return json.data;
-    }
-  });
-
-  const rosterMembers = useMemo(() => {
-    if (!rosterData) return [];
-    const members: {name: string, job: string}[] = [];
-    for (const [job, arr] of Object.entries(rosterData as Record<string, { name: string }[]>)) {
-      for (const m of arr) {
-        members.push({ name: m.name, job });
-      }
-    }
-    return members;
-  }, [rosterData]);
 
   if (isLoading) return <div className="text-center py-4"><RefreshCw className="animate-spin inline mr-2" /> โหลดข้อมูลทีม...</div>;
   if (!teams || teams.length === 0) return null;
@@ -71,10 +47,10 @@ export function TeamBoard() {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
       {teams.map((team, idx) => (
-        <TeamCard 
-          key={team.id} 
-          team={team} 
-          index={idx + 1} 
+        <TeamCard
+          key={team.id}
+          team={team}
+          index={idx + 1}
           isAdmin={isAdmin}
           rosterMembers={rosterMembers}
           onAction={(action, payload) => actionMutation.mutate({ teamId: team.id, action, payload })}
@@ -85,24 +61,23 @@ export function TeamBoard() {
   );
 }
 
-function TeamCard({ team, index, isAdmin, rosterMembers, onAction, isLoading }: { 
-  team: DungeonTeamResource; 
-  index: number; 
+function TeamCard({ team, index, isAdmin, rosterMembers, onAction, isLoading }: {
+  team: DungeonTeamResource;
+  index: number;
   isAdmin: boolean;
-  rosterMembers: {name: string, job: string}[];
+  rosterMembers: { name: string; job: string }[];
   onAction: (action: string, payload?: any) => void;
   isLoading: boolean;
 }) {
   const [now, setNow] = useState(Date.now());
   const [newCarrier, setNewCarrier] = useState("");
-  
+
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
   }, []);
 
   const getStatusColor = () => {
-    // User requested to use default colors for all statuses (no color changes on AVAILABLE/RUNNING)
     return "bg-white text-slate-800 dark:bg-[#232733] dark:text-white border-slate-200 dark:border-[#2D3342]";
   };
 
@@ -124,11 +99,11 @@ function TeamCard({ team, index, isAdmin, rosterMembers, onAction, isLoading }: 
       const over = Math.abs(remainingMs);
       const m = Math.floor(over / 60000);
       const s = Math.floor((over % 60000) / 1000);
-      timeDisplay = `+${m}:${s.toString().padStart(2, '0')}`;
+      timeDisplay = `+${m}:${s.toString().padStart(2, "0")}`;
     } else {
       const m = Math.floor(remainingMs / 60000);
       const s = Math.floor((remainingMs % 60000) / 1000);
-      timeDisplay = `${m}:${s.toString().padStart(2, '0')}`;
+      timeDisplay = `${m}:${s.toString().padStart(2, "0")}`;
     }
   } else if (team.status === "PAUSED" && team.pausedAt && team.startedAt) {
     const elapsedBeforePause = team.pausedAt - team.startedAt - team.pausedDuration;
@@ -137,11 +112,11 @@ function TeamCard({ team, index, isAdmin, rosterMembers, onAction, isLoading }: 
       const over = Math.abs(remainingMs);
       const m = Math.floor(over / 60000);
       const s = Math.floor((over % 60000) / 1000);
-      timeDisplay = `+${m}:${s.toString().padStart(2, '0')} (Paused)`;
+      timeDisplay = `+${m}:${s.toString().padStart(2, "0")} (Paused)`;
     } else {
       const m = Math.floor(remainingMs / 60000);
       const s = Math.floor((remainingMs % 60000) / 1000);
-      timeDisplay = `${m}:${s.toString().padStart(2, '0')} (Paused)`;
+      timeDisplay = `${m}:${s.toString().padStart(2, "0")} (Paused)`;
     }
   }
 
@@ -168,7 +143,7 @@ function TeamCard({ team, index, isAdmin, rosterMembers, onAction, isLoading }: 
           {getStatusLabel()}
         </div>
       </div>
-      
+
       {/* Carriers Section */}
       <div className="flex flex-col gap-1.5 mb-4 px-1">
         <div className="text-xs font-bold mb-1 opacity-70">คนแบก (Carriers)</div>
@@ -176,19 +151,19 @@ function TeamCard({ team, index, isAdmin, rosterMembers, onAction, isLoading }: 
           <div className="text-sm opacity-60 italic py-1">ยังไม่มีคนแบก...</div>
         ) : (
           team.carriers.map((c, i) => {
-            const rosterMember = rosterMembers.find(m => m.name === c);
+            const rosterMember = rosterMembers.find((m) => m.name === c);
             const job = rosterMember?.job || "Unknown";
             return (
               <div key={i} className="flex justify-between items-center text-sm bg-white/60 dark:bg-black/20 px-2 py-1.5 rounded border border-slate-200/50 dark:border-slate-700/50">
                 <span className="font-bold flex items-center">
-                  <span className="inline-block w-2 h-2 rounded-full mr-2" style={{ backgroundColor: JOB_COLORS[job] || '#888' }} />
+                  <span className="inline-block w-2 h-2 rounded-full mr-2" style={{ backgroundColor: JOB_COLORS[job] || "#888" }} />
                   {c}
                 </span>
                 <div className="flex items-center gap-2">
                   <span className="opacity-70 text-xs font-medium bg-black/10 px-1.5 py-0.5 rounded">{job}</span>
                   {isAdmin && (
-                    <button 
-                      onClick={() => handleRemoveCarrier(i)} 
+                    <button
+                      onClick={() => handleRemoveCarrier(i)}
                       className="text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30 p-0.5 rounded transition-all"
                       title="ลบคนแบกออก"
                     >
@@ -203,46 +178,44 @@ function TeamCard({ team, index, isAdmin, rosterMembers, onAction, isLoading }: 
         {isAdmin && (
           <div className="flex gap-1 relative mt-1">
             <div className="flex-1 relative">
-              <input 
-                type="text" 
+              <input
+                type="text"
                 value={newCarrier}
                 onChange={(e) => setNewCarrier(e.target.value)}
                 onFocus={() => {
                   const dropdownState = document.getElementById(`carrier-dropdown-${index}`);
-                  if(dropdownState) dropdownState.style.display = "block";
+                  if (dropdownState) dropdownState.style.display = "block";
                 }}
                 onBlur={() => {
                   setTimeout(() => {
                     const dropdownState = document.getElementById(`carrier-dropdown-${index}`);
-                    if(dropdownState) dropdownState.style.display = "none";
+                    if (dropdownState) dropdownState.style.display = "none";
                   }, 200);
                 }}
-                placeholder="พิมพ์ชื่อคนแบก..." 
+                placeholder="พิมพ์ชื่อคนแบก..."
                 className="w-full text-xs px-2 py-1.5 rounded border border-slate-200/50 dark:border-slate-700/50 bg-white/60 dark:bg-black/20 focus:outline-none focus:bg-white dark:focus:bg-[#232733]"
-                onKeyDown={(e) => { if (e.key === 'Enter') handleAddCarrier(); }}
+                onKeyDown={(e) => { if (e.key === "Enter") handleAddCarrier(); }}
               />
               <div id={`carrier-dropdown-${index}`} className="hidden absolute z-50 w-full mt-1 bg-white dark:bg-[#272C38] border border-slate-200 dark:border-[#2D3342] rounded-lg shadow-lg max-h-48 overflow-auto">
                 {rosterMembers
-                  .filter(m => newCarrier === "" || m.name.toLowerCase().includes(newCarrier.toLowerCase()))
-                  .filter(m => !(team.carriers || []).includes(m.name))
+                  .filter((m) => newCarrier === "" || m.name.toLowerCase().includes(newCarrier.toLowerCase()))
+                  .filter((m) => !(team.carriers || []).includes(m.name))
                   .map((m) => (
-                  <div 
-                    key={m.name} 
-                    className="px-3 py-1.5 text-xs cursor-pointer hover:bg-slate-100 dark:hover:bg-[#323847] text-slate-800 dark:text-white flex items-center justify-between"
-                    onClick={() => {
-                      setNewCarrier(m.name);
-                    }}
-                  >
-                    <span className="font-medium">{m.name}</span>
-                    <span className="opacity-60 flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ backgroundColor: JOB_COLORS[m.job] || '#888' }} />
-                      {m.job}
-                    </span>
-                  </div>
-                ))}
+                    <div
+                      key={m.name}
+                      className="px-3 py-1.5 text-xs cursor-pointer hover:bg-slate-100 dark:hover:bg-[#323847] text-slate-800 dark:text-white flex items-center justify-between"
+                      onClick={() => { setNewCarrier(m.name); }}
+                    >
+                      <span className="font-medium">{m.name}</span>
+                      <span className="opacity-60 flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ backgroundColor: JOB_COLORS[m.job] || "#888" }} />
+                        {m.job}
+                      </span>
+                    </div>
+                  ))}
               </div>
             </div>
-            <button 
+            <button
               onClick={handleAddCarrier}
               disabled={isLoading || !newCarrier.trim()}
               className="px-2 py-1 bg-indigo-500 text-white rounded text-xs hover:bg-indigo-600 disabled:opacity-50"
@@ -258,10 +231,10 @@ function TeamCard({ team, index, isAdmin, rosterMembers, onAction, isLoading }: 
         <div className="text-xs font-bold mb-1 opacity-70">ผู้เล่นในคิว (Players)</div>
         <Droppable droppableId={`team_${team.id}`}>
           {(provided, snapshot) => (
-            <div 
-              ref={provided.innerRef} 
+            <div
+              ref={provided.innerRef}
               {...provided.droppableProps}
-              className={`min-h-[40px] rounded-lg transition-colors ${snapshot.isDraggingOver ? 'bg-blue-100/50 dark:bg-blue-900/30' : ''}`}
+              className={`min-h-[40px] rounded-lg transition-colors ${snapshot.isDraggingOver ? "bg-blue-100/50 dark:bg-blue-900/30" : ""}`}
             >
               {team.activeMembers.length === 0 ? (
                 <div className="text-sm opacity-60 italic py-1">รอการจัดคิว...</div>
@@ -269,13 +242,13 @@ function TeamCard({ team, index, isAdmin, rosterMembers, onAction, isLoading }: 
                 team.activeMembers.map((m) => (
                   <div key={m.queueItemId} className="flex justify-between items-center text-sm bg-white/60 dark:bg-black/20 px-2 py-1.5 rounded border border-slate-200/50 dark:border-slate-700/50 mb-1.5 last:mb-0">
                     <span className="font-bold flex items-center">
-                      <span className="inline-block w-2 h-2 rounded-full mr-2" style={{ backgroundColor: JOB_COLORS[m.job] || '#888' }} />
+                      <span className="inline-block w-2 h-2 rounded-full mr-2" style={{ backgroundColor: JOB_COLORS[m.job] || "#888" }} />
                       {m.name}
                     </span>
                     <div className="flex items-center gap-2">
                       <span className="opacity-70 text-xs font-medium bg-black/10 px-1.5 py-0.5 rounded">รอบ {m.roundNumber} ({m.job})</span>
                       {isAdmin && (team.status === "AVAILABLE" || team.status === "PAUSED") && (
-                        <button 
+                        <button
                           onClick={() => onAction("eject", { queueItemId: m.queueItemId })}
                           className="text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30 p-0.5 rounded transition-all"
                           title="เตะออกจากทีม (กลับไปต่อคิว)"
@@ -294,10 +267,10 @@ function TeamCard({ team, index, isAdmin, rosterMembers, onAction, isLoading }: 
       </div>
 
       <div className="flex items-center justify-between mt-auto">
-        <div className={`font-mono font-bold text-lg ${isOvertime ? 'text-red-500' : ''}`}>
+        <div className={`font-mono font-bold text-lg ${isOvertime ? "text-red-500" : ""}`}>
           {timeDisplay}
         </div>
-        
+
         {isAdmin && (
           <div className="flex gap-2">
             {team.status === "AVAILABLE" && (

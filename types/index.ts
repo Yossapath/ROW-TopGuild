@@ -101,6 +101,10 @@ export interface DungeonSchedule {
   openTime: string;   // "HH:MM"
   closeTime: string;  // "HH:MM"
   carryTeamsCount?: number; // จำนวนทีมแบก (ค่าเริ่มต้น 1 หรือ 2)
+  /** Admin manual override: true = ปิดจองเด็ดขาดโดยไม่คำนึงถึงเวลา */
+  isClosed?: boolean;
+  /** Server timestamp (ms) ส่งมากับ GET /api/dungeon/schedule เพื่อ sync เวลา client-side */
+  serverTime?: number;
 }
 
 // ── Attendance ────────────────────────────────────────────────

@@ -30,14 +30,13 @@ export async function POST(req: Request) {
     const rosterDocRef = rosterRef();
     const rosterDoc = await rosterDocRef.get();
     let rosterData = rosterDoc.exists ? rosterDoc.data() || {} : {};
-
     // Remove this member from every job bucket first (they may be changing
-    // class), so switching jobs can't leave a stale duplicate entry behind
+    // class or name), so switching jobs can't leave a stale duplicate entry behind
     // in their old class array.
     for (const jobKey of Object.keys(rosterData)) {
       if (!Array.isArray(rosterData[jobKey])) continue;
       rosterData[jobKey] = rosterData[jobKey].filter(
-        (m: any) => m.discordId !== user.discordId
+        (m: any) => m.discordId !== user.discordId && m.name !== gameUsername
       );
     }
 
@@ -54,7 +53,7 @@ export async function POST(req: Request) {
 
     rosterData[userClass].push(memberObj);
 
-    await rosterDocRef.set(rosterData, { merge: true });
+    await rosterDocRef.set(rosterData);
 
     const payload = {
       ...user,

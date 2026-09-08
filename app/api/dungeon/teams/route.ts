@@ -13,41 +13,28 @@ export async function GET() {
     const scheduleDoc = await dungeonsRef().parent.doc("dungeon_schedule").get();
     const carryTeamsCount = scheduleDoc.exists ? (scheduleDoc.data()?.carryTeamsCount || 1) : 1;
 
-    // Create teams if missing or fix existing durations
-    let needsUpdate = false;
-    const batch = dungeonsRef().firestore.batch();
-    
-    for (let i = 1; i <= carryTeamsCount; i++) {
-      const teamId = `team-${i}`;
-      const existingTeam = teams.find(t => t.id === teamId);
-      
-      if (!existingTeam) {
-        const newTeam = createInitialTeam(teamId, "ดันมายา (Maya)");
-        batch.set(dungeonsRef().collection("dungeon_teams").doc(teamId), newTeam);
-        teams.push(newTeam as DungeonTeamResource);
-        needsUpdate = true;
-      } else if (existingTeam.estimatedDurationSeconds !== 600) {
-        // Enforce 10 minutes (600s) for existing teams
-        batch.update(dungeonsRef().collection("dungeon_teams").doc(teamId), {
-          estimatedDurationSeconds: 600
-        });
-        existingTeam.estimatedDurationSeconds = 600;
-        needsUpdate = true;
-      }
-    }
-
-    if (needsUpdate) {
-      await batch.commit();
-    }
-
-    // Filter to exactly carryTeamsCount
+    // Build team list: if a team doc is missing, use a virtual default (no writes).
+    // estimatedDurationSeconds is normalised in memory — we never batch-write on GET.
     const validIds = Array.from({ length: carryTeamsCount }).map((_, i) => `team-${i + 1}`);
-    teams = teams.filter(t => validIds.includes(t.id));
 
-    // Sort by team ID
-    teams.sort((a, b) => a.id.localeCompare(b.id));
+    const teamsById = new Map(teams.map((t) => [t.id, t]));
 
-    return ok(teams);
+    const result: DungeonTeamResource[] = validIds.map((teamId) => {
+      const existing = teamsById.get(teamId);
+      if (existing) {
+        // Normalise in-memory only — no Firestore write
+        return {
+          ...existing,
+          estimatedDurationSeconds: existing.estimatedDurationSeconds || 600,
+        };
+      }
+      // Team doc missing → return a virtual default without writing
+      return createInitialTeam(teamId, "ดันมายา (Maya)") as DungeonTeamResource;
+    });
+
+    result.sort((a, b) => a.id.localeCompare(b.id));
+
+    return ok(result);
   } catch (e: unknown) {
     return handleServerError(e, "Failed to load teams");
   }

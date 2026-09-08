@@ -32,7 +32,7 @@ export const teamDataSchema = z.object({
   mainZone1Order: z.array(z.string().max(50)).max(50),
   mainZone2Order: z.array(z.string().max(50)).max(50),
   subOrder: z.array(z.string().max(50)).max(50),
-  offlineIds: z.array(z.string().max(100)).max(200).optional(),
+  offlineIds: z.array(z.string().max(100)).max(200).optional().default([]),
   main: z.array(teamZoneRowSchema).max(50).optional(),
   sub: z.array(teamZoneRowSchema).max(50).optional(),
 });

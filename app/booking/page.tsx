@@ -151,16 +151,14 @@ export default function BookingPage() {
         const sched = d.data ?? d;
         if (sched) {
           setSchedule(sched);
-          // เดิมเช็ค if (sched.carryTeamsCount) ทำให้ค่า 0 (falsy) ถูกมองข้าม
-          // และยังคงใช้ default = 1 อยู่ดี ทั้งที่แอดมินอาจตั้งใจให้เป็น 0
           if (typeof sched.carryTeamsCount === "number") {
             setCarryTeamsCount(sched.carryTeamsCount);
           }
-          if (!sched.openDate) {
+          if (sched.isClosed) {
+            setBookingStatus({ open: false, reason: "🔒 ปิดรับจองโดยผู้ดูแลระบบ" });
+          } else if (!sched.openDate) {
             setBookingStatus({ open: true });
           }
-          // ถ้ามี openDate ปล่อยให้ effect ด้านล่าง (ที่ผูกกับ `now`) เป็นคนคำนวณ
-          // สถานะเปิด/ปิดแทน จะได้อัปเดตตามเวลาจริงด้วย ไม่ใช่แค่ตอน mount ครั้งเดียว
         } else {
           // No schedule set — show as open (no time limit)
           setBookingStatus({ open: true });
@@ -170,11 +168,8 @@ export default function BookingPage() {
   }, []);
 
   // ── Re-check เวลาเปิด/ปิดจองทุกวินาที ─────────────────────────
-  // เดิมเช็ค isBookingOpen แค่ครั้งเดียวตอน fetch schedule เสร็จ ทำให้ถ้าเวลา
-  // ปิดรับจองมาถึงระหว่างที่ผู้ใช้เปิดหน้าค้างไว้ (ไม่ refresh) ปุ่ม "จองคิว"
-  // จะยังดูเหมือนกดได้อยู่ (แม้ server จะ reject ก็ตาม แต่ UX สับสน)
   useEffect(() => {
-    if (schedule?.openDate) {
+    if (schedule) {
       setBookingStatus(isBookingOpen(schedule));
     }
   }, [schedule, now]);
@@ -196,9 +191,33 @@ export default function BookingPage() {
 
   useEffect(() => {
     fetchQueues();
-    timerRef.current = setInterval(fetchQueues, 15000);
-    return () => {
+
+    const startInterval = () => {
       if (timerRef.current) clearInterval(timerRef.current);
+      timerRef.current = setInterval(fetchQueues, 15000);
+    };
+    const stopInterval = () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+
+    startInterval();
+
+    const handleVisibility = () => {
+      if (document.hidden) {
+        stopInterval();
+      } else {
+        fetchQueues();
+        startInterval();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      stopInterval();
+      document.removeEventListener("visibilitychange", handleVisibility);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

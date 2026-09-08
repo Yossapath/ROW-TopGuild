@@ -1,31 +1,27 @@
 "use client";
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { RefreshCw, Search, Trash2, ArrowDownToLine } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { RefreshCw, Search, Trash2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { DungeonQueueItem } from "@/types";
 import { JOB_COLORS } from "@/lib/utils";
 import { useAuthStore } from "@/stores/useAuthStore";
 import type { QueueEstimate } from "@/lib/dungeon-estimator";
-
 import { Droppable, Draggable } from "@hello-pangea/dnd";
 
-export function QueueBoard({ userEstimate }: { userEstimate?: QueueEstimate | null }) {
+interface QueueBoardProps {
+  queueItems: DungeonQueueItem[];
+  isLoading: boolean;
+  userEstimate?: QueueEstimate | null;
+  onRefresh?: () => void;
+}
+
+export function QueueBoard({ queueItems, isLoading, userEstimate, onRefresh }: QueueBoardProps) {
   const [search, setSearch] = useState("");
-  const [editingQueueId, setEditingQueueId] = useState<{ id: string; rounds: 1|2 } | null>(null);
+  const [editingQueueId, setEditingQueueId] = useState<{ id: string; rounds: 1 | 2 } | null>(null);
   const user = useAuthStore((s) => s.user);
   const isAdmin = user?.role === "admin" || user?.role === "owner";
   const queryClient = useQueryClient();
-
-  const { data: queueItems, isLoading, refetch } = useQuery<DungeonQueueItem[]>({
-    queryKey: ["dungeon_queue_items"],
-    queryFn: async () => {
-      const res = await fetch("/api/dungeon/queue-items");
-      const json = await res.json();
-      return json.data;
-    },
-    refetchInterval: 5000,
-  });
 
   const actionMutation = useMutation({
     mutationFn: async ({ id, action }: { id: string; action: "delete" | "skip" }) => {
@@ -35,14 +31,13 @@ export function QueueBoard({ userEstimate }: { userEstimate?: QueueEstimate | nu
         await fetch(`/api/dungeon/queues/${id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "skip" })
+          body: JSON.stringify({ action: "skip" }),
         });
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["dungeon_queue_items"] });
-      queryClient.invalidateQueries({ queryKey: ["dungeon_teams"] });
-    }
+      queryClient.invalidateQueries({ queryKey: ["dungeon_data"] });
+    },
   });
 
   const editRoundsMutation = useMutation({
@@ -50,13 +45,13 @@ export function QueueBoard({ userEstimate }: { userEstimate?: QueueEstimate | nu
       const res = await fetch(`/api/dungeon/queues/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "updateRounds", rounds })
+        body: JSON.stringify({ action: "updateRounds", rounds }),
       });
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["dungeon_queue_items"] });
-    }
+      queryClient.invalidateQueries({ queryKey: ["dungeon_data"] });
+    },
   });
 
   const filteredItems = (queueItems || []).filter((q) => {
@@ -64,12 +59,12 @@ export function QueueBoard({ userEstimate }: { userEstimate?: QueueEstimate | nu
   });
 
   // Group items
-  const activeItems = filteredItems.filter(q => q.status === "ASSIGNED");
-  const waitingR1Priest = filteredItems.filter(q => q.status === "WAITING" && q.roundNumber === 1 && q.job === "Priest");
-  const waitingR1Others = filteredItems.filter(q => q.status === "WAITING" && q.roundNumber === 1 && q.job !== "Priest");
-  const waitingR2Priest = filteredItems.filter(q => q.status === "WAITING" && q.roundNumber === 2 && q.job === "Priest");
-  const waitingR2Others = filteredItems.filter(q => q.status === "WAITING" && q.roundNumber === 2 && q.job !== "Priest");
-  
+  const activeItems = filteredItems.filter((q) => q.status === "ASSIGNED");
+  const waitingR1Priest = filteredItems.filter((q) => q.status === "WAITING" && q.roundNumber === 1 && q.job === "Priest");
+  const waitingR1Others = filteredItems.filter((q) => q.status === "WAITING" && q.roundNumber === 1 && q.job !== "Priest");
+  const waitingR2Priest = filteredItems.filter((q) => q.status === "WAITING" && q.roundNumber === 2 && q.job === "Priest");
+  const waitingR2Others = filteredItems.filter((q) => q.status === "WAITING" && q.roundNumber === 2 && q.job !== "Priest");
+
   let globalIdx = 1;
 
   const renderGroup = (items: DungeonQueueItem[], title: string, titleColorCls: string) => {
@@ -77,30 +72,30 @@ export function QueueBoard({ userEstimate }: { userEstimate?: QueueEstimate | nu
     return (
       <div className="mb-4 last:mb-0">
         <div className={`text-xs font-bold ${titleColorCls} mb-2 px-1`}>{title} ({items.length})</div>
-        <Droppable droppableId={`queue_group_${title.replace(/\s+/g, '')}`} isDropDisabled={true}>
+        <Droppable droppableId={`queue_group_${title.replace(/\s+/g, "")}`} isDropDisabled={true}>
           {(provided) => (
             <div className="space-y-2" ref={provided.innerRef} {...provided.droppableProps}>
               {items.map((q, localIdx) => {
                 const currentIdx = globalIdx++;
                 const isOwner = user?.gameUsername === q.name;
                 const isDraggable = isAdmin && q.status === "WAITING";
-                
-                const hasR2 = filteredItems.some(i => i.bookingId === q.bookingId && i.roundNumber === 2);
-                
+
+                const hasR2 = filteredItems.some((i) => i.bookingId === q.bookingId && i.roundNumber === 2);
+
                 const card = (
-                  <QueueItemCard 
-                    key={q.id} 
-                    q={q} 
-                    idx={currentIdx} 
+                  <QueueItemCard
+                    key={q.id}
+                    q={q}
+                    idx={currentIdx}
                     isAdmin={isAdmin}
                     isOwner={isOwner}
                     totalRounds={hasR2 ? 2 : 1}
                     onAction={(action) => {
-                      if (action === 'delete' && !confirm('แน่ใจที่จะลบคิวนี้ใช่ไหม?')) return;
+                      if (action === "delete" && !confirm("แน่ใจที่จะลบคิวนี้ใช่ไหม?")) return;
                       actionMutation.mutate({ id: q.bookingId, action });
                     }}
                     onEditRounds={() => {
-                      const hasR2 = filteredItems.some(i => i.bookingId === q.bookingId && i.roundNumber === 2);
+                      const hasR2 = filteredItems.some((i) => i.bookingId === q.bookingId && i.roundNumber === 2);
                       setEditingQueueId({ id: q.bookingId, rounds: hasR2 ? 2 : 1 });
                     }}
                     isLoading={actionMutation.isPending || editRoundsMutation.isPending}
@@ -116,7 +111,7 @@ export function QueueBoard({ userEstimate }: { userEstimate?: QueueEstimate | nu
                         {...provided.dragHandleProps}
                         style={{
                           ...provided.draggableProps.style,
-                          opacity: snapshot.isDragging ? 0.8 : (isDraggable ? 1 : 0.9),
+                          opacity: snapshot.isDragging ? 0.8 : isDraggable ? 1 : 0.9,
                         }}
                       >
                         {card}
@@ -136,7 +131,7 @@ export function QueueBoard({ userEstimate }: { userEstimate?: QueueEstimate | nu
   return (
     <div className="flex-1 min-w-0">
       {/* User Estimate Banner */}
-      {userEstimate && userEstimate.status !== 'done' && userEstimate.status !== 'skipped' && (
+      {userEstimate && userEstimate.status !== "done" && userEstimate.status !== "skipped" && (
         <div className="mb-5 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 shadow-sm">
           <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
             <div>
@@ -145,8 +140,8 @@ export function QueueBoard({ userEstimate }: { userEstimate?: QueueEstimate | nu
                 สถานะคิวของคุณ ({userEstimate.name})
               </h3>
               <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
-                {userEstimate.status === 'active' 
-                  ? "กำลังลงดันเจี้ยน" 
+                {userEstimate.status === "active"
+                  ? "กำลังลงดันเจี้ยน"
                   : userEstimate.queuesAhead === 0
                     ? "คิวต่อไป (พร้อมลงทันทีเมื่อทีมว่าง)"
                     : `เหลืออีก ${userEstimate.queuesAhead} คิว ก่อนถึงคิวคุณ`}
@@ -155,7 +150,7 @@ export function QueueBoard({ userEstimate }: { userEstimate?: QueueEstimate | nu
             <div className="bg-white dark:bg-[#232733] px-4 py-2 rounded-lg shadow-sm border border-blue-100 dark:border-blue-800 text-center">
               <div className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">เวลาโดยประมาณ</div>
               <div className="font-mono font-bold text-blue-700 dark:text-blue-400">
-                {userEstimate.status === 'active' ? "Now" : userEstimate.estimatedStartTimeText}
+                {userEstimate.status === "active" ? "Now" : userEstimate.estimatedStartTimeText}
               </div>
             </div>
           </div>
@@ -170,7 +165,7 @@ export function QueueBoard({ userEstimate }: { userEstimate?: QueueEstimate | nu
             {filteredItems.length} คิว
           </span>
         </div>
-        
+
         <div className="flex items-center gap-2 w-full sm:w-auto">
           <div className="relative flex-1 sm:w-64">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-[#8B93A7]" />
@@ -182,13 +177,15 @@ export function QueueBoard({ userEstimate }: { userEstimate?: QueueEstimate | nu
               className="w-full pl-8 pr-3 py-1.5 border border-slate-200 dark:border-[#2D3342] rounded-lg text-xs bg-white dark:bg-[#272C38] text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-[#8B93A7] focus:outline-none focus:ring-2 focus:ring-[#4D73CD]"
             />
           </div>
-          <button
-            onClick={() => refetch()}
-            className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-[#272C38] transition-colors text-slate-500 dark:text-[#8B93A7] hover:text-slate-800 dark:hover:text-white"
-            title="รีเฟรช"
-          >
-            <RefreshCw size={15} />
-          </button>
+          {onRefresh && (
+            <button
+              onClick={onRefresh}
+              className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-[#272C38] transition-colors text-slate-500 dark:text-[#8B93A7] hover:text-slate-800 dark:hover:text-white"
+              title="รีเฟรช"
+            >
+              <RefreshCw size={15} />
+            </button>
+          )}
         </div>
       </div>
 
@@ -216,7 +213,7 @@ export function QueueBoard({ userEstimate }: { userEstimate?: QueueEstimate | nu
           onClose={() => setEditingQueueId(null)}
           onConfirm={(newRounds) => {
             if (newRounds !== editingQueueId.rounds) {
-               editRoundsMutation.mutate({ id: editingQueueId.id, rounds: newRounds });
+              editRoundsMutation.mutate({ id: editingQueueId.id, rounds: newRounds });
             }
             setEditingQueueId(null);
           }}
@@ -226,21 +223,19 @@ export function QueueBoard({ userEstimate }: { userEstimate?: QueueEstimate | nu
   );
 }
 
-function EditRoundsModal({ 
-  isOpen, 
-  onClose, 
-  onConfirm, 
-  currentRounds 
-}: { 
-  isOpen: boolean; 
-  onClose: () => void; 
-  onConfirm: (rounds: 1|2) => void; 
-  currentRounds: 1|2; 
+function EditRoundsModal({
+  isOpen,
+  onClose,
+  onConfirm,
+  currentRounds,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: (rounds: 1 | 2) => void;
+  currentRounds: 1 | 2;
 }) {
-  // Use state to track the selection before confirming
-  const [selected, setSelected] = useState<1|2>(currentRounds);
+  const [selected, setSelected] = useState<1 | 2>(currentRounds);
 
-  // Sync state if currentRounds changes while open
   useEffect(() => {
     setSelected(currentRounds);
   }, [currentRounds]);
@@ -256,13 +251,13 @@ function EditRoundsModal({
         <div className="p-5 flex gap-3">
           <button
             onClick={() => setSelected(1)}
-            className={`flex-1 py-2.5 rounded-lg border-2 font-bold transition-all ${selected === 1 ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400' : 'border-slate-200 dark:border-[#2D3342] text-slate-600 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-500'}`}
+            className={`flex-1 py-2.5 rounded-lg border-2 font-bold transition-all ${selected === 1 ? "border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400" : "border-slate-200 dark:border-[#2D3342] text-slate-600 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-500"}`}
           >
             1 รอบ
           </button>
           <button
             onClick={() => setSelected(2)}
-            className={`flex-1 py-2.5 rounded-lg border-2 font-bold transition-all ${selected === 2 ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400' : 'border-slate-200 dark:border-[#2D3342] text-slate-600 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-500'}`}
+            className={`flex-1 py-2.5 rounded-lg border-2 font-bold transition-all ${selected === 2 ? "border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400" : "border-slate-200 dark:border-[#2D3342] text-slate-600 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-500"}`}
           >
             2 รอบ
           </button>
@@ -280,9 +275,9 @@ function EditRoundsModal({
   );
 }
 
-function QueueItemCard({ q, idx, isAdmin, isOwner, totalRounds, onAction, onEditRounds, isLoading }: { 
-  q: DungeonQueueItem; 
-  idx: number; 
+function QueueItemCard({ q, idx, isAdmin, isOwner, totalRounds, onAction, onEditRounds, isLoading }: {
+  q: DungeonQueueItem;
+  idx: number;
   isAdmin: boolean;
   isOwner: boolean;
   totalRounds: 1 | 2;
@@ -294,11 +289,10 @@ function QueueItemCard({ q, idx, isAdmin, isOwner, totalRounds, onAction, onEdit
   const isAssigned = q.status === "ASSIGNED";
 
   return (
-    <div className={`rounded-xl p-3.5 flex items-center justify-between gap-3 border transition-colors ${
-      isAssigned
+    <div className={`rounded-xl p-3.5 flex items-center justify-between gap-3 border transition-colors ${isAssigned
       ? "bg-blue-50/40 dark:bg-blue-950/20 border-blue-300/70 dark:border-blue-700/50 shadow-sm"
       : "bg-slate-50 dark:bg-[#272C38] border-slate-200 dark:border-[#2D3342]"
-    }`}>
+      }`}>
       <span className="font-mono text-xs font-bold text-slate-400 w-6 text-center">{idx}</span>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
@@ -317,42 +311,42 @@ function QueueItemCard({ q, idx, isAdmin, isOwner, totalRounds, onAction, onEdit
       </div>
       <div className="flex items-center gap-2">
         {isAssigned ? (
-          <span className="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-1 rounded">กำลังลง (ทีม {q.assignedTeamId?.replace('team-', '')})</span>
+          <span className="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-1 rounded">กำลังลง (ทีม {q.assignedTeamId?.replace("team-", "")})</span>
         ) : (
           <span className="bg-slate-100 text-slate-600 dark:bg-[#2D3342] dark:text-[#8B93A7] text-xs font-bold px-2 py-1 rounded">รอคิว</span>
         )}
-        
+
         {isAdmin && (
           <div className="flex items-center gap-1">
             {!isAssigned && (
-                <button 
-                  onClick={() => onAction("skip")} 
-                  disabled={isLoading}
-                  className="px-2 py-1 text-xs font-bold bg-amber-100 text-amber-700 hover:bg-amber-200 rounded transition" 
-                  title="ดันรายชื่อไปต่อท้ายสุด (ข้ามคิว)"
-                >
-                  ข้าม
-                </button>
+              <button
+                onClick={() => onAction("skip")}
+                disabled={isLoading}
+                className="px-2 py-1 text-xs font-bold bg-amber-100 text-amber-700 hover:bg-amber-200 rounded transition"
+                title="ดันรายชื่อไปต่อท้ายสุด (ข้ามคิว)"
+              >
+                ข้าม
+              </button>
             )}
           </div>
         )}
-        
+
         {(isAdmin || isOwner) && (
           <div className="flex items-center gap-1 border-l border-slate-200 dark:border-slate-700 pl-2">
             {!isAssigned && (
-               <button 
-                 onClick={() => onEditRounds()} 
-                 disabled={isLoading}
-                 className="px-2 py-1 text-xs font-bold bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600 rounded transition" 
-                 title="แก้ไขจำนวนรอบ"
-               >
-                 แก้ไขรอบ
-               </button>
+              <button
+                onClick={() => onEditRounds()}
+                disabled={isLoading}
+                className="px-2 py-1 text-xs font-bold bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600 rounded transition"
+                title="แก้ไขจำนวนรอบ"
+              >
+                แก้ไขรอบ
+              </button>
             )}
-            <button 
-              onClick={() => onAction("delete")} 
+            <button
+              onClick={() => onAction("delete")}
               disabled={isLoading}
-              className="p-1.5 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/40 rounded transition" 
+              className="p-1.5 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/40 rounded transition"
               title="ลบคิว"
             >
               <Trash2 size={14} />

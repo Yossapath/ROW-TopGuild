@@ -6,21 +6,32 @@ import { ok, err, handleServerError } from "@/lib/server-utils";
 export async function GET() {
   try {
     const doc = await scheduleRef().get();
+    const now = Date.now();
     if (!doc.exists) {
-      return ok({
+      const defaultSchedule = {
         openDate: "",
         openTime: "",
         closeTime: "",
         carryTeamsCount: 1,
-      });
+        isClosed: false,
+        serverTime: now,
+      };
+      const res = ok(defaultSchedule);
+      res.headers.set("Cache-Control", "no-store, max-age=0");
+      return res;
     }
     const data = doc.data() || {};
-    return ok({
+    const payload = {
       openDate: data.openDate ?? "",
       openTime: data.openTime ?? "",
       closeTime: data.closeTime ?? "",
       carryTeamsCount: typeof data.carryTeamsCount === "number" && data.carryTeamsCount > 0 ? data.carryTeamsCount : 1,
-    });
+      isClosed: data.isClosed === true,
+      serverTime: now,
+    };
+    const res = ok(payload);
+    res.headers.set("Cache-Control", "no-store, max-age=0");
+    return res;
   } catch (e: unknown) {
     return handleServerError(e, "Failed to load schedule");
   }
@@ -41,13 +52,15 @@ export async function PUT(req: Request) {
       const count = Number(body.carryTeamsCount);
       updateData.carryTeamsCount = !isNaN(count) && count > 0 ? Math.floor(count) : 1;
     }
+    // isClosed: admin manual override — saved explicitly
+    if (body.isClosed !== undefined) {
+      updateData.isClosed = Boolean(body.isClosed);
+    }
 
     await scheduleRef().set(updateData, { merge: true });
-    
+
     return ok({ message: "อัปเดตการตั้งค่าสำเร็จ", data: updateData });
   } catch (e: unknown) {
     return handleServerError(e, "Failed to update schedule");
   }
 }
-
-

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
-import { useQueryClient, useMutation } from "@tanstack/react-query";
+import { useQueryClient, useMutation, useQuery } from "@tanstack/react-query";
 import {
   Swords,
   ListPlus,
@@ -28,7 +28,7 @@ import {
   formatTimestamp,
 } from "@/lib/utils";
 import { calculateDungeonEstimates } from "@/lib/dungeon-estimator";
-import type { DungeonQueue, DungeonSchedule } from "@/types";
+import type { DungeonQueue, DungeonSchedule, DungeonTeamResource, DungeonQueueItem } from "@/types";
 import { TeamBoard } from "@/components/dungeon/TeamBoard";
 import { QueueBoard } from "@/components/dungeon/QueueBoard";
 
@@ -64,8 +64,7 @@ export default function DungeonPage() {
       return json;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["dungeon_teams"] });
-      queryClient.invalidateQueries({ queryKey: ["dungeon_queue_items"] });
+      queryClient.invalidateQueries({ queryKey: ["dungeon_data"] });
     },
     onError: (err: any) => {
       alert(err.message);
@@ -81,10 +80,85 @@ export default function DungeonPage() {
     }
   };
 
-  const [queues, setQueues] = useState<DungeonQueue[]>([]);
-  const [teams, setTeams] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  // ── Unified React Query for all dungeon data ──────────────
+  const { data: dungeonData, isLoading: loading } = useQuery({
+    queryKey: ["dungeon_data"],
+    queryFn: async () => {
+      const [resQ, resT, resQI, resS, resR] = await Promise.all([
+        fetch("/api/dungeon/queues"),
+        fetch("/api/dungeon/teams"),
+        fetch("/api/dungeon/queue-items"),
+        fetch("/api/dungeon/schedule"),
+        fetch("/api/roster"),
+      ]);
+      const [jsonQ, jsonT, jsonQI, jsonS, jsonR] = await Promise.all([
+        resQ.json(),
+        resT.json(),
+        resQI.json(),
+        resS.json(),
+        resR.json(),
+      ]);
+
+      const queues: DungeonQueue[] = jsonQ.ok && Array.isArray(jsonQ.data) ? jsonQ.data : [];
+      const teams: DungeonTeamResource[] = jsonT.ok && Array.isArray(jsonT.data) ? jsonT.data : [];
+      const queueItems: DungeonQueueItem[] = jsonQI.ok && Array.isArray(jsonQI.data) ? jsonQI.data : [];
+      const schedule: DungeonSchedule = jsonS.ok && jsonS.data ? jsonS.data : {
+        openDate: "",
+        openTime: "06:00",
+        closeTime: "23:59",
+        carryTeamsCount: 1,
+        isClosed: false,
+      };
+
+      const rosterMembers: { name: string; job: string }[] = [];
+      if (jsonR.ok && jsonR.data) {
+        for (const [job, arr] of Object.entries(jsonR.data as Record<string, { name: string }[]>)) {
+          for (const m of arr) {
+            rosterMembers.push({ name: m.name, job });
+          }
+        }
+      }
+
+      return { queues, teams, queueItems, schedule, rosterMembers };
+    },
+    staleTime: 10_000,
+    refetchInterval: 15_000,
+    refetchIntervalInBackground: false,
+  });
+
+  const queues = dungeonData?.queues ?? [];
+  const teams = dungeonData?.teams ?? [];
+  const queueItems = dungeonData?.queueItems ?? [];
+  const rosterMembers = dungeonData?.rosterMembers ?? [];
+
+  // Schedule local state synced with query
+  const [schedule, setSchedule] = useState<DungeonSchedule>({
+    openDate: "",
+    openTime: "06:00",
+    closeTime: "23:59",
+    carryTeamsCount: 1,
+  });
   const [carryTeamsCount, setCarryTeamsCount] = useState<number>(1);
+  const [schedDate, setSchedDate] = useState("");
+  const [schedOpen, setSchedOpen] = useState("06:00");
+  const [schedClose, setSchedClose] = useState("23:59");
+  const [schedUnlimited, setSchedUnlimited] = useState(false);
+  const [schedSaving, setSchedSaving] = useState(false);
+  const [carrySaving, setCarrySaving] = useState(false);
+  const [schedMsg, setSchedMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+
+  useEffect(() => {
+    if (dungeonData?.schedule) {
+      const s = dungeonData.schedule;
+      setSchedule(s);
+      setSchedDate(s.openDate ?? "");
+      setSchedOpen(s.openTime ?? "06:00");
+      setSchedClose(s.closeTime ?? "23:59");
+      if (typeof s.carryTeamsCount === "number" && s.carryTeamsCount > 0) {
+        setCarryTeamsCount(s.carryTeamsCount);
+      }
+    }
+  }, [dungeonData?.schedule]);
 
   // ── Real-time clock for countdown display ─────────────────
   const [now, setNow] = useState(Date.now());
@@ -105,24 +179,6 @@ export default function DungeonPage() {
   const [submitting, setSubmitting] = useState(false);
   const [formMsg, setFormMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
-  // Schedule state
-  const [schedule, setSchedule] = useState<DungeonSchedule>({
-    openDate: "",
-    openTime: "06:00",
-    closeTime: "23:59",
-    carryTeamsCount: 1,
-  });
-  const [schedDate, setSchedDate] = useState("");
-  const [schedOpen, setSchedOpen] = useState("06:00");
-  const [schedClose, setSchedClose] = useState("23:59");
-  const [schedUnlimited, setSchedUnlimited] = useState(false);
-  const [schedSaving, setSchedSaving] = useState(false);
-  const [carrySaving, setCarrySaving] = useState(false);
-  const [schedMsg, setSchedMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
-
-  // Roster autocomplete
-  const [rosterMembers, setRosterMembers] = useState<{name: string, job: string}[]>([]);
-
   // Clipboard toast
   const [copied, setCopied] = useState(false);
 
@@ -138,49 +194,6 @@ export default function DungeonPage() {
     });
   }, [queues, search, selectedJobs]);
 
-  // ── Fetch queues ──────────────────────────────────────────
-  const fetchQueues = useCallback(async () => {
-    try {
-      const [resQ, resT] = await Promise.all([
-        fetch("/api/dungeon/queues"),
-        fetch("/api/dungeon/teams")
-      ]);
-      const jsonQ = await resQ.json();
-      if (jsonQ.ok && Array.isArray(jsonQ.data)) {
-        setQueues(jsonQ.data as DungeonQueue[]);
-      }
-      const jsonT = await resT.json();
-      if (jsonT.ok && Array.isArray(jsonT.data)) {
-        setTeams(jsonT.data);
-      }
-    } catch {
-      /* silent */
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  // ── Fetch schedule ────────────────────────────────────────
-  const fetchSchedule = useCallback(async () => {
-    try {
-      const res = await fetch("/api/dungeon/schedule");
-      const json = await res.json();
-      if (json.ok && json.data) {
-        const s: DungeonSchedule = json.data;
-        setSchedule(s);
-        setSchedDate(s.openDate ?? "");
-        setSchedOpen(s.openTime ?? "06:00");
-        setSchedClose(s.closeTime ?? "23:59");
-        // เดิมเช็ค if (s.carryTeamsCount) ทำให้ค่า 0 (falsy) ถูกมองข้าม เหมือนบั๊กเดียวกับหน้า booking
-        if (typeof s.carryTeamsCount === "number") {
-          setCarryTeamsCount(s.carryTeamsCount);
-        }
-      }
-    } catch {
-      /* silent */
-    }
-  }, []);
-
   // ── Update carry teams count (auto-saved) ──────────────────
   const updateCarryTeamsCount = async (count: number) => {
     const validCount = Math.max(1, count);
@@ -192,42 +205,13 @@ export default function DungeonPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ carryTeamsCount: validCount }),
       });
-      // also refetch teams so they are instantly created
-      await fetch("/api/dungeon/teams");
+      queryClient.invalidateQueries({ queryKey: ["dungeon_data"] });
     } catch {
       /* silent */
     } finally {
       setCarrySaving(false);
     }
   };
-
-  // ── Fetch roster names ────────────────────────────────────
-  const fetchRoster = useCallback(async () => {
-    try {
-      const res = await fetch("/api/roster");
-      const json = await res.json();
-      if (json.ok && json.data) {
-        const members: {name: string, job: string}[] = [];
-        for (const [job, arr] of Object.entries(json.data as Record<string, { name: string }[]>)) {
-          for (const m of arr) {
-            members.push({ name: m.name, job });
-          }
-        }
-        setRosterMembers(members);
-      }
-    } catch {
-      /* silent */
-    }
-  }, []);
-
-  // ── Polling ───────────────────────────────────────────────
-  useEffect(() => {
-    fetchQueues();
-    fetchSchedule();
-    fetchRoster();
-    const interval = setInterval(fetchQueues, 10_000);
-    return () => clearInterval(interval);
-  }, [fetchQueues, fetchSchedule, fetchRoster]);
 
   // ── Auto-fill & Lock for Member ───────────────────────────
   useEffect(() => {
@@ -280,7 +264,7 @@ export default function DungeonPage() {
           setFormJob(JOB_LIST[0] ?? "");
         }
         setFormRounds(1);
-        fetchQueues();
+        queryClient.invalidateQueries({ queryKey: ["dungeon_data"] });
       } else {
         setFormMsg({ type: "err", text: json.error ?? "เกิดข้อผิดพลาด" });
       }
@@ -297,8 +281,8 @@ export default function DungeonPage() {
     setSchedMsg(null);
     try {
       const body: DungeonSchedule = schedUnlimited
-        ? { openDate: "", openTime: "", closeTime: "", carryTeamsCount }
-        : { openDate: schedDate, openTime: schedOpen, closeTime: schedClose, carryTeamsCount };
+        ? { openDate: "", openTime: "", closeTime: "", carryTeamsCount, isClosed: false }
+        : { openDate: schedDate, openTime: schedOpen, closeTime: schedClose, carryTeamsCount, isClosed: false };
       const res = await fetch("/api/dungeon/schedule", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -308,6 +292,7 @@ export default function DungeonPage() {
       if (json.ok) {
         setSchedule(body);
         setSchedMsg({ type: "ok", text: "บันทึกสำเร็จ" });
+        queryClient.invalidateQueries({ queryKey: ["dungeon_data"] });
       } else {
         setSchedMsg({ type: "err", text: json.error ?? "เกิดข้อผิดพลาด" });
       }
@@ -319,11 +304,11 @@ export default function DungeonPage() {
   };
 
   const handleCloseBooking = async () => {
-    if (!confirm("แน่ใจที่จะปิดจองดันเจี้ยนใช่ไหม? (ข้อมูลเวลาจะถูกล้าง)")) return;
+    if (!confirm("แน่ใจที่จะปิดจองดันเจี้ยนใช่ไหม?")) return;
     setSchedSaving(true);
     setSchedMsg(null);
     try {
-      const body: DungeonSchedule = { openDate: "", openTime: "06:00", closeTime: "23:59", carryTeamsCount };
+      const body: DungeonSchedule = { openDate: "", openTime: "06:00", closeTime: "23:59", carryTeamsCount, isClosed: true };
       const res = await fetch("/api/dungeon/schedule", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -337,6 +322,7 @@ export default function DungeonPage() {
         setSchedClose("23:59");
         setSchedUnlimited(false);
         setSchedMsg({ type: "ok", text: "ปิดจองสำเร็จ" });
+        queryClient.invalidateQueries({ queryKey: ["dungeon_data"] });
       } else {
         setSchedMsg({ type: "err", text: json.error ?? "เกิดข้อผิดพลาด" });
       }
@@ -356,7 +342,7 @@ export default function DungeonPage() {
         body: JSON.stringify({ round }),
       });
       const json = await res.json();
-      if (json.ok) fetchQueues();
+      if (json.ok) queryClient.invalidateQueries({ queryKey: ["dungeon_data"] });
     } catch {
       /* silent */
     }
@@ -372,7 +358,7 @@ export default function DungeonPage() {
         body: JSON.stringify({ action }),
       });
       const json = await res.json();
-      if (json.ok) fetchQueues();
+      if (json.ok) queryClient.invalidateQueries({ queryKey: ["dungeon_data"] });
     } catch {
       /* silent */
     }
@@ -387,7 +373,7 @@ export default function DungeonPage() {
         body: JSON.stringify({ action: "startRun" }),
       });
       const json = await res.json();
-      if (json.ok) fetchQueues();
+      if (json.ok) queryClient.invalidateQueries({ queryKey: ["dungeon_data"] });
     } catch {
       /* silent */
     }
@@ -401,7 +387,7 @@ export default function DungeonPage() {
       const res = await fetch(`/api/dungeon/queues/${queueId}`, { method: "DELETE" });
       const json = await res.json();
       if (json.ok) {
-        fetchQueues();
+        queryClient.invalidateQueries({ queryKey: ["dungeon_data"] });
       } else {
         alert(json.error ?? "ลบไม่สำเร็จ กรุณาลองใหม่");
       }
@@ -788,8 +774,17 @@ export default function DungeonPage() {
                  </div>
                </div>
             )}
-            <TeamBoard />
-            <QueueBoard userEstimate={user?.gameUsername ? estimates.estimatesByName[user.gameUsername.toLowerCase()] : null} />
+            <TeamBoard
+              teams={teams}
+              isLoading={loading}
+              rosterMembers={rosterMembers}
+            />
+            <QueueBoard
+              queueItems={queueItems}
+              isLoading={loading}
+              userEstimate={user?.gameUsername ? estimates.estimatesByName[user.gameUsername.toLowerCase()] : null}
+              onRefresh={() => queryClient.invalidateQueries({ queryKey: ["dungeon_data"] })}
+            />
           </div>
         </DragDropContext>
       </div>
