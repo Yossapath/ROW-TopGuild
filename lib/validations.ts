@@ -80,7 +80,7 @@ export const dungeonQueueBookingSchema = z.object({
   job: z.string().min(1).max(50),
   dungeon: z.string().max(100).optional().default("ดันมายา"),
   power: z.union([z.number().nonnegative(), z.string().regex(/^\d+$/)]).optional().transform((v) => Number(v) || 0),
-  rounds: z.union([z.literal(1), z.literal(2)]).default(1),
+  rounds: z.union([z.literal(1), z.literal(2)]).default(1).transform(() => 1 as const),
 });
 
 export const dungeonQueuePatchSchema = z.object({

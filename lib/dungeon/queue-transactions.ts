@@ -11,7 +11,7 @@ import { createInitialTeam } from "./queue-state";
 export const autoAssignTeamTransaction = async (
   teamId: string,
   previousTeamMembers?: { name: string; job: string; roundNumber: number }[]
-): Promise<{ updatedTeam: DungeonTeamResource; assignedCount: number }> => {
+): Promise<{ updatedTeam: DungeonTeamResource; assignedCount: number; reason?: string }> => {
   const db = getFirestore();
   const dRef = dungeonsRef();
 
@@ -25,17 +25,20 @@ export const autoAssignTeamTransaction = async (
       : createInitialTeam(teamId, "ดันมายา (Maya)");
     const teamNeedsCreate = !teamSnap.exists;
 
+    // Self-heal: If team has 0 active members, it is available for assignment regardless of legacy status
     if (team.status !== "AVAILABLE") {
-      // Nothing to assign if team is not available
-      return { updatedTeam: team, assignedCount: 0 };
+      if (team.activeMembers.length === 0) {
+        team.status = "AVAILABLE";
+      } else {
+        return { updatedTeam: team, assignedCount: 0, reason: "ทีมกำลังลงดันเจี้ยนอยู่" };
+      }
     }
 
     const carrierCount = team.carriers?.length ?? 0;
     const maxQueueMembers = Math.max(0, 5 - carrierCount);
 
     if (team.activeMembers.length >= maxQueueMembers) {
-      // Team is already full (5 total slots including carriers).
-      return { updatedTeam: team, assignedCount: 0 };
+      return { updatedTeam: team, assignedCount: 0, reason: "ทีมเต็มแล้ว (มีสมาชิกครบจำนวน)" };
     }
 
     // 2. Read Waiting Queue Items
@@ -43,8 +46,7 @@ export const autoAssignTeamTransaction = async (
     const queueItemsSnap = await t.get(queueItemsRef.where("status", "==", "WAITING"));
 
     if (queueItemsSnap.empty) {
-      // Early exit if no players are waiting; avoids unnecessary roster read and processing
-      return { updatedTeam: team, assignedCount: 0 };
+      return { updatedTeam: team, assignedCount: 0, reason: "ไม่มีผู้เล่นรออยู่ในคิว" };
     }
 
     const allQueueItems: DungeonQueueItem[] = [];
@@ -70,15 +72,24 @@ export const autoAssignTeamTransaction = async (
     const { updatedTeam, updatedItems } = assignPlayersToTeam(team, allQueueItems, previousTeamMembers, rosterJobs);
 
     if (updatedItems.length === 0) {
-      // No one assigned
-      return { updatedTeam: team, assignedCount: 0 };
+      // Check if blocked by Priest requirement
+      const hasCarrierPriest = (team.carriers || []).some(c => rosterJobs[c] === "Priest");
+      const priestInTeam = team.activeMembers.some(m => m.job === "Priest");
+      const priestInQueue = allQueueItems.some(i => i.job === "Priest");
+
+      let reason = "ไม่พบผู้เล่นที่ตรงตามเงื่อนไขการจัดทีม";
+      if (!hasCarrierPriest && !priestInTeam && !priestInQueue) {
+        reason = "ไม่มีผู้เล่นอาชีพ Priest (พระ) ในคิว สำหรับจัดทีมอัตโนมัติ (สามารถลากหรือกดปุ่มเข้าทีมแบบแมนนวลได้)";
+      }
+      return { updatedTeam: team, assignedCount: 0, reason };
     }
 
     // 4. Write Updates back to DB. All transaction reads are complete.
     if (teamNeedsCreate) {
-      t.set(teamRef, updatedTeam);
+      t.set(teamRef, { ...updatedTeam, status: "AVAILABLE" });
     } else {
       t.update(teamRef, {
+        status: "AVAILABLE",
         activeMembers: updatedTeam.activeMembers,
       });
     }

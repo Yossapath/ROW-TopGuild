@@ -683,8 +683,10 @@ export default function DungeonPage() {
             />
             <QueueBoard
               queueItems={queueItems}
+              teams={teams}
               isLoading={loading}
               onRefresh={() => queryClient.invalidateQueries({ queryKey: ["dungeon_data"] })}
+              onAssign={(teamId, queueItemId) => assignMutation.mutate({ teamId, queueItemId })}
             />
           </div>
         </DragDropContext>

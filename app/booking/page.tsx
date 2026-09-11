@@ -92,7 +92,6 @@ export default function BookingPage() {
   // Form fields
   const [name, setName] = useState("");
   const [job, setJob] = useState(JOB_LIST[0]);
-  const [twoRounds, setTwoRounds] = useState(false);
 
   // Auto set name from user
   useEffect(() => {
@@ -274,26 +273,6 @@ export default function BookingPage() {
     };
   }, [fetchQueues]);
 
-  // ── Edit Rounds ──────────────────────────────────────────────
-  async function handleEditRounds(id: string, newRounds: 1 | 2) {
-    try {
-      const res = await fetch(`/api/dungeon/queues/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "updateRounds", rounds: newRounds }),
-      });
-      if (res.ok) {
-        setSuccess((prev) => (prev ? { ...prev, rounds: newRounds } : prev));
-        fetchQueues();
-      } else {
-        const data = await res.json();
-        alert(data.error || "ไม่สามารถแก้ไขจำนวนรอบได้");
-      }
-    } catch {
-      alert("เกิดข้อผิดพลาดในการเชื่อมต่อ");
-    }
-  }
-
   // ── Submit booking ───────────────────────────────────────────
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -309,14 +288,14 @@ export default function BookingPage() {
           job,
           dungeon: "ดันมายา (Maya)",
           power: 0,
-          rounds: twoRounds ? 2 : 1,
+          rounds: 1,
         }),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
         setError(data.error ?? "เกิดข้อผิดพลาด กรุณาลองใหม่");
       } else {
-        setSuccess({ id: data.data.id, name: name.trim(), job, rounds: twoRounds ? 2 : 1 });
+        setSuccess({ id: data.data.id, name: name.trim(), job, rounds: 1 });
         fetchQueues();
       }
     } catch {
@@ -329,7 +308,6 @@ export default function BookingPage() {
   function resetForm() {
     setName("");
     setJob(JOB_LIST[0]);
-    setTwoRounds(false);
     setSuccess(null);
     setError(null);
   }
@@ -473,29 +451,9 @@ export default function BookingPage() {
                       >
                         {success.job}
                       </span>
-                      <span className="px-3 py-1.5 rounded-full text-sm font-bold bg-indigo-100 text-indigo-700">
-                        {success.rounds === 2 ? "รอบ 1 + รอบ 2" : "รอบ 1"}
+                      <span className="px-3 py-1.5 rounded-full text-sm font-bold bg-indigo-100 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/40">
+                        รอบ 1 (1 รอบ)
                       </span>
-                    </div>
-                  </div>
-                  
-                  <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl">
-                    <p className="text-sm font-bold text-slate-700 mb-2 text-center">แก้ไขจำนวนรอบ</p>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleEditRounds(success.id, 1)}
-                        disabled={success.rounds === 1}
-                        className="flex-1 py-2 rounded-lg text-sm font-bold transition-all disabled:opacity-50 disabled:bg-[#3B66D1] disabled:text-white bg-white border border-slate-200 text-slate-600"
-                      >
-                        เปลี่ยนเป็น 1 รอบ
-                      </button>
-                      <button
-                        onClick={() => handleEditRounds(success.id, 2)}
-                        disabled={success.rounds === 2}
-                        className="flex-1 py-2 rounded-lg text-sm font-bold transition-all disabled:opacity-50 disabled:bg-[#3B66D1] disabled:text-white bg-white border border-slate-200 text-slate-600"
-                      >
-                        เปลี่ยนเป็น 2 รอบ
-                      </button>
                     </div>
                   </div>
 
@@ -585,34 +543,16 @@ export default function BookingPage() {
                 </div>
               </div>
 
-              {/* Round toggle */}
+              {/* Round info (locked to 1 round) */}
               <div>
                 <label className="block text-sm font-bold text-slate-700 dark:text-white mb-2">
                   รอบที่ต้องการ
                 </label>
-                <div className="flex rounded-xl overflow-hidden border border-slate-200 dark:border-[#2D3342]">
-                  <button
-                    type="button"
-                    onClick={() => setTwoRounds(false)}
-                    className={`flex-1 py-3 text-sm font-bold transition-all ${
-                      !twoRounds
-                        ? "bg-[#0b3d63] dark:bg-[#3B66D1] text-white"
-                        : "bg-white dark:bg-[#272C38] text-slate-500 dark:text-[#8B93A7] hover:bg-slate-50 dark:hover:bg-[#2A2F3E]"
-                    }`}
-                  >
-                    รอบ 1
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setTwoRounds(true)}
-                    className={`flex-1 py-3 text-sm font-bold transition-all border-l border-slate-200 dark:border-[#2D3342] ${
-                      twoRounds
-                        ? "bg-[#0b3d63] dark:bg-[#3B66D1] text-white"
-                        : "bg-white dark:bg-[#272C38] text-slate-500 dark:text-[#8B93A7] hover:bg-slate-50 dark:hover:bg-[#2A2F3E]"
-                    }`}
-                  >
-                    รอบ 1 + 2
-                  </button>
+                <div className="bg-slate-50 dark:bg-[#272C38] border border-slate-200 dark:border-[#2D3342] rounded-xl px-4 py-3 flex items-center justify-between">
+                  <span className="text-sm font-medium text-slate-600 dark:text-slate-300">จำนวนรอบที่จอง</span>
+                  <span className="px-3 py-1 bg-[#0b3d63] dark:bg-[#3B66D1] text-white text-xs font-bold rounded-lg shadow-sm">
+                    1 รอบ (ตามระบบ)
+                  </span>
                 </div>
               </div>
 

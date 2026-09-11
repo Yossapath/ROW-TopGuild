@@ -87,9 +87,12 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       const allDone = totalRounds === 1 ? newRound1 : newRound1 && newRound2;
       update.status = allDone ? "done" : "waiting";
     } else if (action === "updateRounds") {
-      if (newRounds === 1 || newRounds === 2) {
-        update.rounds = newRounds;
-        totalRounds = newRounds;
+      if (newRounds === 2) {
+        return err("ระบบจำกัดการจองไว้ที่ 1 รอบเท่านั้น", 400);
+      }
+      if (newRounds === 1) {
+        update.rounds = 1;
+        totalRounds = 1;
       }
       const allDone = totalRounds === 1 ? newRound1 : newRound1 && newRound2;
       update.status = allDone ? "done" : data.status === "active" ? "active" : "waiting";

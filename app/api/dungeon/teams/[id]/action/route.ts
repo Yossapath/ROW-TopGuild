@@ -90,7 +90,12 @@ export async function POST(
         target: teamId,
         detail: `Auto-assigned ${result.assignedCount} players to ${teamId}`,
       });
-      return ok({ message: `Assigned ${result.assignedCount} players`, data: result.updatedTeam });
+      return ok({
+        message: result.assignedCount > 0 ? `จัดทีมสำเร็จ ${result.assignedCount} คน` : (result.reason || "ไม่สามารถจัดทีมได้"),
+        assignedCount: result.assignedCount,
+        reason: result.reason,
+        data: result.updatedTeam,
+      });
     }
 
     // The simplified workflow has one team-control action:

@@ -1,22 +1,23 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { RefreshCw, Search, Trash2 } from "lucide-react";
-import { useState, useEffect } from "react";
-import { DungeonQueueItem } from "@/types";
+import { RefreshCw, Search, Trash2, GripVertical, LogIn } from "lucide-react";
+import { useState } from "react";
+import { DungeonQueueItem, DungeonTeamResource } from "@/types";
 import { JOB_COLORS } from "@/lib/utils";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { Droppable, Draggable } from "@hello-pangea/dnd";
 
 interface QueueBoardProps {
   queueItems: DungeonQueueItem[];
+  teams?: DungeonTeamResource[];
   isLoading: boolean;
   onRefresh?: () => void;
+  onAssign?: (teamId: string, queueItemId: string) => void;
 }
 
-export function QueueBoard({ queueItems, isLoading, onRefresh }: QueueBoardProps) {
+export function QueueBoard({ queueItems, teams = [], isLoading, onRefresh, onAssign }: QueueBoardProps) {
   const [search, setSearch] = useState("");
-  const [editingQueueId, setEditingQueueId] = useState<{ id: string; rounds: 1 | 2 } | null>(null);
   const user = useAuthStore((s) => s.user);
   const isAdmin = user?.role === "admin" || user?.role === "owner";
   const queryClient = useQueryClient();
@@ -63,69 +64,146 @@ export function QueueBoard({ queueItems, isLoading, onRefresh }: QueueBoardProps
     return !search || q.name.toLowerCase().includes(search.toLowerCase());
   });
 
-  // Group items
-  const activeR1Priest = filteredItems.filter((q) => q.status === "ASSIGNED" && q.roundNumber === 1 && q.job === "Priest");
-  const activeR1Others = filteredItems.filter((q) => q.status === "ASSIGNED" && q.roundNumber === 1 && q.job !== "Priest");
-  const activeR2Priest = filteredItems.filter((q) => q.status === "ASSIGNED" && q.roundNumber === 2 && q.job === "Priest");
-  const activeR2Others = filteredItems.filter((q) => q.status === "ASSIGNED" && q.roundNumber === 2 && q.job !== "Priest");
-  const waitingR1Priest = filteredItems.filter((q) => q.status === "WAITING" && q.roundNumber === 1 && q.job === "Priest");
-  const waitingR1Others = filteredItems.filter((q) => q.status === "WAITING" && q.roundNumber === 1 && q.job !== "Priest");
-  const waitingR2Priest = filteredItems.filter((q) => q.status === "WAITING" && q.roundNumber === 2 && q.job === "Priest");
-  const waitingR2Others = filteredItems.filter((q) => q.status === "WAITING" && q.roundNumber === 2 && q.job !== "Priest");
+  // Split waiting (draggable) and assigned (locked)
+  const assignedItems = filteredItems.filter((q) => q.status === "ASSIGNED");
+  const waitingPriest = filteredItems.filter((q) => q.status === "WAITING" && q.job === "Priest");
+  const waitingOthers = filteredItems.filter((q) => q.status === "WAITING" && q.job !== "Priest");
 
-  let globalIdx = 1;
+  // Available teams for quick assign buttons (not full)
+  const availableTeams = teams.filter((t) => {
+    const maxSlots = Math.max(0, 5 - (t.carriers?.length || 0));
+    return t.activeMembers.length < maxSlots;
+  });
 
-  const renderGroup = (items: DungeonQueueItem[], title: string, titleColorCls: string) => {
+  let globalIdx = 0;
+
+  const renderGroup = (items: DungeonQueueItem[], title: string, titleColorCls: string, isDraggableGroup: boolean) => {
     if (items.length === 0) return null;
+    const groupKey = `queue_group_${title.replace(/\W+/g, "")}`;
     return (
-      <div className="mb-4 last:mb-0">
-        <div className={`text-xs font-bold ${titleColorCls} mb-2 px-1`}>{title} ({items.length})</div>
-        <Droppable droppableId={`queue_group_${title.replace(/\s+/g, "")}`} isDropDisabled={true}>
+      <div className="mb-3 last:mb-0">
+        <div className={`text-[11px] font-bold uppercase tracking-wider ${titleColorCls} mb-1 px-1`}>{title} · {items.length} คน</div>
+        <Droppable droppableId={groupKey} isDropDisabled={true}>
           {(provided) => (
-            <div className="space-y-2" ref={provided.innerRef} {...provided.droppableProps}>
+            <div
+              ref={provided.innerRef}
+              {...provided.droppableProps}
+              className="rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden"
+            >
               {items.map((q, localIdx) => {
-                const currentIdx = globalIdx++;
+                const currentIdx = ++globalIdx;
                 const isOwner = user?.gameUsername === q.name;
-                const isDraggable = isAdmin && q.status === "WAITING";
+                const canDrag = isAdmin && isDraggableGroup;
+                const jc = JOB_COLORS[q.job] || "#888";
 
-                const hasR2 = filteredItems.some((i) => i.bookingId === q.bookingId && i.roundNumber === 2);
+                const row = (
+                  <div
+                    className={`flex items-center h-9 px-2 gap-2 border-b last:border-b-0 border-slate-100 dark:border-slate-800/50 ${
+                      q.status === "ASSIGNED"
+                        ? "bg-blue-50/60 dark:bg-blue-950/20"
+                        : "bg-white dark:bg-[#232733]"
+                    } text-xs`}
+                  >
+                    {/* Drag handle / number */}
+                    {canDrag ? (
+                      <span className="text-slate-300 dark:text-slate-600 cursor-grab active:cursor-grabbing shrink-0">
+                        <GripVertical size={13} />
+                      </span>
+                    ) : (
+                      <span className="font-mono text-[10px] text-slate-400 w-4 text-center shrink-0">{currentIdx}</span>
+                    )}
 
-                const card = (
-                  <QueueItemCard
-                    key={q.id}
-                    q={q}
-                    idx={currentIdx}
-                    isAdmin={isAdmin}
-                    isOwner={isOwner}
-                    totalRounds={hasR2 ? 2 : 1}
-                    onAction={(action) => {
-                      if (action === "delete" && !confirm("แน่ใจที่จะลบคิวนี้ใช่ไหม?")) return;
-                      actionMutation.mutate({ id: q.bookingId, action });
-                    }}
-                    onEditRounds={() => {
-                      const hasR2 = filteredItems.some((i) => i.bookingId === q.bookingId && i.roundNumber === 2);
-                      setEditingQueueId({ id: q.bookingId, rounds: hasR2 ? 2 : 1 });
-                    }}
-                    isLoading={actionMutation.isPending || editRoundsMutation.isPending}
-                  />
+                    {/* Name */}
+                    <span className={`font-semibold flex-1 min-w-0 truncate ${isOwner ? "text-[#3B66D1] dark:text-[#82A0F5]" : "text-slate-800 dark:text-white"}`}>
+                      {q.name}
+                      {isOwner && <span className="ml-1 text-[9px] font-bold opacity-70">(คุณ)</span>}
+                    </span>
+
+                    {/* Job Badge */}
+                    <span
+                      className="text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0"
+                      style={{ backgroundColor: jc + "20", color: jc, border: `1px solid ${jc}40` }}
+                    >
+                      {q.job}
+                    </span>
+
+                    {/* Round Badge */}
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono shrink-0">
+                      R{q.roundNumber}
+                    </span>
+
+                    {/* Status / Team info */}
+                    {q.status === "ASSIGNED" ? (
+                      <span className="text-[10px] bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded font-bold shrink-0">
+                        ทีม {q.assignedTeamId?.replace("team-", "")}
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-slate-400 italic shrink-0">รอ</span>
+                    )}
+
+                    {/* Admin Actions */}
+                    {isAdmin && (
+                      <div className="flex items-center gap-1 shrink-0">
+                        {/* Quick Assign Buttons */}
+                        {canDrag && onAssign && availableTeams.map((t, ti) => (
+                          <button
+                            key={t.id}
+                            onClick={() => onAssign(t.id, q.id)}
+                            className="flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#3B66D1]/10 hover:bg-[#3B66D1] text-[#3B66D1] hover:text-white dark:text-[#82A0F5] dark:hover:text-white border border-[#3B66D1]/30 dark:border-[#4D73CD]/30 transition-all"
+                            title={`เพิ่มเข้าทีม ${ti + 1}`}
+                          >
+                            <LogIn size={10} />
+                            ทีม{ti + 1}
+                          </button>
+                        ))}
+
+                        {/* Skip */}
+                        {!q.status || q.status === "WAITING" ? (
+                          <button
+                            onClick={() => actionMutation.mutate({ id: q.bookingId, action: "skip" })}
+                            disabled={actionMutation.isPending}
+                            className="text-[10px] font-bold px-1.5 py-0.5 bg-amber-50 text-amber-600 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-400 rounded border border-amber-200 dark:border-amber-800 disabled:opacity-50"
+                            title="ข้ามคิว (ดันไปต่อท้าย)"
+                          >
+                            ข้าม
+                          </button>
+                        ) : null}
+
+                        {/* Delete */}
+                        {(isAdmin || isOwner) && (
+                          <button
+                            onClick={() => { if (!confirm("แน่ใจที่จะลบคิวนี้ใช่ไหม?")) return; actionMutation.mutate({ id: q.bookingId, action: "delete" }); }}
+                            disabled={actionMutation.isPending}
+                            className="text-red-400 hover:text-red-600 p-0.5 rounded disabled:opacity-50"
+                            title="ลบคิว"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 );
 
-                return (
-                  <Draggable key={q.id} draggableId={q.id} index={localIdx} isDragDisabled={!isDraggable}>
-                    {(provided, snapshot) => (
+                return canDrag ? (
+                  <Draggable key={q.id} draggableId={q.id} index={localIdx} isDragDisabled={false}>
+                    {(dragProvided, snapshot) => (
                       <div
-                        ref={provided.innerRef}
-                        {...provided.draggableProps}
-                        {...provided.dragHandleProps}
+                        ref={dragProvided.innerRef}
+                        {...dragProvided.draggableProps}
+                        {...dragProvided.dragHandleProps}
                         style={{
-                          ...provided.draggableProps.style,
-                          opacity: snapshot.isDragging ? 0.8 : isDraggable ? 1 : 0.9,
+                          ...dragProvided.draggableProps.style,
+                          opacity: snapshot.isDragging ? 0.85 : 1,
+                          boxShadow: snapshot.isDragging ? "0 4px 16px rgba(59,102,209,0.20)" : undefined,
                         }}
                       >
-                        {card}
+                        {row}
                       </div>
                     )}
                   </Draggable>
+                ) : (
+                  <div key={q.id}>{row}</div>
                 );
               })}
               {provided.placeholder}
@@ -178,163 +256,10 @@ export function QueueBoard({ queueItems, isLoading, onRefresh }: QueueBoardProps
           <div className="text-center py-12 text-slate-400">ไม่พบคิว</div>
         ) : (
           <div>
-            {renderGroup(activeR1Priest, "กำลังลง · พระ (Priest) · รอบ 1", "text-blue-700 dark:text-white")}
-            {renderGroup(activeR1Others, "กำลังลง · อาชีพอื่นๆ · รอบ 1", "text-blue-600 dark:text-[#82A0F5]")}
-            {renderGroup(activeR2Priest, "กำลังลง · พระ (Priest) · รอบ 2", "text-purple-700 dark:text-purple-400")}
-            {renderGroup(activeR2Others, "กำลังลง · อาชีพอื่นๆ · รอบ 2", "text-purple-700 dark:text-purple-400")}
-            {renderGroup(waitingR1Priest, "พระ (Priest) - รอคิวรอบ 1", "text-blue-700 dark:text-white")}
-            {renderGroup(waitingR1Others, "อาชีพอื่นๆ - รอคิวรอบ 1", "text-slate-500 dark:text-[#8B93A7]")}
-            {renderGroup(waitingR2Priest, "พระ (Priest) - รอคิวรอบ 2", "text-purple-700 dark:text-purple-400")}
-            {renderGroup(waitingR2Others, "อาชีพอื่นๆ - รอคิวรอบ 2", "text-purple-700 dark:text-purple-400")}
-          </div>
-        )}
-      </div>
-
-      {editingQueueId && (
-        <EditRoundsModal
-          isOpen={!!editingQueueId}
-          currentRounds={editingQueueId.rounds}
-          onClose={() => setEditingQueueId(null)}
-          onConfirm={(newRounds) => {
-            if (newRounds !== editingQueueId.rounds) {
-              editRoundsMutation.mutate({ id: editingQueueId.id, rounds: newRounds });
-            }
-            setEditingQueueId(null);
-          }}
-        />
-      )}
-    </div>
-  );
-}
-
-function EditRoundsModal({
-  isOpen,
-  onClose,
-  onConfirm,
-  currentRounds,
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-  onConfirm: (rounds: 1 | 2) => void;
-  currentRounds: 1 | 2;
-}) {
-  const [selected, setSelected] = useState<1 | 2>(currentRounds);
-
-  useEffect(() => {
-    setSelected(currentRounds);
-  }, [currentRounds]);
-
-  if (!isOpen) return null;
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white dark:bg-[#232733] rounded-xl shadow-xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200 border border-slate-200 dark:border-[#2D3342]">
-        <div className="px-5 py-4 border-b border-slate-200 dark:border-[#2D3342]">
-          <h3 className="font-bold text-lg text-slate-800 dark:text-white">แก้ไขจำนวนรอบ</h3>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">เลือกรอบที่ต้องการแล้วกดยืนยัน</p>
-        </div>
-        <div className="p-5 flex gap-3">
-          <button
-            onClick={() => setSelected(1)}
-            className={`flex-1 py-2.5 rounded-lg border-2 font-bold transition-all ${selected === 1 ? "border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400" : "border-slate-200 dark:border-[#2D3342] text-slate-600 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-500"}`}
-          >
-            1 รอบ
-          </button>
-          <button
-            onClick={() => setSelected(2)}
-            className={`flex-1 py-2.5 rounded-lg border-2 font-bold transition-all ${selected === 2 ? "border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400" : "border-slate-200 dark:border-[#2D3342] text-slate-600 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-500"}`}
-          >
-            2 รอบ
-          </button>
-        </div>
-        <div className="px-5 py-3 bg-slate-50 dark:bg-[#1E212B] flex justify-end gap-2">
-          <button onClick={onClose} className="px-4 py-2 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-[#2D3342] rounded-lg transition-colors">
-            ยกเลิก
-          </button>
-          <button onClick={() => onConfirm(selected)} className="px-4 py-2 text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
-            ยืนยัน
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function QueueItemCard({ q, idx, isAdmin, isOwner, totalRounds, onAction, onEditRounds, isLoading }: {
-  q: DungeonQueueItem;
-  idx: number;
-  isAdmin: boolean;
-  isOwner: boolean;
-  totalRounds: 1 | 2;
-  onAction: (action: "delete" | "skip") => void;
-  onEditRounds: () => void;
-  isLoading: boolean;
-}) {
-  const jobColor = JOB_COLORS[q.job] ?? "#888";
-  const isAssigned = q.status === "ASSIGNED";
-
-  return (
-    <div className={`rounded-xl p-3.5 flex items-center justify-between gap-3 border transition-colors ${isAssigned
-      ? "bg-blue-50/40 dark:bg-blue-950/20 border-blue-300/70 dark:border-blue-700/50 shadow-sm"
-      : "bg-slate-50 dark:bg-[#272C38] border-slate-200 dark:border-[#2D3342]"
-      }`}>
-      <span className="font-mono text-xs font-bold text-slate-400 w-6 text-center">{idx}</span>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs text-slate-400">name:</span>
-          <span className="font-bold text-slate-800 dark:text-white">{q.name}</span>
-          <span className="text-slate-300 mx-1">|</span>
-          <span className="text-xs text-slate-400">class:</span>
-          <span className="flex items-center gap-1.5 text-xs font-bold px-2.5 py-0.5 rounded-full" style={{ backgroundColor: jobColor + "44", color: jobColor, border: `1px solid ${jobColor}66` }}>
-            <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: jobColor }} />
-            {q.job}
-          </span>
-          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${q.roundNumber === 1 ? "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200" : "bg-purple-200 text-purple-700 dark:bg-purple-900 dark:text-purple-300"}`}>
-            {totalRounds === 2 ? `รอบ ${q.roundNumber}/2` : `รอบ ${q.roundNumber}`}
-          </span>
-        </div>
-      </div>
-      <div className="flex items-center gap-2">
-        {isAssigned ? (
-          <span className="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-1 rounded">กำลังลง (ทีม {q.assignedTeamId?.replace("team-", "")})</span>
-        ) : (
-          <span className="bg-slate-100 text-slate-600 dark:bg-[#2D3342] dark:text-[#8B93A7] text-xs font-bold px-2 py-1 rounded">รอคิว</span>
-        )}
-
-        {isAdmin && (
-          <div className="flex items-center gap-1">
-            {!isAssigned && (
-              <button
-                onClick={() => onAction("skip")}
-                disabled={isLoading}
-                className="px-2 py-1 text-xs font-bold bg-amber-100 text-amber-700 hover:bg-amber-200 rounded transition"
-                title="ดันรายชื่อไปต่อท้ายสุด (ข้ามคิว)"
-              >
-                ข้าม
-              </button>
-            )}
-          </div>
-        )}
-
-        {(isAdmin || isOwner) && (
-          <div className="flex items-center gap-1 border-l border-slate-200 dark:border-slate-700 pl-2">
-            {!isAssigned && (
-              <button
-                onClick={() => onEditRounds()}
-                disabled={isLoading}
-                className="px-2 py-1 text-xs font-bold bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600 rounded transition"
-                title="แก้ไขจำนวนรอบ"
-              >
-                แก้ไขรอบ
-              </button>
-            )}
-            <button
-              onClick={() => onAction("delete")}
-              disabled={isLoading}
-              className="p-1.5 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/40 rounded transition"
-              title="ลบคิว"
-            >
-              <Trash2 size={14} />
-            </button>
+            {renderGroup(assignedItems.filter(q => q.job === "Priest"), "กำลังลง · Priest", "text-blue-700 dark:text-blue-400", false)}
+            {renderGroup(assignedItems.filter(q => q.job !== "Priest"), "กำลังลง · อาชีพอื่นๆ", "text-blue-600 dark:text-[#82A0F5]", false)}
+            {renderGroup(waitingPriest, "รอคิว · Priest (Priest)", "text-emerald-700 dark:text-emerald-400", true)}
+            {renderGroup(waitingOthers, "รอคิว · อาชีพอื่นๆ", "text-slate-500 dark:text-[#8B93A7]", true)}
           </div>
         )}
       </div>

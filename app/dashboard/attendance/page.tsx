@@ -44,25 +44,33 @@ const STATUS_CONFIG: Record<NonNullable<Status>, { label: string; bg: string; te
   ลา:  { label: "ลา",       bg: "bg-yellow-50 dark:bg-yellow-950/40", text: "text-yellow-700 dark:text-yellow-400", border: "border-yellow-200 dark:border-yellow-800/60" },
 };
 
-const BASE_DATE = new Date("2026-09-06T00:00:00+07:00"); // Sunday 6 Sep 2026
 
-function getWeekDates(weeksSinceBase: number): Record<WarDay, string> {
-  const sunday = new Date(BASE_DATE);
-  sunday.setDate(sunday.getDate() + weeksSinceBase * 7);
-  // fmt adds 7h to convert UTC→Thai time before splitting ISO string
-  const fmt = (d: Date) => new Date(d.getTime() + 7 * 60 * 60 * 1000).toISOString().split("T")[0];
-  const t = new Date(sunday); t.setDate(sunday.getDate() + 2);
-  const th = new Date(sunday); th.setDate(sunday.getDate() + 4);
-  const su = new Date(sunday);
-  return { "อาทิตย์": fmt(su), "อังคาร": fmt(t), "พฤหัสบดี": fmt(th) };
+// ── Date helpers (Monday-reset, Thai time UTC+7) ─────────────────────────────
+// weekOffset: 0 = this week, -1 = last week, -2 = 2 weeks ago, ...
+function getMondayOfWeek(weekOffset: number): Date {
+  // Current time in Thai timezone (UTC+7) as a UTC Date
+  const nowTH = new Date(Date.now() + 7 * 3600 * 1000);
+  const day = nowTH.getUTCDay(); // 0=Sun, 1=Mon, 2=Tue ... 6=Sat
+  const daysSinceMon = day === 0 ? 6 : day - 1; // distance back to last Monday
+  const mon = new Date(nowTH);
+  mon.setUTCDate(nowTH.getUTCDate() - daysSinceMon + weekOffset * 7);
+  mon.setUTCHours(0, 0, 0, 0);
+  return mon;
+}
+
+function getWeekDates(weekOffset: number): Record<WarDay, string> {
+  const mon = getMondayOfWeek(weekOffset);
+  const fmt = (d: Date) => d.toISOString().split("T")[0]; // already in UTC representing Thai date
+  const tue = new Date(mon); tue.setUTCDate(mon.getUTCDate() + 1);
+  const thu = new Date(mon); thu.setUTCDate(mon.getUTCDate() + 3);
+  const sun = new Date(mon); sun.setUTCDate(mon.getUTCDate() + 6);
+  return { "อังคาร": fmt(tue), "พฤหัสบดี": fmt(thu), "อาทิตย์": fmt(sun) };
 }
 
 function getCurrentWeekIndex(): number {
-  const now = new Date();
-  const diffTime = now.getTime() - BASE_DATE.getTime();
-  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-  return Math.max(0, Math.floor(diffDays / 7));
+  return 0; // weekOffset 0 always = this week
 }
+
 
 function formatDateTH(dateStr: string): string {
   if (!dateStr) return "";
@@ -110,7 +118,6 @@ export default function AttendancePage() {
   const [loadingRoster, setLoadingRoster] = useState(true);
 
   useEffect(() => {
-    const curWeek = getCurrentWeekIndex();
     // todayStr in Thai time (+7h)
     const todayStr = new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().split("T")[0];
 
@@ -120,21 +127,23 @@ export default function AttendancePage() {
 
     if (savedDate && savedDay) {
       // Restore exact selection from localStorage
-      const wIdx = savedWeek !== null ? parseInt(savedWeek, 10) : curWeek;
-      setWeekOffset(isNaN(wIdx) ? curWeek : wIdx);
+      const wOffset = savedWeek !== null ? parseInt(savedWeek, 10) : 0;
+      setWeekOffset(isNaN(wOffset) ? 0 : wOffset);
       setSelectedDate(savedDate);
       setSelectedDay(savedDay);
     } else {
-      // Default: pick today's war day or first upcoming
-      const dates = getWeekDates(curWeek);
+      // Default: pick today's war day or first upcoming (Tue, Thu, Sun)
+      const dates = getWeekDates(0); // this week
       let initialDay: WarDay = "อาทิตย์";
-      if (todayStr >= dates["พฤหัสบดี"]) initialDay = "พฤหัสบดี";
-      else if (todayStr >= dates["อังคาร"]) initialDay = "อังคาร";
-      setWeekOffset(curWeek);
+      if (todayStr >= dates["พฤหัสบดี"]) initialDay = "อาทิตย์";
+      else if (todayStr >= dates["อังคาร"]) initialDay = "พฤหัสบดี";
+      else initialDay = "อังคาร";
+      setWeekOffset(0);
       setSelectedDate(dates[initialDay]);
       setSelectedDay(initialDay);
     }
   }, []);
+
 
   const [attendanceRecords, setAttendanceRecords] = useState<any[]>([]);
   const [offlineNames, setOfflineNames] = useState<{ name: string; job: string }[]>([]);
@@ -397,16 +406,16 @@ export default function AttendancePage() {
           }}
           className="border border-slate-200 dark:border-[#2D3342] rounded-lg px-2 py-1.5 text-sm font-semibold text-slate-700 dark:text-white bg-white dark:bg-[#272C38] focus:outline-none"
         >
-          {Array.from({ length: getCurrentWeekIndex() + 1 }, (_, i) => {
-            const wIdx = getCurrentWeekIndex() - i;
-            const dates = getWeekDates(wIdx);
+          {Array.from({ length: 12 }, (_, i) => {
+            const offset = -i; // 0, -1, -2, ... -11
+            const dates = getWeekDates(offset);
+            const tuDate = formatDateTH(dates["อังคาร"]);
             const sunDate = formatDateTH(dates["อาทิตย์"]);
-            const thuDate = formatDateTH(dates["พฤหัสบดี"]);
-            const label = i === 0 ? `สัปดาห์นี้ (${sunDate} – ${thuDate})`
-                        : i === 1 ? `สัปดาห์ที่แล้ว (${sunDate} – ${thuDate})`
-                        : `${i} สัปดาห์ที่แล้ว (${sunDate} – ${thuDate})`;
+            const label = i === 0 ? `สัปดาห์นี้ (${tuDate} – ${sunDate})`
+                        : i === 1 ? `สัปดาห์ที่แล้ว (${tuDate} – ${sunDate})`
+                        : `${i} สัปดาห์ที่แล้ว (${tuDate} – ${sunDate})`;
             return (
-              <option key={wIdx} value={wIdx}>{label}</option>
+              <option key={offset} value={offset}>{label}</option>
             );
           })}
         </select>
