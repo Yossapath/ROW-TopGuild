@@ -23,6 +23,10 @@ export const assignPlayersToTeam = (
   // Filter and sort eligible waiting items
   let waitingItems = sortQueueItems(getWaitingItems(allQueueItems));
 
+  if (waitingItems.length === 0) {
+    return { updatedTeam: { ...team }, updatedItems: [] };
+  }
+
   const newlyAssignedItems: DungeonQueueItem[] = [];
   const newActiveMembers: { queueItemId: string; name: string; job: string; roundNumber: 1 | 2 }[] = [...team.activeMembers];
 
@@ -45,20 +49,7 @@ export const assignPlayersToTeam = (
   let assignedPriestCount = team.activeMembers.filter(m => m.job === "Priest").length;
   const maxPriest = hasCarrierPriest ? 0 : 1;
 
-  // ── Minimum Priest Requirement ─────────────────────────────────────────
-  // If no carrier is a Priest, the team MUST have at least 1 Priest from
-  // the queue.  Check upfront: if there is no Priest waiting at all, abort
-  // so the team stays AVAILABLE instead of launching without a Priest.
-  const priestAlreadyInTeam = assignedPriestCount > 0;
-  if (!hasCarrierPriest && !priestAlreadyInTeam) {
-    const priestAvailableInQueue = waitingItems.some(item => item.job === "Priest");
-    if (!priestAvailableInQueue) {
-      // No Priest available — do not assign anyone yet.
-      return { updatedTeam: { ...team }, updatedItems: [] };
-    }
-  }
-
-  // 1. Priest Priority — assign a Priest FIRST (continuous rule or first in queue)
+  // 1. Priest Priority — assign a Priest FIRST if one is available (optional, not required)
   if (maxPriest > 0 && assignedPriestCount < maxPriest) {
     // Continuous rule: prefer a priest who was in the previous team
     let priestToAssign: DungeonQueueItem | null = null;
@@ -123,6 +114,7 @@ export const assignPlayersToTeam = (
     updatedItems: newlyAssignedItems,
   };
 };
+
 
 /**
  * Calculates estimated completion time for a currently RUNNING or PAUSED team.

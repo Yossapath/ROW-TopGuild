@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { RefreshCw, Search, Trash2, GripVertical, LogIn } from "lucide-react";
+import { RefreshCw, Search, Trash2, GripVertical } from "lucide-react";
 import { useState } from "react";
 import { DungeonQueueItem, DungeonTeamResource } from "@/types";
 import { JOB_COLORS } from "@/lib/utils";
@@ -81,14 +81,14 @@ export function QueueBoard({ queueItems, teams = [], isLoading, onRefresh, onAss
     if (items.length === 0) return null;
     const groupKey = `queue_group_${title.replace(/\W+/g, "")}`;
     return (
-      <div className="mb-3 last:mb-0">
-        <div className={`text-[11px] font-bold uppercase tracking-wider ${titleColorCls} mb-1 px-1`}>{title} · {items.length} คน</div>
+      <div className="mb-4 last:mb-0">
+        <div className={`text-[11px] font-bold uppercase tracking-wider ${titleColorCls} mb-2 px-1`}>{title} · {items.length} คน</div>
         <Droppable droppableId={groupKey} isDropDisabled={true}>
           {(provided) => (
             <div
               ref={provided.innerRef}
               {...provided.droppableProps}
-              className="rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden"
+              className="space-y-1.5"
             >
               {items.map((q, localIdx) => {
                 const currentIdx = ++globalIdx;
@@ -98,86 +98,71 @@ export function QueueBoard({ queueItems, teams = [], isLoading, onRefresh, onAss
 
                 const row = (
                   <div
-                    className={`flex items-center h-9 px-2 gap-2 border-b last:border-b-0 border-slate-100 dark:border-slate-800/50 ${
+                    className={`flex items-center h-11 px-3 gap-2.5 rounded-xl border transition-all ${
                       q.status === "ASSIGNED"
-                        ? "bg-blue-50/60 dark:bg-blue-950/20"
-                        : "bg-white dark:bg-[#232733]"
-                    } text-xs`}
+                        ? "bg-blue-50/60 dark:bg-blue-950/25 border-blue-200 dark:border-blue-800/50"
+                        : "bg-white dark:bg-[#272C38] border-slate-200 dark:border-[#2D3342]"
+                    } text-xs shadow-sm`}
                   >
                     {/* Drag handle / number */}
                     {canDrag ? (
                       <span className="text-slate-300 dark:text-slate-600 cursor-grab active:cursor-grabbing shrink-0">
-                        <GripVertical size={13} />
+                        <GripVertical size={14} />
                       </span>
                     ) : (
                       <span className="font-mono text-[10px] text-slate-400 w-4 text-center shrink-0">{currentIdx}</span>
                     )}
 
                     {/* Name */}
-                    <span className={`font-semibold flex-1 min-w-0 truncate ${isOwner ? "text-[#3B66D1] dark:text-[#82A0F5]" : "text-slate-800 dark:text-white"}`}>
+                    <span className={`font-semibold flex-1 min-w-0 truncate text-sm ${isOwner ? "text-[#3B66D1] dark:text-[#82A0F5]" : "text-slate-800 dark:text-white"}`}>
                       {q.name}
                       {isOwner && <span className="ml-1 text-[9px] font-bold opacity-70">(คุณ)</span>}
                     </span>
 
                     {/* Job Badge */}
                     <span
-                      className="text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0"
-                      style={{ backgroundColor: jc + "20", color: jc, border: `1px solid ${jc}40` }}
+                      className="text-[11px] font-bold px-2 py-0.5 rounded-full shrink-0"
+                      style={{ backgroundColor: jc + "22", color: jc, border: `1px solid ${jc}44` }}
                     >
                       {q.job}
                     </span>
 
                     {/* Round Badge */}
-                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono shrink-0">
-                      R{q.roundNumber}
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono shrink-0 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
+                      รอบ {q.roundNumber}
                     </span>
 
-                    {/* Status / Team info */}
+                    {/* Status badge */}
                     {q.status === "ASSIGNED" ? (
-                      <span className="text-[10px] bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded font-bold shrink-0">
-                        ทีม {q.assignedTeamId?.replace("team-", "")}
+                      <span className="text-[10px] bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full font-bold shrink-0">
+                        กำลังลง
                       </span>
-                    ) : (
-                      <span className="text-[10px] text-slate-400 italic shrink-0">รอ</span>
-                    )}
+                    ) : null}
 
                     {/* Admin Actions */}
                     {isAdmin && (
-                      <div className="flex items-center gap-1 shrink-0">
-                        {/* Quick Assign Buttons */}
-                        {canDrag && onAssign && availableTeams.map((t, ti) => (
-                          <button
-                            key={t.id}
-                            onClick={() => onAssign(t.id, q.id)}
-                            className="flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#3B66D1]/10 hover:bg-[#3B66D1] text-[#3B66D1] hover:text-white dark:text-[#82A0F5] dark:hover:text-white border border-[#3B66D1]/30 dark:border-[#4D73CD]/30 transition-all"
-                            title={`เพิ่มเข้าทีม ${ti + 1}`}
-                          >
-                            <LogIn size={10} />
-                            ทีม{ti + 1}
-                          </button>
-                        ))}
-
+                      <div className="flex items-center gap-1.5 shrink-0">
                         {/* Skip */}
-                        {!q.status || q.status === "WAITING" ? (
+                        {q.status === "WAITING" && (
                           <button
                             onClick={() => actionMutation.mutate({ id: q.bookingId, action: "skip" })}
                             disabled={actionMutation.isPending}
-                            className="text-[10px] font-bold px-1.5 py-0.5 bg-amber-50 text-amber-600 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-400 rounded border border-amber-200 dark:border-amber-800 disabled:opacity-50"
-                            title="ข้ามคิว (ดันไปต่อท้าย)"
+                            className="text-[10px] font-bold px-2 py-1 bg-amber-50 text-amber-600 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-400 rounded-lg border border-amber-200 dark:border-amber-800 disabled:opacity-50 transition-colors"
+                            title="ข้ามคิว"
                           >
                             ข้าม
                           </button>
-                        ) : null}
+                        )}
 
                         {/* Delete */}
                         {(isAdmin || isOwner) && (
                           <button
                             onClick={() => { if (!confirm("แน่ใจที่จะลบคิวนี้ใช่ไหม?")) return; actionMutation.mutate({ id: q.bookingId, action: "delete" }); }}
                             disabled={actionMutation.isPending}
-                            className="text-red-400 hover:text-red-600 p-0.5 rounded disabled:opacity-50"
+                            className="text-red-400 hover:text-red-600 p-1 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 disabled:opacity-50 transition-colors"
                             title="ลบคิว"
                           >
-                            <Trash2 size={12} />
+                            <Trash2 size={13} />
                           </button>
                         )}
                       </div>
@@ -213,6 +198,7 @@ export function QueueBoard({ queueItems, teams = [], isLoading, onRefresh, onAss
       </div>
     );
   };
+
 
   return (
     <div className="flex-1 min-w-0">
