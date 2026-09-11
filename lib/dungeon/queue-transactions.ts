@@ -79,7 +79,11 @@ export const autoAssignTeamTransaction = async (
 
       let reason = "ไม่พบผู้เล่นที่ตรงตามเงื่อนไขการจัดทีม";
       if (!hasCarrierPriest && !priestInTeam && !priestInQueue) {
-        reason = "ไม่มีผู้เล่นอาชีพ Priest (พระ) ในคิว สำหรับจัดทีมอัตโนมัติ (สามารถลากหรือกดปุ่มเข้าทีมแบบแมนนวลได้)";
+        if (team.activeMembers.length >= 2) {
+          reason = "ทีมมีสมาชิก 2 คนแล้ว ระบบเว้นที่ว่าง 1 ช่องไว้สำหรับ Priest (พระ) เสมอ (หากต้องการลง 3 คนโดยไม่มีพระ สามารถลากผู้เล่นเข้าทีมได้)";
+        } else {
+          reason = "ไม่มีผู้เล่นในคิวที่ตรงตามเงื่อนไข";
+        }
       }
       return { updatedTeam: team, assignedCount: 0, reason };
     }

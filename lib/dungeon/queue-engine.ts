@@ -57,9 +57,10 @@ export const assignPlayersToTeam = (
   const priestAvailableInQueue = waitingItems.some(item => item.job === "Priest");
 
   // Effective cap: reserve 1 slot for Priest if needed and Priest isn't in queue yet
+  // If no Priest: auto-assign at most 2 people, leaving 1 slot for a future Priest
   const needsPriestReservation = !hasCarrierPriest && !priestAlreadyInTeam && !priestAvailableInQueue;
   const effectiveMax = needsPriestReservation
-    ? Math.max(0, maxQueueMembers - 1)  // reserve 1 slot for future Priest
+    ? Math.min(2, Math.max(0, maxQueueMembers - 1))  // cap at 2 people, reserve 1 slot for Priest
     : maxQueueMembers;
 
   if (effectiveMax === 0) {

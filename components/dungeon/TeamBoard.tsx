@@ -78,6 +78,9 @@ function TeamCard({ team, index, isAdmin, rosterMembers, onAction, isLoading }: 
   const carrierCount = team.carriers?.length || 0;
   const maxQueueSlots = Math.max(0, 5 - carrierCount);
   const activeCount = team.activeMembers?.length || 0;
+  const hasCarrierPriest = (team.carriers || []).some((c) => rosterMembers.find((m) => m.name === c)?.job === "Priest");
+  const hasActivePriest = (team.activeMembers || []).some((m) => m.job === "Priest");
+  const needsPriest = !hasCarrierPriest && !hasActivePriest;
 
   const handleAddCarrier = () => {
     if (!newCarrier.trim()) return;
@@ -208,10 +211,17 @@ function TeamCard({ team, index, isAdmin, rosterMembers, onAction, isLoading }: 
                       </div>
                     );
                   }
+                  const isReservedForPriest = needsPriest && slotIdx === maxQueueSlots - 1;
                   return (
                     <div key={`empty_${slotIdx}`} className="flex items-center h-8 px-2 border-b last:border-b-0 border-slate-100 dark:border-slate-800/40 text-[10px] text-slate-300 dark:text-slate-600 gap-2">
                       <span className="font-mono w-4 text-center shrink-0">{slotIdx + 1}</span>
-                      <span className="italic">{snapshot.isDraggingOver ? "วางที่นี่..." : "— ช่องว่าง —"}</span>
+                      <span className={`italic ${isReservedForPriest ? "text-emerald-500/80 font-medium" : ""}`}>
+                        {snapshot.isDraggingOver
+                          ? "วางที่นี่..."
+                          : isReservedForPriest
+                            ? "— ช่องว่าง (เว้นไว้สำหรับ Priest) —"
+                            : "— ช่องว่าง —"}
+                      </span>
                     </div>
                   );
                 })
