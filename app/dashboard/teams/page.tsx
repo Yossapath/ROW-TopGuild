@@ -247,24 +247,24 @@ export default function TeamsPage() {
         mainZone2Order: mainZones[1]?.teamOrder || [],
         subOrder: subZones.flatMap(z => z.teamOrder),
         offlineIds: currentData.offlineIds,
-        main: mainZones.flatMap(z => z.teamOrder).map(colId => {
-           const col = currentData.columns[colId];
-           if(!col) return Array(5).fill({ name: "", job: "", power: 0 });
-           return col.memberIds.map(id => {
-              if (!id) return { name: "", job: "", power: 0 };
-              const m = currentData.members[id];
-              return m ? m : { name: "", job: "", power: 0 };
-           });
-        }),
-        sub: subZones.flatMap(z => z.teamOrder).map(colId => {
-           const col = currentData.columns[colId];
-           if(!col) return Array(5).fill({ name: "", job: "", power: 0 });
-           return col.memberIds.map(id => {
-              if (!id) return { name: "", job: "", power: 0 };
-              const m = currentData.members[id];
-              return m ? m : { name: "", job: "", power: 0 };
-           });
-        }),
+        data: [
+          {
+            title: "สนามหลัก",
+            teams: mainZones.flatMap(z => z.teamOrder).reduce((acc, colId, idx) => {
+              const col = currentData.columns[colId];
+              acc[`ทีม ${idx + 1}`] = col ? col.memberIds.map(id => id && currentData.members[id] ? currentData.members[id] : { name: "", job: "", power: 0 }) : Array(5).fill({ name: "", job: "", power: 0 });
+              return acc;
+            }, {} as Record<string, any>)
+          },
+          {
+            title: "สนามรอง",
+            teams: subZones.flatMap(z => z.teamOrder).reduce((acc, colId, idx) => {
+              const col = currentData.columns[colId];
+              acc[`ทีมรอง ${idx + 1}`] = col ? col.memberIds.map(id => id && currentData.members[id] ? currentData.members[id] : { name: "", job: "", power: 0 }) : Array(5).fill({ name: "", job: "", power: 0 });
+              return acc;
+            }, {} as Record<string, any>)
+          }
+        ]
       };
       await axios.put("/api/teams", payload);
       setSaveStatus("saved");
