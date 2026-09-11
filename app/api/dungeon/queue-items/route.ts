@@ -6,14 +6,21 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const snap = await dungeonsRef().collection("dungeon_queue_items").get();
-    const items = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() } as DungeonQueueItem));
-    
-    // Filter out SKIPPED or COMPLETED items for the UI (maybe we just want WAITING and ASSIGNED)
-    const activeItems = items.filter(i => i.status === "WAITING" || i.status === "ASSIGNED");
-    
-    // Sort logic to match UI expectations (same as engine)
-    activeItems.sort((a, b) => {
+    // Only read queue items that can currently appear on the board.
+    // Completed/skipped history is intentionally left in Firestore but is
+    // not fetched, which significantly reduces Firestore document reads.
+    const snap = await dungeonsRef()
+      .collection("dungeon_queue_items")
+      .where("status", "in", ["WAITING", "ASSIGNED"])
+      .get();
+
+    const activeItems: DungeonQueueItem[] = snap.docs.map(
+      (doc: FirebaseFirestore.QueryDocumentSnapshot) => ({ id: doc.id, ...doc.data() } as DungeonQueueItem)
+    );
+
+    // Keep ordering consistent with the queue engine: round first, then
+    // original queue time. The UI handles the Priest/Other grouping.
+    activeItems.sort((a: DungeonQueueItem, b: DungeonQueueItem) => {
       if (a.roundNumber !== b.roundNumber) {
         return a.roundNumber - b.roundNumber;
       }

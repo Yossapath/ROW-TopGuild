@@ -1,6 +1,9 @@
 import { requireAdmin } from "@/lib/auth";
 import { ok, err, handleServerError, logAction } from "@/lib/server-utils";
-import { teamControlTransaction, autoAssignTeamTransaction, ejectMemberTransaction } from "@/lib/dungeon/queue-transactions";
+import { teamControlTransaction, autoAssignTeamTransaction, ejectMemberTransaction, manualAssignTeamTransaction } from "@/lib/dungeon/queue-transactions";
+import type { DungeonTeamResource } from "@/types";
+import { createInitialTeam } from "@/lib/dungeon/queue-state";
+import { dungeonsRef } from "@/lib/firebase-admin";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +19,7 @@ export async function POST(
     const body = await req.json();
     const { action, carriers, queueItemId } = body;
 
-    if (!["start", "pause", "complete", "assign", "manual-assign", "update-carriers", "eject"].includes(action)) {
+    if (!["complete", "assign", "manual-assign", "update-carriers", "eject"].includes(action)) {
       return err("Invalid action", 400);
     }
 
@@ -26,7 +29,6 @@ export async function POST(
     }
 
     if (action === "manual-assign" && queueItemId) {
-      const { manualAssignTeamTransaction } = require("@/lib/dungeon/queue-transactions");
       const { team } = await manualAssignTeamTransaction(teamId, queueItemId);
       logAction({
         module: "DUNGEON_TEAM",
@@ -39,10 +41,33 @@ export async function POST(
     }
 
     if (action === "update-carriers") {
-      const { dungeonsRef } = require("@/lib/firebase-admin");
-      await dungeonsRef().collection("dungeon_teams").doc(teamId).update({
-        carriers: Array.isArray(carriers) ? carriers : []
-      });
+      const nextCarriers: string[] = [];
+      if (Array.isArray(carriers)) {
+        for (const value of carriers) {
+          const name = String(value).trim();
+          if (name && !nextCarriers.includes(name)) nextCarriers.push(name);
+        }
+      }
+
+      if (nextCarriers.length > 5) {
+        return err("ทีมมีคนแบกได้สูงสุด 5 คน", 400);
+      }
+
+      const teamRef = dungeonsRef().collection("dungeon_teams").doc(teamId);
+      const teamSnap = await teamRef.get();
+      const team = teamSnap.exists
+        ? (teamSnap.data() as DungeonTeamResource)
+        : createInitialTeam(teamId, "ดันมายา (Maya)");
+      const maxPlayers = Math.max(0, 5 - nextCarriers.length);
+      if (team.activeMembers.length > maxPlayers) {
+        return err(`ไม่สามารถลดคนแบกได้: ทีมมีผู้เล่นอยู่ ${team.activeMembers.length} คน`, 400);
+      }
+
+      if (teamSnap.exists) {
+        await teamRef.update({ carriers: nextCarriers });
+      } else {
+        await teamRef.set({ ...team, carriers: nextCarriers });
+      }
       return ok({ message: "Updated carriers" });
     }
 
@@ -58,13 +83,13 @@ export async function POST(
       return ok({ message: `Assigned ${result.assignedCount} players`, data: result.updatedTeam });
     }
 
-    // Handle Start, Pause, Complete
-    const { team: updatedTeam, previousMembers } = await teamControlTransaction(teamId, action as "start" | "pause" | "complete");
+    // The simplified workflow has one team-control action:
+    // assign players -> run dungeon -> click "ลงเสร็จ".
+    const { team: updatedTeam, previousMembers } = await teamControlTransaction(teamId, "complete");
 
-    // If completed, trigger auto-assign immediately for the next round (with continuous priest context)
-    if (action === "complete") {
-       await autoAssignTeamTransaction(teamId, previousMembers);
-    }
+    // Immediately refill the same team from the queue. The previous members
+    // are passed in so the continuous Priest R1 -> R2 rule is preserved.
+    await autoAssignTeamTransaction(teamId, previousMembers);
 
     logAction({
       module: "DUNGEON_TEAM",

@@ -1,7 +1,8 @@
-import { getFirestore, FieldValue } from "firebase-admin/firestore";
+import { getFirestore } from "firebase-admin/firestore";
 import { dungeonsRef, rosterRef } from "../firebase-admin";
 import { DungeonTeamResource, DungeonQueueItem } from "@/types";
 import { assignPlayersToTeam } from "./queue-engine";
+import { createInitialTeam } from "./queue-state";
 
 /**
  * Transaction to auto-assign players to an available team.
@@ -19,19 +20,21 @@ export const autoAssignTeamTransaction = async (
     const teamRef = dRef.collection("dungeon_teams").doc(teamId);
     const teamSnap = await t.get(teamRef);
 
-    if (!teamSnap.exists) {
-      throw new Error(`Team ${teamId} does not exist`);
-    }
-
-    const team = teamSnap.data() as DungeonTeamResource;
+    const team = teamSnap.exists
+      ? (teamSnap.data() as DungeonTeamResource)
+      : createInitialTeam(teamId, "ดันมายา (Maya)");
+    const teamNeedsCreate = !teamSnap.exists;
 
     if (team.status !== "AVAILABLE") {
       // Nothing to assign if team is not available
       return { updatedTeam: team, assignedCount: 0 };
     }
 
-    if (team.activeMembers.length >= 3) {
-      // Team is already full
+    const carrierCount = team.carriers?.length ?? 0;
+    const maxQueueMembers = Math.max(0, 5 - carrierCount);
+
+    if (team.activeMembers.length >= maxQueueMembers) {
+      // Team is already full (5 total slots including carriers).
       return { updatedTeam: team, assignedCount: 0 };
     }
 
@@ -64,10 +67,14 @@ export const autoAssignTeamTransaction = async (
       return { updatedTeam: team, assignedCount: 0 };
     }
 
-    // 4. Write Updates back to DB
-    t.update(teamRef, {
-      activeMembers: updatedTeam.activeMembers,
-    });
+    // 4. Write Updates back to DB. All transaction reads are complete.
+    if (teamNeedsCreate) {
+      t.set(teamRef, updatedTeam);
+    } else {
+      t.update(teamRef, {
+        activeMembers: updatedTeam.activeMembers,
+      });
+    }
 
     for (const item of updatedItems) {
       const itemRef = queueItemsRef.doc(item.id);
@@ -135,7 +142,11 @@ export const teamControlTransaction = async (
     }
 
     if (action === "complete") {
-      if (team.status === "AVAILABLE") throw new Error("Team is already available (completed)");
+      // In the simplified workflow a team stays AVAILABLE while assigned
+      // players are running. "complete" is valid whenever players exist.
+      if (team.activeMembers.length === 0) {
+        throw new Error("ไม่มีผู้เล่นในทีมให้กดลงเสร็จ");
+      }
       
       const previousMembers = team.activeMembers.map(m => ({ name: m.name, job: m.job, roundNumber: m.roundNumber }));
 
@@ -274,11 +285,10 @@ export const manualAssignTeamTransaction = async (
     const teamRef = dRef.collection("dungeon_teams").doc(teamId);
     const teamSnap = await t.get(teamRef);
 
-    if (!teamSnap.exists) {
-      throw new Error(`Team ${teamId} does not exist`);
-    }
-
-    const team = teamSnap.data() as DungeonTeamResource;
+    const team = teamSnap.exists
+      ? (teamSnap.data() as DungeonTeamResource)
+      : createInitialTeam(teamId, "ดันมายา (Maya)");
+    const teamNeedsCreate = !teamSnap.exists;
     
     // Check if team is full (max 5 minus carriers)
     const carrierCount = team.carriers?.length || 0;
@@ -324,14 +334,18 @@ export const manualAssignTeamTransaction = async (
       throw new Error("ทีมขาดพระ ต้องการพระ priest");
     }
 
-    // Update team
+    // Update team. All transaction reads are complete after the roster read below.
     const updatedMembers = [...team.activeMembers, {
       queueItemId: item.id || queueItemId,
       name: item.name,
       job: item.job,
       roundNumber: item.roundNumber,
     }];
-    t.update(teamRef, { activeMembers: updatedMembers });
+    if (teamNeedsCreate) {
+      t.set(teamRef, { ...team, activeMembers: updatedMembers });
+    } else {
+      t.update(teamRef, { activeMembers: updatedMembers });
+    }
 
     // Update queue item
     t.update(itemRef, {

@@ -1,23 +1,17 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { useQueryClient, useMutation, useQuery } from "@tanstack/react-query";
 import {
   Swords,
   ListPlus,
   Clock,
-  Trash2,
   CheckCircle,
   Copy,
   Share2,
   Calendar,
   RefreshCw,
   Shield,
-  Search,
-  FastForward,
-  RotateCcw,
-  Play,
-  AlertCircle,
 } from "lucide-react";
 import { DragDropContext, DropResult } from "@hello-pangea/dnd";
 import { useAuthStore } from "@/stores/useAuthStore";
@@ -25,22 +19,10 @@ import {
   JOB_COLORS,
   JOB_LIST,
   isBookingOpen,
-  formatTimestamp,
 } from "@/lib/utils";
-import { calculateDungeonEstimates } from "@/lib/dungeon-estimator";
-import type { DungeonQueue, DungeonSchedule, DungeonTeamResource, DungeonQueueItem } from "@/types";
+import type { DungeonSchedule, DungeonTeamResource, DungeonQueueItem } from "@/types";
 import { TeamBoard } from "@/components/dungeon/TeamBoard";
 import { QueueBoard } from "@/components/dungeon/QueueBoard";
-
-// ────────────────────────────────────────────────────────────
-// Helpers
-// ────────────────────────────────────────────────────────────
-const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
-  waiting: { label: "รอคิว", cls: "bg-yellow-100 dark:bg-yellow-950/40 text-yellow-700 dark:text-yellow-400" },
-  active:  { label: "กำลังลง", cls: "bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-white" },
-  done:    { label: "เสร็จแล้ว", cls: "bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400" },
-  skipped: { label: "ข้าม (ไม่อยู่)", cls: "bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-300 dark:border-amber-800/40" },
-};
 
 // ────────────────────────────────────────────────────────────
 // Page
@@ -84,22 +66,22 @@ export default function DungeonPage() {
   const { data: dungeonData, isLoading: loading } = useQuery({
     queryKey: ["dungeon_data"],
     queryFn: async () => {
-      const [resQ, resT, resQI, resS, resR] = await Promise.all([
-        fetch("/api/dungeon/queues"),
+      // Only fetch data used by the dashboard. The legacy /queues endpoint
+      // is no longer needed here because active queue state is represented by
+      // dungeon_queue_items.
+      const [resT, resQI, resS, resR] = await Promise.all([
         fetch("/api/dungeon/teams"),
         fetch("/api/dungeon/queue-items"),
         fetch("/api/dungeon/schedule"),
         fetch("/api/roster"),
       ]);
-      const [jsonQ, jsonT, jsonQI, jsonS, jsonR] = await Promise.all([
-        resQ.json(),
+      const [jsonT, jsonQI, jsonS, jsonR] = await Promise.all([
         resT.json(),
         resQI.json(),
         resS.json(),
         resR.json(),
       ]);
 
-      const queues: DungeonQueue[] = jsonQ.ok && Array.isArray(jsonQ.data) ? jsonQ.data : [];
       const teams: DungeonTeamResource[] = jsonT.ok && Array.isArray(jsonT.data) ? jsonT.data : [];
       const queueItems: DungeonQueueItem[] = jsonQI.ok && Array.isArray(jsonQI.data) ? jsonQI.data : [];
       const schedule: DungeonSchedule = jsonS.ok && jsonS.data ? jsonS.data : {
@@ -119,14 +101,13 @@ export default function DungeonPage() {
         }
       }
 
-      return { queues, teams, queueItems, schedule, rosterMembers };
+      return { teams, queueItems, schedule, rosterMembers };
     },
+    // Do not poll Firestore on a timer. Mutations explicitly invalidate
+    // this query when the dungeon state changes.
     staleTime: 10_000,
-    refetchInterval: 15_000,
-    refetchIntervalInBackground: false,
   });
 
-  const queues = dungeonData?.queues ?? [];
   const teams = dungeonData?.teams ?? [];
   const queueItems = dungeonData?.queueItems ?? [];
   const rosterMembers = dungeonData?.rosterMembers ?? [];
@@ -160,18 +141,6 @@ export default function DungeonPage() {
     }
   }, [dungeonData?.schedule]);
 
-  // ── Real-time clock for countdown display ─────────────────
-  const [now, setNow] = useState(Date.now());
-  useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const estimates = useMemo(
-    () => calculateDungeonEstimates(queues, new Date(now), carryTeamsCount),
-    [queues, carryTeamsCount, now]
-  );
-
   // Form state
   const [formName, setFormName] = useState("");
   const [formJob, setFormJob] = useState(JOB_LIST[0] ?? "");
@@ -181,18 +150,6 @@ export default function DungeonPage() {
 
   // Clipboard toast
   const [copied, setCopied] = useState(false);
-
-  // Search & filter state
-  const [search, setSearch] = useState("");
-  const [selectedJobs, setSelectedJobs] = useState<string[]>([]);
-
-  const filteredQueues = useMemo(() => {
-    return queues.filter((q) => {
-      const matchSearch = !search || q.name.toLowerCase().includes(search.toLowerCase());
-      const matchJob = selectedJobs.length === 0 || selectedJobs.includes(q.job);
-      return matchSearch && matchJob;
-    });
-  }, [queues, search, selectedJobs]);
 
   // ── Update carry teams count (auto-saved) ──────────────────
   const updateCarryTeamsCount = async (count: number) => {
@@ -333,69 +290,6 @@ export default function DungeonPage() {
     }
   };
 
-  // ── Mark round done ───────────────────────────────────────
-  const handleRound = async (queueId: string, round: 1 | 2) => {
-    try {
-      const res = await fetch(`/api/dungeon/queues/${queueId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ round }),
-      });
-      const json = await res.json();
-      if (json.ok) queryClient.invalidateQueries({ queryKey: ["dungeon_data"] });
-    } catch {
-      /* silent */
-    }
-  };
-
-  // ── Skip / Unskip queue item ──────────────────────────────
-  const handleSkip = async (queueId: string, currentStatus: string) => {
-    const action = currentStatus === "skipped" ? "unskip" : "skip";
-    try {
-      const res = await fetch(`/api/dungeon/queues/${queueId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action }),
-      });
-      const json = await res.json();
-      if (json.ok) queryClient.invalidateQueries({ queryKey: ["dungeon_data"] });
-    } catch {
-      /* silent */
-    }
-  };
-
-  // ── Start run (เริ่มรันคิว → sets status active + startTime) ───
-  const handleStartRun = async (queueId: string) => {
-    try {
-      const res = await fetch(`/api/dungeon/queues/${queueId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "startRun" }),
-      });
-      const json = await res.json();
-      if (json.ok) queryClient.invalidateQueries({ queryKey: ["dungeon_data"] });
-    } catch {
-      /* silent */
-    }
-  };
-
-
-  // ── Delete queue item ─────────────────────────────────────
-  const handleDelete = async (queueId: string) => {
-    if (!confirm("ลบรายการนี้ออกจากคิว?")) return;
-    try {
-      const res = await fetch(`/api/dungeon/queues/${queueId}`, { method: "DELETE" });
-      const json = await res.json();
-      if (json.ok) {
-        queryClient.invalidateQueries({ queryKey: ["dungeon_data"] });
-      } else {
-        alert(json.error ?? "ลบไม่สำเร็จ กรุณาลองใหม่");
-      }
-    } catch {
-      alert("ไม่สามารถเชื่อมต่อได้ กรุณาลองใหม่");
-    }
-  };
-
   // ── Copy booking link ─────────────────────────────────────
   const handleCopyLink = () => {
     const url = `${window.location.origin}/booking`;
@@ -484,16 +378,9 @@ export default function DungeonPage() {
                           const isCarrier = teams.some(t => t.carriers?.includes(m.name));
                           if (isCarrier) return false;
                           
-                          // ฟิลเตอร์คนที่มีคิวอยู่แล้ว (active หรือ waiting หรือ old active that is not really done)
-                          const hasActiveQueue = queues.some(
-                            (q) => {
-                               if (q.name !== m.name) return false;
-                               const r1 = q.round1 || false;
-                               const r2 = q.round2 || false;
-                               const isDone = q.rounds === 1 ? r1 : (r1 && r2);
-                               return !isDone; // If not done, they are still active
-                            }
-                          );
+                          // Active queue items are the source of truth for
+                          // players who already have a live dungeon queue.
+                          const hasActiveQueue = queueItems.some((item) => item.name === m.name);
                           if (hasActiveQueue) return false;
 
                           return formName === "" || m.name.toLowerCase().includes(formName.toLowerCase());
@@ -782,7 +669,6 @@ export default function DungeonPage() {
             <QueueBoard
               queueItems={queueItems}
               isLoading={loading}
-              userEstimate={user?.gameUsername ? estimates.estimatesByName[user.gameUsername.toLowerCase()] : null}
               onRefresh={() => queryClient.invalidateQueries({ queryKey: ["dungeon_data"] })}
             />
           </div>

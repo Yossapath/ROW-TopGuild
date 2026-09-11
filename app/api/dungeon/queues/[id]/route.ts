@@ -122,8 +122,11 @@ export async function PATCH(req: NextRequest, { params }: Params) {
           power: data.power || 0,
           dungeon: data.dungeon || "ดันมายา (Maya)",
           roundNumber: 2,
-          status: update.status === "active" ? "ASSIGNED" : "WAITING",
-          queuedAt: (data.timestamp || Date.now()) + 1,
+          // A newly-created R2 ticket always starts in the waiting queue.
+          // The booking itself may already be active because R1 is running,
+          // but the R2 item is not assigned to a team yet.
+          status: "WAITING",
+          queuedAt: Date.now(),
           assignedTeamId: null,
           completedAt: null
         });

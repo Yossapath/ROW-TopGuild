@@ -1,11 +1,11 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Play, Pause, CheckCircle, RefreshCw, Users, Shield, Plus, X } from "lucide-react";
+import { CheckCircle, RefreshCw, Users, Shield, Plus, X } from "lucide-react";
 import { DungeonTeamResource } from "@/types";
 import { JOB_COLORS } from "@/lib/utils";
 import { useAuthStore } from "@/stores/useAuthStore";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Droppable } from "@hello-pangea/dnd";
 
 interface TeamBoardProps {
@@ -69,56 +69,16 @@ function TeamCard({ team, index, isAdmin, rosterMembers, onAction, isLoading }: 
   onAction: (action: string, payload?: any) => void;
   isLoading: boolean;
 }) {
-  const [now, setNow] = useState(Date.now());
   const [newCarrier, setNewCarrier] = useState("");
-
-  useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(timer);
-  }, []);
 
   const getStatusColor = () => {
     return "bg-white text-slate-800 dark:bg-[#232733] dark:text-white border-slate-200 dark:border-[#2D3342]";
   };
 
   const getStatusLabel = () => {
-    if (team.status === "AVAILABLE") return "ว่าง / รอลูกทีม";
-    if (team.status === "RUNNING") return "กำลังลง";
-    if (team.status === "PAUSED") return "หยุดพัก";
-    return team.status;
+    if (team.activeMembers.length > 0) return "กำลังลง";
+    return "ว่าง / รอผู้เล่น";
   };
-
-  // Timer logic
-  let timeDisplay = "--:--";
-  let isOvertime = false;
-  if (team.status === "RUNNING" && team.startedAt) {
-    const elapsedMs = now - team.startedAt - team.pausedDuration;
-    const remainingMs = team.estimatedDurationSeconds * 1000 - elapsedMs;
-    if (remainingMs < 0) {
-      isOvertime = true;
-      const over = Math.abs(remainingMs);
-      const m = Math.floor(over / 60000);
-      const s = Math.floor((over % 60000) / 1000);
-      timeDisplay = `+${m}:${s.toString().padStart(2, "0")}`;
-    } else {
-      const m = Math.floor(remainingMs / 60000);
-      const s = Math.floor((remainingMs % 60000) / 1000);
-      timeDisplay = `${m}:${s.toString().padStart(2, "0")}`;
-    }
-  } else if (team.status === "PAUSED" && team.pausedAt && team.startedAt) {
-    const elapsedBeforePause = team.pausedAt - team.startedAt - team.pausedDuration;
-    const remainingMs = team.estimatedDurationSeconds * 1000 - elapsedBeforePause;
-    if (remainingMs < 0) {
-      const over = Math.abs(remainingMs);
-      const m = Math.floor(over / 60000);
-      const s = Math.floor((over % 60000) / 1000);
-      timeDisplay = `+${m}:${s.toString().padStart(2, "0")} (Paused)`;
-    } else {
-      const m = Math.floor(remainingMs / 60000);
-      const s = Math.floor((remainingMs % 60000) / 1000);
-      timeDisplay = `${m}:${s.toString().padStart(2, "0")} (Paused)`;
-    }
-  }
 
   const handleAddCarrier = () => {
     if (!newCarrier.trim()) return;
@@ -247,7 +207,7 @@ function TeamCard({ team, index, isAdmin, rosterMembers, onAction, isLoading }: 
                     </span>
                     <div className="flex items-center gap-2">
                       <span className="opacity-70 text-xs font-medium bg-black/10 px-1.5 py-0.5 rounded">รอบ {m.roundNumber} ({m.job})</span>
-                      {isAdmin && (team.status === "AVAILABLE" || team.status === "PAUSED") && (
+                      {isAdmin && team.activeMembers.length > 0 && (
                         <button
                           onClick={() => onAction("eject", { queueItemId: m.queueItemId })}
                           className="text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30 p-0.5 rounded transition-all"
@@ -267,29 +227,30 @@ function TeamCard({ team, index, isAdmin, rosterMembers, onAction, isLoading }: 
       </div>
 
       <div className="flex items-center justify-between mt-auto">
-        <div className={`font-mono font-bold text-lg ${isOvertime ? "text-red-500" : ""}`}>
-          {timeDisplay}
+        <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
+          {team.activeMembers.length > 0 ? "ทีมกำลังลงดันเจี้ยน" : "พร้อมรับผู้เล่น"}
         </div>
 
         {isAdmin && (
           <div className="flex gap-2">
-            {team.status === "AVAILABLE" && (
-              <>
-                <button onClick={() => onAction("assign")} disabled={isLoading} className="p-1.5 bg-blue-500 text-white rounded hover:bg-blue-600 transition" title="Auto Assign (ดึงคิว)"><Users size={16} /></button>
-                <button onClick={() => onAction("start")} disabled={isLoading || team.activeMembers.length === 0} className="p-1.5 bg-green-500 text-white rounded hover:bg-green-600 transition disabled:opacity-50" title="เริ่มลงดัน"><Play size={16} /></button>
-              </>
-            )}
-            {team.status === "RUNNING" && (
-              <>
-                <button onClick={() => onAction("pause")} disabled={isLoading} className="p-1.5 bg-yellow-500 text-white rounded hover:bg-yellow-600 transition" title="หยุดชั่วคราว"><Pause size={16} /></button>
-                <button onClick={() => onAction("complete")} disabled={isLoading} className="p-1.5 bg-emerald-500 text-white rounded hover:bg-emerald-600 transition" title="จบการลงดัน (ครบ 10 นาที)"><CheckCircle size={16} /></button>
-              </>
-            )}
-            {team.status === "PAUSED" && (
-              <>
-                <button onClick={() => onAction("start")} disabled={isLoading} className="p-1.5 bg-green-500 text-white rounded hover:bg-green-600 transition" title="ดำเนินการต่อ"><Play size={16} /></button>
-                <button onClick={() => onAction("complete")} disabled={isLoading} className="p-1.5 bg-emerald-500 text-white rounded hover:bg-emerald-600 transition" title="จบการลงดัน"><CheckCircle size={16} /></button>
-              </>
+            <button
+              onClick={() => onAction("assign")}
+              disabled={isLoading || team.activeMembers.length >= (5 - (team.carriers?.length || 0))}
+              className="p-1.5 bg-blue-500 text-white rounded hover:bg-blue-600 transition disabled:opacity-50"
+              title="จัดทีมอัตโนมัติ"
+            >
+              <Users size={16} />
+            </button>
+            {team.activeMembers.length > 0 && (
+              <button
+                onClick={() => onAction("complete")}
+                disabled={isLoading}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 text-white rounded hover:bg-emerald-600 transition disabled:opacity-50 text-xs font-semibold"
+                title="ลงเสร็จ"
+              >
+                <CheckCircle size={15} />
+                ลงเสร็จ
+              </button>
             )}
           </div>
         )}

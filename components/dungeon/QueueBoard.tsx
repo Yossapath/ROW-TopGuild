@@ -6,17 +6,15 @@ import { useState, useEffect } from "react";
 import { DungeonQueueItem } from "@/types";
 import { JOB_COLORS } from "@/lib/utils";
 import { useAuthStore } from "@/stores/useAuthStore";
-import type { QueueEstimate } from "@/lib/dungeon-estimator";
 import { Droppable, Draggable } from "@hello-pangea/dnd";
 
 interface QueueBoardProps {
   queueItems: DungeonQueueItem[];
   isLoading: boolean;
-  userEstimate?: QueueEstimate | null;
   onRefresh?: () => void;
 }
 
-export function QueueBoard({ queueItems, isLoading, userEstimate, onRefresh }: QueueBoardProps) {
+export function QueueBoard({ queueItems, isLoading, onRefresh }: QueueBoardProps) {
   const [search, setSearch] = useState("");
   const [editingQueueId, setEditingQueueId] = useState<{ id: string; rounds: 1 | 2 } | null>(null);
   const user = useAuthStore((s) => s.user);
@@ -25,19 +23,23 @@ export function QueueBoard({ queueItems, isLoading, userEstimate, onRefresh }: Q
 
   const actionMutation = useMutation({
     mutationFn: async ({ id, action }: { id: string; action: "delete" | "skip" }) => {
+      let res: Response;
       if (action === "delete") {
-        await fetch(`/api/dungeon/queues/${id}`, { method: "DELETE" });
-      } else if (action === "skip") {
-        await fetch(`/api/dungeon/queues/${id}`, {
+        res = await fetch(`/api/dungeon/queues/${id}`, { method: "DELETE" });
+      } else {
+        res = await fetch(`/api/dungeon/queues/${id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ action: "skip" }),
         });
       }
+      const json = await res.json();
+      if (!res.ok || !json.ok) throw new Error(json.error || "ดำเนินการไม่สำเร็จ");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["dungeon_data"] });
     },
+    onError: (error: Error) => alert(error.message),
   });
 
   const editRoundsMutation = useMutation({
@@ -47,11 +49,14 @@ export function QueueBoard({ queueItems, isLoading, userEstimate, onRefresh }: Q
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "updateRounds", rounds }),
       });
-      return res.json();
+      const json = await res.json();
+      if (!res.ok || !json.ok) throw new Error(json.error || "แก้ไขจำนวนรอบไม่สำเร็จ");
+      return json;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["dungeon_data"] });
     },
+    onError: (error: Error) => alert(error.message),
   });
 
   const filteredItems = (queueItems || []).filter((q) => {
@@ -59,7 +64,10 @@ export function QueueBoard({ queueItems, isLoading, userEstimate, onRefresh }: Q
   });
 
   // Group items
-  const activeItems = filteredItems.filter((q) => q.status === "ASSIGNED");
+  const activeR1Priest = filteredItems.filter((q) => q.status === "ASSIGNED" && q.roundNumber === 1 && q.job === "Priest");
+  const activeR1Others = filteredItems.filter((q) => q.status === "ASSIGNED" && q.roundNumber === 1 && q.job !== "Priest");
+  const activeR2Priest = filteredItems.filter((q) => q.status === "ASSIGNED" && q.roundNumber === 2 && q.job === "Priest");
+  const activeR2Others = filteredItems.filter((q) => q.status === "ASSIGNED" && q.roundNumber === 2 && q.job !== "Priest");
   const waitingR1Priest = filteredItems.filter((q) => q.status === "WAITING" && q.roundNumber === 1 && q.job === "Priest");
   const waitingR1Others = filteredItems.filter((q) => q.status === "WAITING" && q.roundNumber === 1 && q.job !== "Priest");
   const waitingR2Priest = filteredItems.filter((q) => q.status === "WAITING" && q.roundNumber === 2 && q.job === "Priest");
@@ -130,33 +138,6 @@ export function QueueBoard({ queueItems, isLoading, userEstimate, onRefresh }: Q
 
   return (
     <div className="flex-1 min-w-0">
-      {/* User Estimate Banner */}
-      {userEstimate && userEstimate.status !== "done" && userEstimate.status !== "skipped" && (
-        <div className="mb-5 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 shadow-sm">
-          <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
-            <div>
-              <h3 className="font-bold text-blue-900 dark:text-blue-100 flex items-center gap-2">
-                <span className="inline-block w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
-                สถานะคิวของคุณ ({userEstimate.name})
-              </h3>
-              <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
-                {userEstimate.status === "active"
-                  ? "กำลังลงดันเจี้ยน"
-                  : userEstimate.queuesAhead === 0
-                    ? "คิวต่อไป (พร้อมลงทันทีเมื่อทีมว่าง)"
-                    : `เหลืออีก ${userEstimate.queuesAhead} คิว ก่อนถึงคิวคุณ`}
-              </p>
-            </div>
-            <div className="bg-white dark:bg-[#232733] px-4 py-2 rounded-lg shadow-sm border border-blue-100 dark:border-blue-800 text-center">
-              <div className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">เวลาโดยประมาณ</div>
-              <div className="font-mono font-bold text-blue-700 dark:text-blue-400">
-                {userEstimate.status === "active" ? "Now" : userEstimate.estimatedStartTimeText}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Header */}
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
         <div className="flex items-center gap-2 flex-wrap">
@@ -197,7 +178,10 @@ export function QueueBoard({ queueItems, isLoading, userEstimate, onRefresh }: Q
           <div className="text-center py-12 text-slate-400">ไม่พบคิว</div>
         ) : (
           <div>
-            {renderGroup(activeItems, "กำลังลง (Active)", "text-blue-600 dark:text-[#82A0F5]")}
+            {renderGroup(activeR1Priest, "กำลังลง · พระ (Priest) · รอบ 1", "text-blue-700 dark:text-white")}
+            {renderGroup(activeR1Others, "กำลังลง · อาชีพอื่นๆ · รอบ 1", "text-blue-600 dark:text-[#82A0F5]")}
+            {renderGroup(activeR2Priest, "กำลังลง · พระ (Priest) · รอบ 2", "text-purple-700 dark:text-purple-400")}
+            {renderGroup(activeR2Others, "กำลังลง · อาชีพอื่นๆ · รอบ 2", "text-purple-700 dark:text-purple-400")}
             {renderGroup(waitingR1Priest, "พระ (Priest) - รอคิวรอบ 1", "text-blue-700 dark:text-white")}
             {renderGroup(waitingR1Others, "อาชีพอื่นๆ - รอคิวรอบ 1", "text-slate-500 dark:text-[#8B93A7]")}
             {renderGroup(waitingR2Priest, "พระ (Priest) - รอคิวรอบ 2", "text-purple-700 dark:text-purple-400")}

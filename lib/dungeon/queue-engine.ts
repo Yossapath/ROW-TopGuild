@@ -1,6 +1,5 @@
 import { DungeonQueueItem, DungeonTeamResource } from "@/types";
 import { sortQueueItems, getWaitingItems, findContinuousPriest } from "./queue-rules";
-import { QUEUE_CONSTANTS } from "./queue-state";
 
 export interface AssignmentResult {
   updatedTeam: DungeonTeamResource;
@@ -27,9 +26,8 @@ export const assignPlayersToTeam = (
   const newlyAssignedItems: DungeonQueueItem[] = [];
   const newActiveMembers: { queueItemId: string; name: string; job: string; roundNumber: 1 | 2 }[] = [...team.activeMembers];
   
-  // Calculate how many slots are available
-  // Max team size is 5. Subtract carriers.
-  const carrierCount = team.carriers?.length ?? 2;
+  // Max team size is 5 players total, including carriers.
+  const carrierCount = team.carriers?.length ?? 0;
   const maxQueueMembers = Math.max(0, 5 - carrierCount);
 
   // Check if carriers have a Priest
