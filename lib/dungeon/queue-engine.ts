@@ -22,15 +22,15 @@ export const assignPlayersToTeam = (
 
   // Filter and sort eligible waiting items
   let waitingItems = sortQueueItems(getWaitingItems(allQueueItems));
-  
+
   const newlyAssignedItems: DungeonQueueItem[] = [];
   const newActiveMembers: { queueItemId: string; name: string; job: string; roundNumber: 1 | 2 }[] = [...team.activeMembers];
-  
+
   // Max team size is 5 players total, including carriers.
   const carrierCount = team.carriers?.length ?? 0;
   const maxQueueMembers = Math.max(0, 5 - carrierCount);
 
-  // Check if carriers have a Priest
+  // Check if carriers already have a Priest — if so, we don't require one from the queue.
   let hasCarrierPriest = false;
   if (team.carriers && rosterJobs) {
     for (const c of team.carriers) {
@@ -41,40 +41,64 @@ export const assignPlayersToTeam = (
     }
   }
 
+  // How many priests are already in the team (from a previous partial assignment)
   let assignedPriestCount = team.activeMembers.filter(m => m.job === "Priest").length;
   const maxPriest = hasCarrierPriest ? 0 : 1;
 
-  // 1. Priest Continuous Rule
-  if (previousTeamMembers && previousTeamMembers.length > 0 && maxPriest > 0) {
-    const continuousPriest = findContinuousPriest(previousTeamMembers, waitingItems);
-    if (continuousPriest && newActiveMembers.length < maxQueueMembers) {
-      newlyAssignedItems.push({ ...continuousPriest, status: "ASSIGNED", assignedTeamId: team.id });
-      newActiveMembers.push({
-        queueItemId: continuousPriest.id,
-        name: continuousPriest.name,
-        job: continuousPriest.job,
-        roundNumber: continuousPriest.roundNumber,
-      });
-      assignedPriestCount++;
-      // Remove this priest from waiting list for subsequent generic assignments
-      waitingItems = waitingItems.filter((item) => item.id !== continuousPriest.id);
+  // ── Minimum Priest Requirement ─────────────────────────────────────────
+  // If no carrier is a Priest, the team MUST have at least 1 Priest from
+  // the queue.  Check upfront: if there is no Priest waiting at all, abort
+  // so the team stays AVAILABLE instead of launching without a Priest.
+  const priestAlreadyInTeam = assignedPriestCount > 0;
+  if (!hasCarrierPriest && !priestAlreadyInTeam) {
+    const priestAvailableInQueue = waitingItems.some(item => item.job === "Priest");
+    if (!priestAvailableInQueue) {
+      // No Priest available — do not assign anyone yet.
+      return { updatedTeam: { ...team }, updatedItems: [] };
     }
   }
 
-  // 2. Fill remaining slots sequentially
+  // 1. Priest Priority — assign a Priest FIRST (continuous rule or first in queue)
+  if (maxPriest > 0 && assignedPriestCount < maxPriest) {
+    // Continuous rule: prefer a priest who was in the previous team
+    let priestToAssign: DungeonQueueItem | null = null;
+
+    if (previousTeamMembers && previousTeamMembers.length > 0) {
+      priestToAssign = findContinuousPriest(previousTeamMembers, waitingItems) ?? null;
+    }
+
+    // Fallback: take the first Priest in sorted queue order
+    if (!priestToAssign) {
+      priestToAssign = waitingItems.find(item => item.job === "Priest") ?? null;
+    }
+
+    if (priestToAssign && newActiveMembers.length < maxQueueMembers) {
+      newlyAssignedItems.push({ ...priestToAssign, status: "ASSIGNED", assignedTeamId: team.id });
+      newActiveMembers.push({
+        queueItemId: priestToAssign.id,
+        name: priestToAssign.name,
+        job: priestToAssign.job,
+        roundNumber: priestToAssign.roundNumber,
+      });
+      assignedPriestCount++;
+      waitingItems = waitingItems.filter(item => item.id !== priestToAssign!.id);
+    }
+  }
+
+  // 2. Fill remaining slots sequentially (non-Priest or Priest if already satisfied)
   for (const item of waitingItems) {
     if (newActiveMembers.length >= maxQueueMembers) {
       break;
     }
-    
-    // Check if team already has this person (to prevent double assigning the same person in weird edge cases)
+
+    // Prevent double-assigning the same person
     const isAlreadyInTeam = newActiveMembers.some(m => m.name === item.name);
     if (isAlreadyInTeam) continue;
 
-    // Check Priest limit
+    // Enforce Priest cap
     if (item.job === "Priest") {
       if (assignedPriestCount >= maxPriest) {
-        continue; // Skip this Priest, team is full of Priests
+        continue; // Team already has its Priest
       } else {
         assignedPriestCount++;
       }
@@ -88,13 +112,6 @@ export const assignPlayersToTeam = (
       roundNumber: item.roundNumber,
     });
   }
-
-  // NOTE: a team is allowed to be assigned without a Priest — the block
-  // above only *reserves priority* for a continuous priest and *caps* the
-  // number of priests per team at `maxPriest`, it never requires one.
-  // Previously this function threw here when no priest ended up assigned,
-  // which crashed the enclosing Firestore transaction (500 error) instead
-  // of letting the team run and simply wait for a priest to queue later.
 
   const updatedTeam: DungeonTeamResource = {
     ...team,
