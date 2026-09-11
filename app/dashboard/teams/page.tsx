@@ -38,6 +38,10 @@ function buildDefaultColumns(prefix: string, type: "main" | "sub", count: number
 
 function migrateToZones(savedData: any, cols: Record<string, Column>): Zone[] {
   if (savedData?.zones && Array.isArray(savedData.zones) && savedData.zones.length > 0) {
+    const hasSub = (savedData.zones as Zone[]).some(z => z.type === "sub");
+    if (!hasSub) {
+      return [...(savedData.zones as Zone[]), { id: "zone-sub-1", name: "สนามรอง", type: "sub", teamOrder: [] }];
+    }
     return savedData.zones as Zone[];
   }
   const zones: Zone[] = [];
@@ -592,9 +596,10 @@ export default function TeamsPage() {
   if (!isMounted || isLoading) return <div className="flex h-screen items-center justify-center text-slate-500"><Loader2 className="animate-spin mr-2" /> โหลดข้อมูล...</div>;
   if (!data) return null;
 
-  const filteredUnassignedIds = (data.columns["unassigned"].memberIds as string[]).filter(id => {
+  const filteredUnassignedIds = (data.columns["unassigned"]?.memberIds as string[] || []).filter(id => {
+    if (!id || !data.members[id]) return false;
     if (unassignedFilterJobs.length > 0 && !unassignedFilterJobs.includes(data.members[id]?.job)) return false;
-    if (unassignedSearch && !data.members[id]?.name.toLowerCase().includes(unassignedSearch.toLowerCase())) return false;
+    if (unassignedSearch && !data.members[id]?.name?.toLowerCase().includes(unassignedSearch.toLowerCase())) return false;
     return true;
   });
 
@@ -811,7 +816,7 @@ export default function TeamsPage() {
                 สนามหลัก ({mainPlayerCount}/60 คน)
               </button>
               <button onClick={() => setActiveTab("sub")} className={`px-4 sm:px-6 py-2 rounded-lg font-bold text-xs sm:text-sm whitespace-nowrap transition-all ${activeTab === "sub" ? "bg-[#0b3d63] dark:bg-[#3B66D1] text-white shadow-sm" : "text-slate-600 dark:text-white hover:bg-slate-50 dark:hover:bg-[#2A2F3E]"}`}>
-                สนามรอง ({data.zones.filter(z => z.type === "sub").flatMap(z => z.teamOrder).reduce((s, colId) => s + (data.columns[colId]?.memberIds.filter(id => id !== null).length || 0), 0)} คน)
+                สนามรอง ({data.zones.filter(z => z.type === "sub").flatMap(z => z.teamOrder).reduce((s, colId) => s + (data.columns[colId]?.memberIds?.filter(id => id !== null)?.length || 0), 0)} คน)
               </button>
               {isAdmin && <button onClick={() => setActiveTab("leave")} className={`px-4 sm:px-6 py-2 rounded-lg font-bold text-xs sm:text-sm whitespace-nowrap transition-all ${activeTab === "leave" ? "bg-red-600 text-white shadow-sm" : "text-slate-600 dark:text-white hover:bg-slate-50 dark:hover:bg-[#2A2F3E]"}`}>ลา/ออฟไลน์</button>}
             </div>
@@ -959,9 +964,9 @@ function TeamCard({
   removeMember: (colId: string, memId: string) => void;
   isAdmin?: boolean; onRemoveFromZone?: () => void;
 }) {
-  const isFull = column.memberIds.filter(id => id).length === 5;
-  const totalPower = column.memberIds.reduce((sum, id) => sum + (id ? (members[id]?.power || 0) : 0), 0);
-  const isSub = column.type === "sub";
+  const isFull = (column?.memberIds || []).filter(id => id).length === 5;
+  const totalPower = (column?.memberIds || []).reduce((sum, id) => sum + (id ? (members[id]?.power || 0) : 0), 0);
+  const isSub = column?.type === "sub";
 
   return (
     <Draggable draggableId={column.id} index={index} isDragDisabled={!isAdmin}>
@@ -974,7 +979,7 @@ function TeamCard({
               <span className="text-xs bg-black/20 px-2 py-0.5 rounded-md font-mono">{totalPower.toLocaleString()}</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${isFull ? "bg-emerald-500 text-white" : "bg-white/20 text-white"}`}>{isFull ? "ครบ 5/5" : `${column.memberIds.filter(id => id).length}/5`}</span>
+              <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${isFull ? "bg-emerald-500 text-white" : "bg-white/20 text-white"}`}>{isFull ? "ครบ 5/5" : `${(column?.memberIds || []).filter(id => id).length}/5`}</span>
               {isAdmin && (
                 <>
                   <button onClick={() => toggleLock(column.id)} className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold transition-colors ${column.locked ? "bg-amber-400 text-slate-900" : "bg-white/15 hover:bg-white/25 text-white"}`}>{column.locked ? <Lock size={12} /> : <Unlock size={12} />} {column.locked ? "ล็อก" : "ปลดล็อก"}</button>
@@ -991,7 +996,7 @@ function TeamCard({
 
           <div className="p-2 min-h-[220px] flex flex-col gap-1.5 relative bg-white dark:bg-[#232733]">
             {Array.from({ length: 5 }).map((_, slotIdx) => {
-              const memberId = column.memberIds[slotIdx];
+              const memberId = column?.memberIds?.[slotIdx];
               const droppableId = `${column.id}::${slotIdx}`;
               return (
                 <Droppable key={droppableId} droppableId={droppableId} type="MEMBER" isDropDisabled={!isAdmin || column.locked}>
@@ -1002,13 +1007,13 @@ function TeamCard({
                         <Draggable draggableId={memberId} index={0} isDragDisabled={!isAdmin || column.locked}>
                           {(prov, snap) => {
                             const m = members[memberId];
-                            const color = m ? (JOB_COLORS[m.job] || "#475569") : "#475569";
+                            const color = (m?.job && JOB_COLORS[m.job]) || "#475569";
                             const rowContent = (
                               <div id={`member-assigned-${memberId}`} ref={prov.innerRef} {...prov.draggableProps} className={`w-full h-[38px] grid ${isAdmin ? "grid-cols-[30px_minmax(0,1fr)_85px_50px_22px] sm:grid-cols-[36px_minmax(0,1fr)_115px_60px_24px]" : "grid-cols-[30px_minmax(0,1fr)_85px_50px] sm:grid-cols-[36px_minmax(0,1fr)_115px_60px]"} gap-1.5 sm:gap-2 items-center px-2 py-1 rounded-xl bg-white dark:bg-[#272C38] hover:bg-slate-50 dark:hover:bg-[#2A2F3E] group border border-slate-100 dark:border-[#2D3342] transition-all ${snap.isDragging ? "shadow-2xl border-blue-400 dark:border-[#4D73CD] ring-2 ring-[#0b3d63]/20 z-[99999]" : "shadow-xs"}`} style={prov.draggableProps.style}>
                                 <div className="flex items-center gap-0.5 sm:gap-1 text-slate-400 cursor-grab touch-none p-1 -m-1" {...(isAdmin ? prov.dragHandleProps : {})}>{isAdmin ? <GripVertical size={14} className="text-sky-300 dark:text-sky-400 shrink-0" /> : null}<span className="text-xs font-bold text-sky-500 font-mono w-3 text-center">{slotIdx + 1}</span></div>
-                                <div className="min-w-0 pr-1"><span className="text-xs font-bold text-slate-800 dark:text-white truncate block" title={m?.name}>{m ? m.name : "Unknown"}</span></div>
+                                <div className="min-w-0 pr-1"><span className="text-xs font-bold text-slate-800 dark:text-white truncate block" title={m?.name}>{m ? m.name : (memberId || "Unknown")}</span></div>
                                 {m && <div className="h-[24px] sm:h-[26px] px-1.5 sm:px-3 rounded-full text-[10px] sm:text-xs font-bold text-white flex items-center justify-center gap-1 shadow-sm shrink-0 w-[85px] sm:w-[115px]" style={{ backgroundColor: color }}><span className="truncate">{m.job}</span><ChevronDown size={10} className="opacity-80 shrink-0 stroke-[2.5] hidden sm:inline-block" /></div>}
-                                {m && <div className="text-[10px] sm:text-xs font-bold text-[#0b3d63] dark:text-white text-right tabular-nums shrink-0">{m.power.toLocaleString()}</div>}
+                                {m && <div className="text-[10px] sm:text-xs font-bold text-[#0b3d63] dark:text-white text-right tabular-nums shrink-0">{(m.power || 0).toLocaleString()}</div>}
                                 {isAdmin && <button onClick={e => { e.stopPropagation(); removeMember(column.id, memberId); }} disabled={column.locked} className="text-sky-300 hover:text-red-500 dark:text-sky-400 dark:hover:text-red-400 opacity-60 hover:opacity-100 transition-opacity flex justify-center disabled:hidden p-0.5" title="นำออกจากทีม"><X size={14} strokeWidth={2.5} /></button>}
                               </div>
                             );
@@ -1030,9 +1035,11 @@ function TeamCard({
   );
 }
 
-function MemberCard({ member, index }: { member: Member; index: number }) {
-  const color = JOB_COLORS[member.job] || "#475569";
+function MemberCard({ member, index }: { member?: Member; index: number }) {
+  if (!member || !member.id) return null;
+  const color = (member.job && JOB_COLORS[member.job]) || "#475569";
   const hexToRgba = (hex: string, alpha: number) => {
+    if (!hex || !hex.startsWith("#") || hex.length < 7) return `rgba(71, 85, 105, ${alpha})`;
     const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
   };
@@ -1047,7 +1054,7 @@ function MemberCard({ member, index }: { member: Member; index: number }) {
               <span className="text-[12px] font-bold text-slate-800 dark:text-white truncate">{member.name}</span>
               <span className="text-[9px] font-bold truncate opacity-90" style={{ color }}>{member.job}</span>
             </div>
-            <div className="text-[11px] font-bold tabular-nums tracking-tight flex-shrink-0" style={{ color }}>{member.power.toLocaleString()}</div>
+            <div className="text-[11px] font-bold tabular-nums tracking-tight flex-shrink-0" style={{ color }}>{(member.power || 0).toLocaleString()}</div>
           </div>
         );
         if (snapshot.isDragging && typeof document !== "undefined") return createPortal(content, document.body);
