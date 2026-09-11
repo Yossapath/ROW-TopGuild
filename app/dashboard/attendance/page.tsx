@@ -207,7 +207,7 @@ export default function AttendancePage() {
       }
     }
     fetchData();
-  }, []);
+  }, [queryClient]);
 
   useEffect(() => {
     if (!selectedDate) { setRows([]); return; }

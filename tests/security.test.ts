@@ -133,16 +133,28 @@ test("Zod Validation - Rejects malformed payloads and validates allowed fields",
   });
   assert.equal(invalidLeave.success, false);
 
-  // Dungeon Queue Booking validation
+  // Dungeon Queue Booking validation (locked to 1 round by system)
   const validQueue = validateBody(dungeonQueueBookingSchema, {
+    name: "Hero",
+    job: "Lord Knight",
+    rounds: 1,
+    power: 150000,
+  });
+  assert.equal(validQueue.success, true);
+  if (validQueue.success) {
+    assert.equal(validQueue.data.rounds, 1);
+  }
+
+  // Booking with 2 rounds is automatically locked/transformed to 1 round
+  const validQueueTransformed = validateBody(dungeonQueueBookingSchema, {
     name: "Hero",
     job: "Lord Knight",
     rounds: 2,
     power: 150000,
   });
-  assert.equal(validQueue.success, true);
-  if (validQueue.success) {
-    assert.equal(validQueue.data.rounds, 2);
+  assert.equal(validQueueTransformed.success, true);
+  if (validQueueTransformed.success) {
+    assert.equal(validQueueTransformed.data.rounds, 1);
   }
 
   const invalidQueueRounds = validateBody(dungeonQueueBookingSchema, {

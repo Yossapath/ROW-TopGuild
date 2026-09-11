@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useQueryClient, useMutation, useQuery } from "@tanstack/react-query";
 import {
   Swords,
@@ -116,7 +116,10 @@ export default function DungeonPage() {
 
   const teams = dungeonData?.teams ?? [];
   const queueItems = dungeonData?.queueItems ?? [];
-  const rosterMembers = dungeonData?.rosterMembers ?? [];
+  const rosterMembers = useMemo<{ name: string; job: string }[]>(
+    () => dungeonData?.rosterMembers ?? [],
+    [dungeonData?.rosterMembers]
+  );
 
   // Schedule local state synced with query
   const [schedule, setSchedule] = useState<DungeonSchedule>({

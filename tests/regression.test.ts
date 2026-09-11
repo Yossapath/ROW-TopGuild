@@ -74,7 +74,8 @@ test('Regression: Continuous Priest & Team Assignment', () => {
     { id: "A", bookingId: "bA", dungeon: "ดันมายา (Maya)", power: 100, assignedTeamId: null, completedAt: null, name: "A", job: "Sniper", roundNumber: 1, queuedAt: 10, status: "WAITING" },
   ];
   const noPriestResult = assignPlayersToTeam(team, membersNoPriest, undefined, { C1: "Paladin", C2: "Sniper" });
-  assert.strictEqual(noPriestResult.updatedTeam.activeMembers.length, 0);
+  // Without Priest, auto-assign adds players up to cap of 2, reserving 1 slot for Priest
+  assert.strictEqual(noPriestResult.updatedTeam.activeMembers.length, 1);
 
   const membersWithPriest: DungeonQueueItem[] = [
     ...membersNoPriest,
