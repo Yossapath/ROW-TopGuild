@@ -2,12 +2,14 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { Shield, Users, Loader2, GripVertical, Lock, Unlock, X, ChevronLeft, ChevronRight, LayoutGrid, Wand2, ChevronDown, Plus, Trash2, Edit2, Check, CheckCircle2, Search } from "lucide-react";
+import { Shield, Users, Loader2, GripVertical, Lock, Unlock, X, ChevronLeft, ChevronRight, LayoutGrid, Wand2, ChevronDown, Plus, Trash2, Edit2, Check, CheckCircle2, Search, Download } from "lucide-react";
 import axios from "axios";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { JOB_COLORS, JOB_LIST } from "@/lib/utils";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { allocateTeams, AllocatorResult } from "@/lib/team-allocator";
+import { jsPDF } from "jspdf";
+import html2canvas from "html2canvas";
 
 type Member = { id: string; name: string; job: string; power: number };
 type Column = { id: string; title: string; memberIds: (string | null)[]; type: "main" | "sub" | "unassigned"; locked: boolean };
@@ -80,6 +82,38 @@ export default function TeamsPage() {
   // Zone editing state
   const [editingZoneId, setEditingZoneId] = useState<string | null>(null);
   const [editingZoneName, setEditingZoneName] = useState("");
+
+  const exportContainerRef = useRef<HTMLDivElement>(null);
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExportPDF = async () => {
+    if (!exportContainerRef.current) return;
+    setIsExporting(true);
+    try {
+      const element = exportContainerRef.current;
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: document.documentElement.classList.contains("dark") ? "#1C1F27" : "#f0f6fc",
+      });
+      
+      const imgData = canvas.toDataURL("image/jpeg", 1.0);
+      const pdf = new jsPDF({
+        orientation: canvas.width > canvas.height ? "landscape" : "portrait",
+        unit: "px",
+        format: [canvas.width, canvas.height]
+      });
+      
+      pdf.addImage(imgData, "JPEG", 0, 0, canvas.width, canvas.height);
+      const dateStr = new Date().toISOString().split('T')[0];
+      pdf.save(`gvg-teams-${dateStr}.pdf`);
+    } catch (err) {
+      console.error("Failed to export PDF", err);
+      alert("เกิดข้อผิดพลาดในการสร้าง PDF");
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   useEffect(() => {
     setIsMounted(true);
@@ -702,6 +736,10 @@ export default function TeamsPage() {
               {saveStatus === 'error' && saveErrorMsg && <span className="text-xs text-red-400 truncate max-w-[150px]">({saveErrorMsg})</span>}
             </div>
             <button onClick={handleClearAll} className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 sm:px-4 py-2 bg-white dark:bg-[#272C38] text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/50 rounded-xl font-bold hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors text-xs sm:text-sm shadow-sm">ล้างทั้งหมด</button>
+            <button onClick={handleExportPDF} disabled={isExporting} className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 sm:px-4 py-2 bg-white dark:bg-[#272C38] text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/50 rounded-xl font-bold hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors text-xs sm:text-sm shadow-sm disabled:opacity-50">
+              {isExporting ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />} 
+              {isExporting ? "กำลังออกเอกสาร..." : "Export PDF"}
+            </button>
             <button onClick={() => setIsAutoModalOpen(true)} className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 sm:px-4 py-2 bg-white dark:bg-[#272C38] text-[#0b3d63] dark:text-white border border-[#0b3d63] dark:border-[#4D73CD] rounded-xl font-bold hover:bg-blue-50 dark:hover:bg-sky-950/30 transition-colors text-xs sm:text-sm shadow-sm"><Wand2 size={16} /> ออโต้จัดทีม</button>
           </div>
         )}
@@ -778,9 +816,9 @@ export default function TeamsPage() {
               {isAdmin && <button onClick={() => setActiveTab("leave")} className={`px-4 sm:px-6 py-2 rounded-lg font-bold text-xs sm:text-sm whitespace-nowrap transition-all ${activeTab === "leave" ? "bg-red-600 text-white shadow-sm" : "text-slate-600 dark:text-white hover:bg-slate-50 dark:hover:bg-[#2A2F3E]"}`}>ลา/ออฟไลน์</button>}
             </div>
 
-            <div className="flex-1">
+            <div className="flex-1" ref={exportContainerRef}>
               {activeTab === "main" && (
-                <div className="space-y-10 pb-12">
+                <div className="space-y-10 pb-12 bg-[#f0f6fc] dark:bg-[#1C1F27] print-export-padding">
                   {/* 60-player progress bar */}
                   <div className="bg-white dark:bg-[#232733] rounded-xl border border-slate-200 dark:border-[#2D3342] p-3 flex items-center gap-3 shadow-sm">
                     <span className="text-sm font-bold text-slate-700 dark:text-white whitespace-nowrap">สนามหลัก {mainPlayerCount}/60 คน</span>
@@ -816,7 +854,7 @@ export default function TeamsPage() {
               )}
 
               {activeTab === "sub" && (
-                <div className="space-y-10 pb-12">
+                <div className="space-y-10 pb-12 bg-[#f0f6fc] dark:bg-[#1C1F27] print-export-padding">
                   {data.zones.filter(z => z.type === "sub").map(zone => (
                     <div key={zone.id}>
                       <ZoneHeader zone={zone} />
