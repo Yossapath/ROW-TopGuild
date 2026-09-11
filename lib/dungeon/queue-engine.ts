@@ -34,7 +34,7 @@ export const assignPlayersToTeam = (
   const carrierCount = team.carriers?.length ?? 0;
   const maxQueueMembers = Math.max(0, 5 - carrierCount);
 
-  // Check if carriers already have a Priest — if so, we don't require one from the queue.
+  // Check if carriers already have a Priest — if so, no Priest is needed from queue.
   let hasCarrierPriest = false;
   if (team.carriers && rosterJobs) {
     for (const c of team.carriers) {
@@ -45,12 +45,30 @@ export const assignPlayersToTeam = (
     }
   }
 
-  // How many priests are already in the team (from a previous partial assignment)
+  // How many priests are already assigned in this team
   let assignedPriestCount = team.activeMembers.filter(m => m.job === "Priest").length;
   const maxPriest = hasCarrierPriest ? 0 : 1;
 
-  // 1. Priest Priority — assign a Priest FIRST if one is available (optional, not required)
-  if (maxPriest > 0 && assignedPriestCount < maxPriest) {
+  // ── Priest Reservation ────────────────────────────────────────────────────
+  // If no carrier-Priest and no Priest already in team:
+  //   - If a Priest IS waiting → assign normally (Priest first, fill all slots)
+  //   - If no Priest is waiting → assign up to (maxQueueMembers - 1), keep 1 slot for a future Priest
+  const priestAlreadyInTeam = assignedPriestCount > 0;
+  const priestAvailableInQueue = waitingItems.some(item => item.job === "Priest");
+
+  // Effective cap: reserve 1 slot for Priest if needed and Priest isn't in queue yet
+  const needsPriestReservation = !hasCarrierPriest && !priestAlreadyInTeam && !priestAvailableInQueue;
+  const effectiveMax = needsPriestReservation
+    ? Math.max(0, maxQueueMembers - 1)  // reserve 1 slot for future Priest
+    : maxQueueMembers;
+
+  if (effectiveMax === 0) {
+    // No room to assign anyone (e.g. 1-slot team and Priest slot is reserved)
+    return { updatedTeam: { ...team }, updatedItems: [] };
+  }
+
+  // 1. Priest Priority — assign a Priest FIRST if one is available
+  if (maxPriest > 0 && assignedPriestCount < maxPriest && priestAvailableInQueue) {
     // Continuous rule: prefer a priest who was in the previous team
     let priestToAssign: DungeonQueueItem | null = null;
 
@@ -63,7 +81,7 @@ export const assignPlayersToTeam = (
       priestToAssign = waitingItems.find(item => item.job === "Priest") ?? null;
     }
 
-    if (priestToAssign && newActiveMembers.length < maxQueueMembers) {
+    if (priestToAssign && newActiveMembers.length < effectiveMax) {
       newlyAssignedItems.push({ ...priestToAssign, status: "ASSIGNED", assignedTeamId: team.id });
       newActiveMembers.push({
         queueItemId: priestToAssign.id,
@@ -76,9 +94,9 @@ export const assignPlayersToTeam = (
     }
   }
 
-  // 2. Fill remaining slots sequentially (non-Priest or Priest if already satisfied)
+  // 2. Fill remaining slots sequentially (non-Priest, or extra Priests if cap allows)
   for (const item of waitingItems) {
-    if (newActiveMembers.length >= maxQueueMembers) {
+    if (newActiveMembers.length >= effectiveMax) {
       break;
     }
 
@@ -86,10 +104,10 @@ export const assignPlayersToTeam = (
     const isAlreadyInTeam = newActiveMembers.some(m => m.name === item.name);
     if (isAlreadyInTeam) continue;
 
-    // Enforce Priest cap
+    // Enforce Priest cap (max 1 Priest per team unless carrier already covers it)
     if (item.job === "Priest") {
       if (assignedPriestCount >= maxPriest) {
-        continue; // Team already has its Priest
+        continue; // Team already has its Priest quota filled
       } else {
         assignedPriestCount++;
       }
@@ -114,6 +132,7 @@ export const assignPlayersToTeam = (
     updatedItems: newlyAssignedItems,
   };
 };
+
 
 
 /**
