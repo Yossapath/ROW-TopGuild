@@ -1,5 +1,4 @@
-import { getFirestore } from "firebase-admin/firestore";
-import { dungeonsRef, rosterRef } from "../firebase-admin";
+import { getDb, dungeonsRef, rosterRef } from "../firebase-admin";
 import { DungeonTeamResource, DungeonQueueItem } from "@/types";
 import { assignPlayersToTeam } from "./queue-engine";
 import { createInitialTeam } from "./queue-state";
@@ -12,7 +11,7 @@ export const autoAssignTeamTransaction = async (
   teamId: string,
   previousTeamMembers?: { name: string; job: string; roundNumber: number }[]
 ): Promise<{ updatedTeam: DungeonTeamResource; assignedCount: number; reason?: string }> => {
-  const db = getFirestore();
+  const db = getDb();
   const dRef = dungeonsRef();
 
   return await db.runTransaction(async (t) => {
@@ -25,17 +24,12 @@ export const autoAssignTeamTransaction = async (
       : createInitialTeam(teamId, "ดันมายา (Maya)");
     const teamNeedsCreate = !teamSnap.exists;
 
-    // Self-heal: If team has 0 active members, it is available for assignment regardless of legacy status
-    if (team.status !== "AVAILABLE") {
-      if (team.activeMembers.length === 0) {
-        team.status = "AVAILABLE";
-      } else {
-        return { updatedTeam: team, assignedCount: 0, reason: "ทีมกำลังลงดันเจี้ยนอยู่" };
-      }
-    }
+    // Ensure team is available to accept players
+    team.status = "AVAILABLE";
 
     const carrierCount = team.carriers?.length ?? 0;
     const maxQueueMembers = Math.max(0, 5 - carrierCount);
+
 
     if (team.activeMembers.length >= maxQueueMembers) {
       return { updatedTeam: team, assignedCount: 0, reason: "ทีมเต็มแล้ว (มีสมาชิกครบจำนวน)" };
@@ -117,7 +111,7 @@ export const teamControlTransaction = async (
   teamId: string,
   action: "start" | "pause" | "complete"
 ): Promise<{ team: DungeonTeamResource; previousMembers?: { name: string; job: string; roundNumber: number }[] }> => {
-  const db = getFirestore();
+  const db = getDb();
   const dRef = dungeonsRef();
 
   return await db.runTransaction(async (t) => {
@@ -219,28 +213,34 @@ export const teamControlTransaction = async (
       };
       t.update(teamRef, teamUpdates);
 
-      // Mark queue items as COMPLETED
-      for (const member of team.activeMembers) {
-        t.update(queueItemsRef.doc(member.queueItemId), {
-          status: "COMPLETED",
-          completedAt: now,
-        });
+      // Mark queue items as COMPLETED (only for existing docs)
+      for (let i = 0; i < team.activeMembers.length; i++) {
+        const member = team.activeMembers[i];
+        const itemSnap = itemSnaps[i];
+        if (itemSnap && itemSnap.exists) {
+          t.update(queueItemsRef.doc(member.queueItemId), {
+            status: "COMPLETED",
+            completedAt: now,
+          });
+        }
       }
 
-      // Update parent booking docs
+      // Update parent booking docs (only for existing docs)
       for (const [bookingId, rounds] of Array.from(bookingsToUpdate.entries())) {
-        const qData = queueDocSnaps.get(bookingId);
-        const bookingUpdate: any = {};
-        let r1 = qData?.round1 || false;
-        let r2 = qData?.round2 || false;
+        if (queueDocSnaps.has(bookingId)) {
+          const qData = queueDocSnaps.get(bookingId);
+          const bookingUpdate: any = {};
+          let r1 = qData?.round1 || false;
+          let r2 = qData?.round2 || false;
 
-        if (rounds.r1) { bookingUpdate.round1 = true; r1 = true; }
-        if (rounds.r2) { bookingUpdate.round2 = true; r2 = true; }
+          if (rounds.r1) { bookingUpdate.round1 = true; r1 = true; }
+          if (rounds.r2) { bookingUpdate.round2 = true; r2 = true; }
 
-        const totalRounds = qData?.rounds || 1;
-        const allDone = totalRounds === 1 ? r1 : (r1 && r2);
-        bookingUpdate.status = allDone ? "done" : "active";
-        t.update(queuesRef.doc(bookingId), bookingUpdate);
+          const totalRounds = qData?.rounds || 1;
+          const allDone = totalRounds === 1 ? r1 : (r1 && r2);
+          bookingUpdate.status = allDone ? "done" : "active";
+          t.update(queuesRef.doc(bookingId), bookingUpdate);
+        }
       }
 
       return { team: { ...team, ...teamUpdates } as DungeonTeamResource, previousMembers };
@@ -262,12 +262,18 @@ export const ejectMemberTransaction = async (
   teamId: string,
   queueItemId: string
 ): Promise<{ team: DungeonTeamResource }> => {
-  const db = getFirestore();
+  const db = getDb();
   const dRef = dungeonsRef();
 
   return await db.runTransaction(async (t) => {
     const teamRef = dRef.collection("dungeon_teams").doc(teamId);
-    const teamSnap = await t.get(teamRef);
+    const itemRef = dRef.collection("dungeon_queue_items").doc(queueItemId);
+
+    // ── ALL READS FIRST ──
+    const [teamSnap, itemSnap] = await Promise.all([
+      t.get(teamRef),
+      t.get(itemRef),
+    ]);
 
     if (!teamSnap.exists) {
       throw new Error(`Team ${teamId} does not exist`);
@@ -275,25 +281,27 @@ export const ejectMemberTransaction = async (
 
     const team = teamSnap.data() as DungeonTeamResource;
     
-    // Find the member
-    const memberIndex = team.activeMembers.findIndex(m => m.queueItemId === queueItemId);
+    // Find the member by queueItemId OR by player name
+    const memberIndex = team.activeMembers.findIndex(m => m.queueItemId === queueItemId || m.name === queueItemId);
     if (memberIndex === -1) {
       // Member not in team, maybe already ejected. Just return current team.
       return { team };
     }
 
+    // ── WRITES AFTER ALL READS ──
     // Update team
     const updatedMembers = [...team.activeMembers];
     updatedMembers.splice(memberIndex, 1);
     t.update(teamRef, { activeMembers: updatedMembers });
 
-    // Update queue item
-    const itemRef = dRef.collection("dungeon_queue_items").doc(queueItemId);
-    t.update(itemRef, {
-      status: "WAITING",
-      assignedTeamId: null,
-      queuedAt: Date.now(), // Put them at the end of the line? Or keep original? The user asked to just remove them from team. It's safer to use Date.now() so they don't instantly get re-assigned if we auto-assign again, giving admin time to skip/delete them.
-    });
+    // Update queue item if it exists
+    if (itemSnap.exists) {
+      t.update(itemRef, {
+        status: "WAITING",
+        assignedTeamId: null,
+        queuedAt: Date.now(),
+      });
+    }
 
     return { team: { ...team, activeMembers: updatedMembers } as DungeonTeamResource };
   });
@@ -306,12 +314,13 @@ export const manualAssignTeamTransaction = async (
   teamId: string,
   queueItemId: string
 ): Promise<{ team: DungeonTeamResource }> => {
-  const db = getFirestore();
+  const db = getDb();
   const dRef = dungeonsRef();
 
   return await db.runTransaction(async (t) => {
     const teamRef = dRef.collection("dungeon_teams").doc(teamId);
     const teamSnap = await t.get(teamRef);
+
 
     const team = teamSnap.exists
       ? (teamSnap.data() as DungeonTeamResource)

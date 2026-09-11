@@ -16,12 +16,9 @@ export const assignPlayersToTeam = (
   previousTeamMembers?: { name: string; job: string; roundNumber: number }[],
   rosterJobs?: Record<string, string>
 ): AssignmentResult => {
-  if (team.status !== "AVAILABLE") {
-    return { updatedTeam: { ...team }, updatedItems: [] };
-  }
-
   // Filter and sort eligible waiting items
   let waitingItems = sortQueueItems(getWaitingItems(allQueueItems));
+
 
   if (waitingItems.length === 0) {
     return { updatedTeam: { ...team }, updatedItems: [] };

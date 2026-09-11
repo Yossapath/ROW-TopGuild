@@ -23,9 +23,20 @@ export async function POST(
       return err("Invalid action", 400);
     }
 
-    if (action === "eject" && queueItemId) {
-      const { team } = await ejectMemberTransaction(teamId, queueItemId);
-      return ok({ message: "Ejected player", data: team });
+    if (action === "eject") {
+      const targetId = queueItemId || body.name;
+      if (!targetId) {
+        return err("Missing player identifier to eject", 400);
+      }
+      const { team } = await ejectMemberTransaction(teamId, targetId);
+      logAction({
+        module: "DUNGEON_TEAM",
+        action: "EJECT_PLAYER",
+        actor: auth.user.discordUsername,
+        target: teamId,
+        detail: `Ejected ${targetId} from ${teamId}`,
+      });
+      return ok({ message: "นำผู้เล่นออกจากทีมเรียบร้อยแล้ว", data: team });
     }
 
     if (action === "manual-assign" && queueItemId) {
@@ -98,23 +109,21 @@ export async function POST(
       });
     }
 
-    // The simplified workflow has one team-control action:
-    // assign players -> run dungeon -> click "ลงเสร็จ".
-    const { team: updatedTeam, previousMembers } = await teamControlTransaction(teamId, "complete");
+    if (action === "complete") {
+      const { team: updatedTeam } = await teamControlTransaction(teamId, "complete");
 
-    // Immediately refill the same team from the queue. The previous members
-    // are passed in so the continuous Priest R1 -> R2 rule is preserved.
-    await autoAssignTeamTransaction(teamId, previousMembers);
+      logAction({
+        module: "DUNGEON_TEAM",
+        action: "TEAM_COMPLETE",
+        actor: auth.user.discordUsername,
+        target: teamId,
+        detail: `Completed dungeon run for ${teamId} (round ${updatedTeam.completedRounds})`,
+      });
 
-    logAction({
-      module: "DUNGEON_TEAM",
-      action: `TEAM_${action.toUpperCase()}`,
-      actor: auth.user.discordUsername,
-      target: teamId,
-      detail: `Changed team ${teamId} status to ${updatedTeam.status}`,
-    });
+      return ok({ message: "ลงดันเจี้ยนเสร็จสิ้นเรียบร้อยแล้ว", data: updatedTeam });
+    }
 
-    return ok({ message: `Team ${action} successful`, data: updatedTeam });
+    return err("Action not handled", 400);
   } catch (e: unknown) {
     return handleServerError(e, "Failed to control team");
   }

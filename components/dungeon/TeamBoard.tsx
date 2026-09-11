@@ -204,7 +204,7 @@ function TeamCard({ team, index, isAdmin, rosterMembers, onAction, isLoading }: 
                         <span className="text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0" style={{ backgroundColor: jc + "22", color: jc, border: `1px solid ${jc}44` }}>{m.job}</span>
                         <span className="text-[10px] text-slate-400 font-mono shrink-0">R{m.roundNumber}</span>
                         {isAdmin && (
-                          <button onClick={() => onAction("eject", { queueItemId: m.queueItemId })} className="text-red-400 hover:text-red-600 p-0.5 rounded shrink-0" title="เตะออก">
+                          <button onClick={() => onAction("eject", { queueItemId: m.queueItemId, name: m.name })} className="text-red-400 hover:text-red-600 p-0.5 rounded shrink-0" title="เตะออก">
                             <X size={12} />
                           </button>
                         )}
