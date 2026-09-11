@@ -11,6 +11,15 @@ export const teamColumnSchema = z.object({
   locked: z.boolean().optional(),
 });
 
+// Dynamic zone schema — each zone has an id, a display name, a field type
+// and an ordered list of team column IDs that belong to it.
+export const zoneSchema = z.object({
+  id: z.string().max(100),
+  name: z.string().min(1).max(100),
+  type: z.enum(["main", "sub"]),
+  teamOrder: z.array(z.string().max(50)).max(50),
+});
+
 // Precomputed display rows saved alongside the team layout so pages that
 // only need to *render* the war plan don't have to re-join columns with
 // members. Loosely typed (z.any()) since it's a denormalized read model,
@@ -29,9 +38,12 @@ export const teamDataSchema = z.object({
     })
   ).optional(),
   columns: z.record(z.string(), teamColumnSchema),
-  mainZone1Order: z.array(z.string().max(50)).max(50),
-  mainZone2Order: z.array(z.string().max(50)).max(50),
-  subOrder: z.array(z.string().max(50)).max(50),
+  // New dynamic zones field (v2)
+  zones: z.array(zoneSchema).max(20).optional(),
+  // Legacy fixed-zone fields kept for backward compatibility
+  mainZone1Order: z.array(z.string().max(50)).max(50).optional().default([]),
+  mainZone2Order: z.array(z.string().max(50)).max(50).optional().default([]),
+  subOrder: z.array(z.string().max(50)).max(50).optional().default([]),
   offlineIds: z.array(z.string().max(100)).max(200).optional().default([]),
   main: z.array(teamZoneRowSchema).max(50).optional(),
   sub: z.array(teamZoneRowSchema).max(50).optional(),
