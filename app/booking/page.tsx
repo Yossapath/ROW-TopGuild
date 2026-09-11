@@ -98,19 +98,23 @@ export default function BookingPage() {
   useEffect(() => {
     if (user?.gameUsername) {
       setName(user.gameUsername);
-      // Try to fetch roster to auto-set job
-      fetch("/api/roster")
-        .then(res => res.json())
-        .then(json => {
-          if (json.ok && json.data) {
-            for (const [jobKey, arr] of Object.entries(json.data as Record<string, {name:string}[]>)) {
-              if (arr.some(m => m.name === user.gameUsername)) {
-                setJob(jobKey);
-                break;
+      if (user.class && JOB_LIST.includes(user.class)) {
+        setJob(user.class);
+      } else {
+        // Fallback: fetch roster only if job class is missing from user session
+        fetch("/api/roster")
+          .then(res => res.json())
+          .then(json => {
+            if (json.ok && json.data) {
+              for (const [jobKey, arr] of Object.entries(json.data as Record<string, {name:string}[]>)) {
+                if (arr.some(m => m.name === user.gameUsername)) {
+                  setJob(jobKey);
+                  break;
+                }
               }
             }
-          }
-        }).catch(() => {});
+          }).catch(() => {});
+      }
     }
   }, [user]);
 
@@ -125,6 +129,26 @@ export default function BookingPage() {
   const [lastRefresh, setLastRefresh] = useState<number>(Date.now());
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [copied, setCopied] = useState(false);
+
+  // History / Completed Queues (On-Demand, isolated from 15s polling)
+  const [doneHistory, setDoneHistory] = useState<DungeonQueue[]>([]);
+  const [showDoneHistory, setShowDoneHistory] = useState(false);
+  const [loadingDoneHistory, setLoadingDoneHistory] = useState(false);
+
+  const toggleDoneHistory = async () => {
+    if (!showDoneHistory && doneHistory.length === 0) {
+      setLoadingDoneHistory(true);
+      try {
+        const res = await fetch("/api/dungeon/queues?type=history&limit=50");
+        const d = await res.json();
+        setDoneHistory(d.data ?? []);
+      } catch {}
+      finally {
+        setLoadingDoneHistory(false);
+      }
+    }
+    setShowDoneHistory((prev) => !prev);
+  };
 
   const [carryTeamsCount, setCarryTeamsCount] = useState<number>(1);
 
@@ -175,19 +199,41 @@ export default function BookingPage() {
   }, [schedule, now]);
 
   // ── Fetch queue preview ──────────────────────────────────────
-  function fetchQueues() {
+  const isFetchingRef = useRef(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const lastFetchTimeRef = useRef<number>(0);
+
+  const fetchQueues = useCallback(async () => {
+    if (isFetchingRef.current) return;
+    isFetchingRef.current = true;
     setQueuesLoading(true);
-    fetch("/api/dungeon/queues")
-      .then((r) => r.json())
-      .then((d) => {
-        const all: DungeonQueue[] = d.data ?? [];
-        setQueues(all);
-        setLastRefresh(Date.now());
-        setEstimateNow(Date.now());
-      })
-      .catch(() => {})
-      .finally(() => setQueuesLoading(false));
-  }
+
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    try {
+      const res = await fetch("/api/dungeon/queues?type=current", {
+        signal: controller.signal,
+      });
+      const d = await res.json();
+      const all: DungeonQueue[] = d.data ?? [];
+      setQueues(all);
+      const nowTime = Date.now();
+      setLastRefresh(nowTime);
+      setEstimateNow(nowTime);
+      lastFetchTimeRef.current = nowTime;
+    } catch (e: any) {
+      if (e?.name !== "AbortError") {
+        // Silent catch for network/server hiccups
+      }
+    } finally {
+      isFetchingRef.current = false;
+      setQueuesLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     fetchQueues();
@@ -209,7 +255,11 @@ export default function BookingPage() {
       if (document.hidden) {
         stopInterval();
       } else {
-        fetchQueues();
+        // Only trigger immediate fetch if it has been >= 10s since last fetch
+        const elapsed = Date.now() - lastFetchTimeRef.current;
+        if (elapsed >= 10000) {
+          fetchQueues();
+        }
         startInterval();
       }
     };
@@ -217,10 +267,12 @@ export default function BookingPage() {
     document.addEventListener("visibilitychange", handleVisibility);
     return () => {
       stopInterval();
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [fetchQueues]);
 
   // ── Edit Rounds ──────────────────────────────────────────────
   async function handleEditRounds(id: string, newRounds: 1 | 2) {
@@ -943,10 +995,38 @@ export default function BookingPage() {
                     )}
                     {skippedQueues.map(q => renderQueue(q, currentGlobalIdx++, false))}
 
-                    {doneQueues.length > 0 && (
-                      <div className="text-xs font-bold text-green-600 dark:text-emerald-400 mt-2 px-2 border-t border-slate-200 dark:border-[#2D3342] pt-3">ลงเสร็จแล้ว</div>
-                    )}
-                    {doneQueues.map(q => renderQueue(q, currentGlobalIdx++, true))}
+                    {/* ── Completed / Done Queue History (On-Demand) ── */}
+                    <div className="mt-3 pt-3 border-t border-slate-200 dark:border-[#2D3342]">
+                      <button
+                        type="button"
+                        onClick={toggleDoneHistory}
+                        className="w-full py-2.5 px-4 rounded-xl bg-slate-50 hover:bg-slate-100 dark:bg-[#232733] dark:hover:bg-[#272C38] text-slate-700 dark:text-slate-200 text-xs font-bold border border-slate-200 dark:border-[#2D3342] transition-colors flex items-center justify-between"
+                      >
+                        <span className="flex items-center gap-2">
+                          <CheckCircle size={15} className="text-emerald-500" />
+                          <span>{showDoneHistory ? "ซ่อนรายการที่ลงเสร็จแล้ว" : "ดูประวัติคิวที่ลงเสร็จแล้ว (History)"}</span>
+                          {doneHistory.length > 0 && (
+                            <span className="bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 text-[10px] px-2 py-0.5 rounded-full font-bold">
+                              {doneHistory.length}
+                            </span>
+                          )}
+                        </span>
+                        <span className="text-[11px] text-slate-400 font-medium">
+                          {loadingDoneHistory ? "กำลังโหลด..." : showDoneHistory ? "▲ ยุบ" : "▼ ขยาย"}
+                        </span>
+                      </button>
+                      {showDoneHistory && (
+                        <div className="mt-3 space-y-2">
+                          {loadingDoneHistory ? (
+                            <p className="text-center text-xs text-slate-400 py-3 font-medium">กำลังโหลดประวัติ...</p>
+                          ) : doneHistory.length === 0 ? (
+                            <p className="text-center text-xs text-slate-400 py-3 font-medium">ไม่มีประวัติคิวที่ลงเสร็จแล้ว</p>
+                          ) : (
+                            doneHistory.map(q => renderQueue(q, currentGlobalIdx++, true))
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </>
                 );
               })()}

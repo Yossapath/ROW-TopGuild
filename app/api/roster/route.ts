@@ -2,13 +2,18 @@ export const dynamic = "force-dynamic";
 import { rosterRef, getDb, COLL_USER } from "@/lib/firebase-admin";
 import { requireAuth, requireAdmin } from "@/lib/auth";
 import { ok, err, handleServerError } from "@/lib/server-utils";
+import { trackFirestoreRead } from "@/lib/firestore-logger";
 
 export async function GET() {
   try {
     const auth = await requireAuth();
     if (auth.errorResponse) return auth.errorResponse;
 
-    const doc = await rosterRef().get();
+    const doc = await trackFirestoreRead(
+      "GET /api/roster",
+      "roster doc get",
+      () => rosterRef().get()
+    );
     if (!doc.exists) {
       return ok({});
     }
@@ -51,6 +56,8 @@ export async function DELETE(req: Request) {
     }
     
     const db = getDb();
+    const batch = db.batch();
+    let hasWrites = false;
     
     // Remove from roster
     if (job) {
@@ -60,15 +67,24 @@ export async function DELETE(req: Request) {
         if (rosterData.data) rosterData = rosterData.data;
         
         if (rosterData[job]) {
+          const originalLen = rosterData[job].length;
           rosterData[job] = rosterData[job].filter((m: any) => m.discordId !== discordId && m.name !== name);
-          await rosterRef().set(rosterData);
+          if (rosterData[job].length !== originalLen) {
+            batch.set(rosterRef(), rosterData);
+            hasWrites = true;
+          }
         }
       }
     }
     
     // Remove user doc
     if (discordId) {
-      await db.collection(COLL_USER).doc(discordId).delete();
+      batch.delete(db.collection(COLL_USER).doc(discordId));
+      hasWrites = true;
+    }
+
+    if (hasWrites) {
+      await batch.commit();
     }
 
     return ok({ message: "Deleted" });

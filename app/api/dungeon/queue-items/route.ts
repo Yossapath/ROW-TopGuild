@@ -1,6 +1,7 @@
 import { dungeonsRef } from "@/lib/firebase-admin";
 import { ok, handleServerError } from "@/lib/server-utils";
 import { DungeonQueueItem } from "@/types";
+import { trackFirestoreRead } from "@/lib/firestore-logger";
 
 export const dynamic = "force-dynamic";
 
@@ -9,10 +10,15 @@ export async function GET() {
     // Only read queue items that can currently appear on the board.
     // Completed/skipped history is intentionally left in Firestore but is
     // not fetched, which significantly reduces Firestore document reads.
-    const snap = await dungeonsRef()
-      .collection("dungeon_queue_items")
-      .where("status", "in", ["WAITING", "ASSIGNED"])
-      .get();
+    const snap = await trackFirestoreRead(
+      "GET /api/dungeon/queue-items",
+      "dungeon_queue_items query (active)",
+      () =>
+        dungeonsRef()
+          .collection("dungeon_queue_items")
+          .where("status", "in", ["WAITING", "ASSIGNED"])
+          .get()
+    );
 
     const activeItems: DungeonQueueItem[] = snap.docs.map(
       (doc: FirebaseFirestore.QueryDocumentSnapshot) => ({ id: doc.id, ...doc.data() } as DungeonQueueItem)

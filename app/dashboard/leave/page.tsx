@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { CalendarOff, Trash2, Calendar } from "lucide-react";
 import { useAuthStore } from "@/stores/useAuthStore";
 import type { LeaveRecord } from "@/types";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 type WarDay = "อังคาร" | "พฤหัสบดี" | "อาทิตย์";
 
@@ -29,6 +30,7 @@ function getDayName(dateStr: string): string {
 }
 
 export default function LeavePage() {
+  const queryClient = useQueryClient();
   const user = useAuthStore((s) => s.user);
   const isAdmin = user?.role === "admin" || user?.role === "owner";
 
@@ -40,44 +42,58 @@ export default function LeavePage() {
   const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [formMsg, setFormMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
-  const [allRecords, setAllRecords] = useState<LeaveRecord[]>([]);
-  const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  // Load roster for admin dropdown + auto-class
-  useEffect(() => {
-    fetch("/api/roster").then(r => r.json()).then(json => {
-      if (json.ok && json.data) {
-        const members: { name: string; job: string }[] = [];
-        for (const [j, arr] of Object.entries(json.data as Record<string, { name: string }[]>)) {
-          for (const m of arr) members.push({ name: m.name, job: j });
-        }
-        setRosterMembers(members.sort((a, b) => a.name.localeCompare(b.name)));
+  // Load roster with React Query — shares cached response with RosterPage
+  const { data: rosterData } = useQuery({
+    queryKey: ["roster"],
+    queryFn: async () => {
+      const res = await fetch("/api/roster");
+      const json = await res.json();
+      return json.data ?? json;
+    },
+    staleTime: 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
 
-        // For non-admin: auto-lock name + auto-class
-        if (!isAdmin && user?.gameUsername) {
-          setName(user.gameUsername);
-          const found = members.find(m => m.name === user.gameUsername);
-          if (found) setJob(found.job);
-        }
-      }
-    }).catch(() => {});
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.gameUsername]);
-
-  const fetchLeaves = useCallback(async () => {
-    setLoading(true);
-    try {
+  // Load leaves with React Query — deduplicates in-flight and mounts
+  const { data: leavesData, isLoading: loading, refetch: fetchLeaves } = useQuery<LeaveRecord[]>({
+    queryKey: ["leaves"],
+    queryFn: async () => {
       const res = await fetch("/api/leave");
       const json = res.ok ? await res.json() : {};
       const data = json.data ?? json;
       const arr: LeaveRecord[] = Array.isArray(data) ? data : [];
-      arr.sort((a, b) => b.timestamp - a.timestamp);
-      setAllRecords(arr);
-    } catch { setAllRecords([]); } finally { setLoading(false); }
-  }, []);
+      return arr.sort((a, b) => b.timestamp - a.timestamp);
+    },
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: false,
+  });
 
-  useEffect(() => { fetchLeaves(); }, [fetchLeaves]);
+  const allRecords = leavesData ?? [];
+
+  useEffect(() => {
+    if (rosterData && typeof rosterData === "object") {
+      const members: { name: string; job: string }[] = [];
+      for (const [j, arr] of Object.entries(rosterData as Record<string, { name: string }[]>)) {
+        if (Array.isArray(arr)) {
+          for (const m of arr) members.push({ name: m.name, job: j });
+        }
+      }
+      setRosterMembers(members.sort((a, b) => a.name.localeCompare(b.name)));
+
+      // For non-admin: auto-lock name + auto-class
+      if (!isAdmin && user?.gameUsername) {
+        setName(user.gameUsername);
+        if (user.class && JOB_LIST.includes(user.class)) {
+          setJob(user.class);
+        } else {
+          const found = members.find((m) => m.name === user.gameUsername);
+          if (found) setJob(found.job);
+        }
+      }
+    }
+  }, [rosterData, isAdmin, user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,7 +112,7 @@ export default function LeavePage() {
       setFormMsg({ type: "ok", text: "แจ้งลาสำเร็จ" });
       setLeaveDate(""); setReason("");
       if (isAdmin) { setName(""); setJob("Priest"); }
-      await fetchLeaves();
+      queryClient.invalidateQueries({ queryKey: ["leaves"] });
     } catch (err: unknown) {
       setFormMsg({ type: "err", text: err instanceof Error ? err.message : "เกิดข้อผิดพลาด" });
     } finally { setSubmitting(false); }
@@ -110,7 +126,7 @@ export default function LeavePage() {
         method: "DELETE", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id }),
       });
-      await fetchLeaves();
+      queryClient.invalidateQueries({ queryKey: ["leaves"] });
     } catch { /* silent */ } finally { setDeletingId(null); }
   };
 

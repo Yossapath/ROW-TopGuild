@@ -29,6 +29,8 @@ export default function UsersPage() {
       return Array.isArray(list) ? list : [];
     },
     enabled: isAdmin,
+    staleTime: 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   const updateRoleMutation = useMutation({

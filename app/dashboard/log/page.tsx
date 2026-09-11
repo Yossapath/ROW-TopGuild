@@ -76,24 +76,35 @@ export default function LogPage() {
   const [logsFetched, setLogsFetched] = useState(false);
   const [logPage, setLogPage] = useState(1);
   const [moduleFilter, setModuleFilter] = useState("all");
+  const [hasMoreLogs, setHasMoreLogs] = useState(true);
+  const [loadingMoreLogs, setLoadingMoreLogs] = useState(false);
 
   // Tab 1 — Leave
   const [leaves, setLeaves] = useState<LeaveRecord[]>([]);
   const [leavesLoading, setLeavesLoading] = useState(false);
   const [leavesFetched, setLeavesFetched] = useState(false);
+  const [hasMoreLeaves, setHasMoreLeaves] = useState(true);
+  const [loadingMoreLeaves, setLoadingMoreLeaves] = useState(false);
 
   // Tab 2 — Dungeon Queue
   const [queues, setQueues] = useState<DungeonQueue[]>([]);
   const [queuesLoading, setQueuesLoading] = useState(false);
   const [queuesFetched, setQueuesFetched] = useState(false);
+  const [hasMoreQueues, setHasMoreQueues] = useState(true);
+  const [loadingMoreQueues, setLoadingMoreQueues] = useState(false);
 
   // ── Fetch on tab switch ──────────────────────────────────────
   useEffect(() => {
     if (activeTab === 0 && isAdmin && !logsFetched) {
       setLogsLoading(true);
-      fetch("/api/logs")
+      fetch("/api/logs?limit=50")
         .then((r) => r.json())
-        .then((d) => { setLogs(d.data ?? []); setLogsFetched(true); })
+        .then((d) => {
+          const items = d.data ?? [];
+          setLogs(items);
+          setLogsFetched(true);
+          if (items.length < 50) setHasMoreLogs(false);
+        })
         .catch(() => setLogs([]))
         .finally(() => setLogsLoading(false));
     }
@@ -102,9 +113,14 @@ export default function LogPage() {
   useEffect(() => {
     if (activeTab === 1 && !leavesFetched) {
       setLeavesLoading(true);
-      fetch("/api/leave")
+      fetch("/api/leave?limit=50")
         .then((r) => r.json())
-        .then((d) => { setLeaves(d.data ?? []); setLeavesFetched(true); })
+        .then((d) => {
+          const items = d.data ?? [];
+          setLeaves(items);
+          setLeavesFetched(true);
+          if (items.length < 50) setHasMoreLeaves(false);
+        })
         .catch(() => setLeaves([]))
         .finally(() => setLeavesLoading(false));
     }
@@ -113,13 +129,69 @@ export default function LogPage() {
   useEffect(() => {
     if (activeTab === 2 && !queuesFetched) {
       setQueuesLoading(true);
-      fetch("/api/dungeon/queues")
+      fetch("/api/dungeon/queues?type=all&limit=50")
         .then((r) => r.json())
-        .then((d) => { setQueues(d.data ?? []); setQueuesFetched(true); })
+        .then((d) => {
+          const items = d.data ?? [];
+          setQueues(items);
+          setQueuesFetched(true);
+          if (items.length < 50) setHasMoreQueues(false);
+        })
         .catch(() => setQueues([]))
         .finally(() => setQueuesLoading(false));
     }
   }, [activeTab, queuesFetched]);
+
+  async function loadMoreLogs() {
+    if (logs.length === 0 || loadingMoreLogs) return;
+    const lastTimestamp = logs[logs.length - 1].timestamp;
+    setLoadingMoreLogs(true);
+    try {
+      const res = await fetch(`/api/logs?limit=50&before=${lastTimestamp}`);
+      const d = await res.json();
+      const newItems: SystemLog[] = d.data ?? [];
+      if (newItems.length < 50) setHasMoreLogs(false);
+      setLogs((prev) => [...prev, ...newItems]);
+    } catch {
+      // silently fail
+    } finally {
+      setLoadingMoreLogs(false);
+    }
+  }
+
+  async function loadMoreLeaves() {
+    if (leaves.length === 0 || loadingMoreLeaves) return;
+    const lastTimestamp = leaves[leaves.length - 1].timestamp;
+    setLoadingMoreLeaves(true);
+    try {
+      const res = await fetch(`/api/leave?limit=50&before=${lastTimestamp}`);
+      const d = await res.json();
+      const newItems: LeaveRecord[] = d.data ?? [];
+      if (newItems.length < 50) setHasMoreLeaves(false);
+      setLeaves((prev) => [...prev, ...newItems]);
+    } catch {
+      // silently fail
+    } finally {
+      setLoadingMoreLeaves(false);
+    }
+  }
+
+  async function loadMoreQueues() {
+    if (queues.length === 0 || loadingMoreQueues) return;
+    const lastTimestamp = queues[queues.length - 1].timestamp;
+    setLoadingMoreQueues(true);
+    try {
+      const res = await fetch(`/api/dungeon/queues?type=all&limit=50&before=${lastTimestamp}`);
+      const d = await res.json();
+      const newItems: DungeonQueue[] = d.data ?? [];
+      if (newItems.length < 50) setHasMoreQueues(false);
+      setQueues((prev) => [...prev, ...newItems]);
+    } catch {
+      // silently fail
+    } finally {
+      setLoadingMoreQueues(false);
+    }
+  }
 
   // ── Delete leave ─────────────────────────────────────────────
   async function handleDeleteLeave(id: string) {
@@ -330,6 +402,18 @@ export default function LogPage() {
                       </div>
                     </div>
                   )}
+
+                  {hasMoreLogs && (
+                    <div className="text-center py-3 border-t border-slate-100 dark:border-[#2D3342]">
+                      <button
+                        onClick={loadMoreLogs}
+                        disabled={loadingMoreLogs}
+                        className="px-4 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-[#272C38] dark:hover:bg-[#2A2F3E] text-slate-700 dark:text-slate-200 transition-colors disabled:opacity-50"
+                      >
+                        {loadingMoreLogs ? "กำลังโหลด..." : "โหลดประวัติก่อนหน้าเพิ่มเติม (+50)"}
+                      </button>
+                    </div>
+                  )}
                 </>
               )}
             </>
@@ -351,7 +435,8 @@ export default function LogPage() {
           ) : filteredLeaves.length === 0 ? (
             <EmptyState message="ไม่มีรายการแจ้งลา" />
           ) : (
-            <div className="overflow-x-auto">
+            <>
+              <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-slate-50 dark:bg-[#272C38] text-slate-500 dark:text-[#8B93A7] font-bold text-xs uppercase tracking-wide">
                   <tr>
@@ -393,6 +478,19 @@ export default function LogPage() {
                 </tbody>
               </table>
             </div>
+
+              {hasMoreLeaves && (
+                <div className="text-center py-3 border-t border-slate-100 dark:border-[#2D3342]">
+                  <button
+                    onClick={loadMoreLeaves}
+                    disabled={loadingMoreLeaves}
+                    className="px-4 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-[#272C38] dark:hover:bg-[#2A2F3E] text-slate-700 dark:text-slate-200 transition-colors disabled:opacity-50"
+                  >
+                    {loadingMoreLeaves ? "กำลังโหลด..." : "โหลดรายการลาเพิ่มเติม (+50)"}
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
@@ -411,7 +509,8 @@ export default function LogPage() {
           ) : filteredQueues.length === 0 ? (
             <EmptyState message="ไม่มีรายการจองคิว" />
           ) : (
-            <div className="overflow-x-auto">
+            <>
+              <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-slate-50 dark:bg-[#272C38] text-slate-500 dark:text-[#8B93A7] font-bold text-xs uppercase tracking-wide">
                   <tr>
@@ -461,9 +560,22 @@ export default function LogPage() {
                 </tbody>
               </table>
             </div>
-          )}
-        </div>
-      )}
+
+            {hasMoreQueues && (
+              <div className="text-center py-3 border-t border-slate-100 dark:border-[#2D3342]">
+                <button
+                  onClick={loadMoreQueues}
+                  disabled={loadingMoreQueues}
+                  className="px-4 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-[#272C38] dark:hover:bg-[#2A2F3E] text-slate-700 dark:text-slate-200 transition-colors disabled:opacity-50"
+                >
+                  {loadingMoreQueues ? "กำลังโหลด..." : "โหลดประวัติคิวดันเพิ่มเติม (+50)"}
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    )}
     </div>
   );
 }

@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useAuthStore } from "@/stores/useAuthStore";
 import type { LeaveRecord } from "@/types";
+import { useQueryClient } from "@tanstack/react-query";
 
 type WarDay = "อังคาร" | "พฤหัสบดี" | "อาทิตย์";
 type Status = "มา" | "ขาด" | "ลา" | null;
@@ -86,6 +87,7 @@ function flattenRoster(roster: Record<string, { name: string; power?: number }[]
 }
 
 export default function AttendancePage() {
+  const queryClient = useQueryClient();
   const user = useAuthStore((s) => s.user);
   const isAdmin = user?.role === "admin" || user?.role === "owner";
 
@@ -141,17 +143,25 @@ export default function AttendancePage() {
     async function fetchData() {
       setLoadingRoster(true);
       try {
-        const [rRes, lRes, aRes, tRes] = await Promise.all([
-          fetch("/api/roster"),
-          fetch("/api/leave"),
+        const cachedRoster = queryClient.getQueryData<any>(["roster"]);
+        const [rData, lRes, aRes, tRes] = await Promise.all([
+          cachedRoster
+            ? Promise.resolve(cachedRoster)
+            : fetch("/api/roster")
+                .then(async (res) => {
+                  const json = res.ok ? await res.json() : { data: {} };
+                  const data = json.data ?? json;
+                  queryClient.setQueryData(["roster"], data);
+                  return data;
+                })
+                .catch(() => ({})),
+          fetch("/api/leave?limit=50"),
           fetch("/api/attendance"),
           fetch("/api/teams"),
         ]);
-        const rJson = rRes.ok ? await rRes.json() : { data: {} };
         const lJson = lRes.ok ? await lRes.json() : { data: [] };
         const aJson = aRes.ok ? await aRes.json() : { data: [] };
         const tJson = tRes.ok ? await tRes.json() : {};
-        const rData = rJson.data ?? rJson;
         const lData = lJson.data ?? lJson;
         const aData = aJson.data ?? aJson;
 

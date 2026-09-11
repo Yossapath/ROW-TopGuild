@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Booking Rules — Dungeon Queue
  *
  * Rules:
@@ -74,16 +74,16 @@ export async function checkBookingEligibility(
   const today = getTodayRange();
   const week = getWeekRange();
 
-  const [todayPlayerSnap, weekPlayerSnap, dailyTotalSnap] = await Promise.all([
+  // Combine player lookup into a single query spanning the union of today and week ranges.
+  // This saves 1 Firestore query on every booking validation while preserving 100% exact business logic.
+  const queryStart = Math.min(today.start, week.start);
+  const queryEnd = Math.max(today.end, week.end);
+
+  const [playerSnap, dailyTotalSnap] = await Promise.all([
     queuesRef
       .where("name", "==", playerName)
-      .where("timestamp", ">=", today.start)
-      .where("timestamp", "<=", today.end)
-      .get(),
-    queuesRef
-      .where("name", "==", playerName)
-      .where("timestamp", ">=", week.start)
-      .where("timestamp", "<=", week.end)
+      .where("timestamp", ">=", queryStart)
+      .where("timestamp", "<=", queryEnd)
       .get(),
     queuesRef
       .where("timestamp", ">=", today.start)
@@ -92,7 +92,12 @@ export async function checkBookingEligibility(
   ]);
 
   // ── Rule 1: วันละ 1 รอบ ต่อคน ─────────────────────────────────
-  if (todayPlayerSnap.docs.length > 0) {
+  const hasBookedToday = playerSnap.docs.some((doc) => {
+    const ts = doc.data().timestamp;
+    return typeof ts === "number" && ts >= today.start && ts <= today.end;
+  });
+
+  if (hasBookedToday) {
     return {
       allowed: false,
       reason: "คุณจองคิวไปแล้ววันนี้ — จองได้สูงสุด 1 ครั้ง (1 รอบ) ต่อวัน",
@@ -101,9 +106,12 @@ export async function checkBookingEligibility(
 
   // ── Rule 2: อาทิตย์ละ 2 รอบ ต่อคน ────────────────────────────
   let roundsThisWeek = 0;
-  for (const doc of weekPlayerSnap.docs) {
+  for (const doc of playerSnap.docs) {
     const data = doc.data();
-    roundsThisWeek += Number(data.rounds) || 1;
+    const ts = data.timestamp;
+    if (typeof ts === "number" && ts >= week.start && ts <= week.end) {
+      roundsThisWeek += Number(data.rounds) || 1;
+    }
   }
   if (roundsThisWeek + requestedRounds > 2) {
     const remaining = Math.max(0, 2 - roundsThisWeek);

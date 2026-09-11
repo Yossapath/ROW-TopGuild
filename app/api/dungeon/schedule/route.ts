@@ -2,10 +2,15 @@ export const dynamic = "force-dynamic";
 import { scheduleRef } from "@/lib/firebase-admin";
 import { requireAdmin } from "@/lib/auth";
 import { ok, err, handleServerError } from "@/lib/server-utils";
+import { trackFirestoreRead } from "@/lib/firestore-logger";
 
 export async function GET() {
   try {
-    const doc = await scheduleRef().get();
+    const doc = await trackFirestoreRead(
+      "GET /api/dungeon/schedule",
+      "dungeon_schedule doc get",
+      () => scheduleRef().get()
+    );
     const now = Date.now();
     if (!doc.exists) {
       const defaultSchedule = {

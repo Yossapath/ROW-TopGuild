@@ -42,19 +42,26 @@ export const autoAssignTeamTransaction = async (
     const queueItemsRef = dRef.collection("dungeon_queue_items");
     const queueItemsSnap = await t.get(queueItemsRef.where("status", "==", "WAITING"));
 
+    if (queueItemsSnap.empty) {
+      // Early exit if no players are waiting; avoids unnecessary roster read and processing
+      return { updatedTeam: team, assignedCount: 0 };
+    }
+
     const allQueueItems: DungeonQueueItem[] = [];
     queueItemsSnap.forEach((doc) => {
       allQueueItems.push({ id: doc.id, ...doc.data() } as DungeonQueueItem);
     });
 
-    // 2.5 Fetch Roster to know carrier jobs
-    const rosterSnap = await t.get(rosterRef());
+    // 2.5 Fetch Roster to know carrier jobs (only if team has carriers configured)
     let rosterJobs: Record<string, string> = {};
-    if (rosterSnap.exists) {
-      const rosterData = rosterSnap.data() as Record<string, { name: string }[]>;
-      for (const [job, members] of Object.entries(rosterData)) {
-        for (const m of members) {
-          rosterJobs[m.name] = job;
+    if (carrierCount > 0 && team.carriers && team.carriers.length > 0) {
+      const rosterSnap = await t.get(rosterRef());
+      if (rosterSnap.exists) {
+        const rosterData = rosterSnap.data() as Record<string, { name: string }[]>;
+        for (const [job, members] of Object.entries(rosterData)) {
+          for (const m of members) {
+            rosterJobs[m.name] = job;
+          }
         }
       }
     }

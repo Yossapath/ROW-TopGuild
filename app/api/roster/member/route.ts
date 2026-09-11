@@ -24,22 +24,16 @@ export async function PUT(req: Request) {
     }
 
     const db = getDb();
-    
-    // 1. Update the user document in COLL_USER
     const userDocRef = db.collection(COLL_USER).doc(targetDiscordId);
-    const userDoc = await userDocRef.get();
-    if (userDoc.exists) {
-      const updateData: any = { gameUsername: name, class: job, power: Number(power) };
-      if ((user.role === "admin" || user.role === "owner") && warRole) {
-        updateData.warRole = warRole;
-      }
-      await userDocRef.update(updateData);
-    }
+    const rRef = rosterRef();
 
-    // 2. Update roster in a transaction to prevent race conditions
+    // Update user document and roster in a single atomic transaction
     await db.runTransaction(async (t) => {
-      const rRef = rosterRef();
-      const rDoc = await t.get(rRef);
+      const [userDoc, rDoc] = await Promise.all([
+        t.get(userDocRef),
+        t.get(rRef),
+      ]);
+
       let rosterData = rDoc.exists ? rDoc.data() as any : {};
       if (rosterData.data) rosterData = rosterData.data; // Handle legacy wrapper
 
@@ -63,6 +57,14 @@ export async function PUT(req: Request) {
 
       if (!rosterData[job]) rosterData[job] = [];
       rosterData[job].push(memberObj);
+
+      if (userDoc.exists) {
+        const updateData: any = { gameUsername: name, class: job, power: Number(power) };
+        if ((user.role === "admin" || user.role === "owner") && warRole) {
+          updateData.warRole = warRole;
+        }
+        t.update(userDocRef, updateData);
+      }
 
       t.set(rRef, rosterData);
     });

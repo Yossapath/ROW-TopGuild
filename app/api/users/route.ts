@@ -4,13 +4,16 @@ import { requireAdmin } from "@/lib/auth";
 import { ok, err, handleServerError, logAction } from "@/lib/server-utils";
 import { userRoleUpdateSchema, userDeleteSchema, validateBody } from "@/lib/validations";
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const auth = await requireAdmin();
     if (auth.errorResponse) return auth.errorResponse;
 
+    const { searchParams } = new URL(req.url);
+    const limitParam = Math.min(Math.max(Number(searchParams.get("limit")) || 150, 1), 300);
+
     const db = getDb();
-    const snapshot = await db.collection(COLL_USER).get();
+    const snapshot = await db.collection(COLL_USER).limit(limitParam).get();
     const users: any[] = [];
     snapshot.forEach((doc) => {
       const data = doc.data();

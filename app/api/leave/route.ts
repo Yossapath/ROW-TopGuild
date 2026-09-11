@@ -3,13 +3,27 @@ import { leaveRef, teamsRef } from "@/lib/firebase-admin";
 import { requireAuth, requireAdmin } from "@/lib/auth";
 import { ok, err, handleServerError, logAction } from "@/lib/server-utils";
 import { leaveSubmitSchema, leaveDeleteSchema, validateBody } from "@/lib/validations";
+import { trackFirestoreRead } from "@/lib/firestore-logger";
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const auth = await requireAuth();
     if (auth.errorResponse) return auth.errorResponse;
 
-    const snap = await leaveRef().collection("records").orderBy("timestamp", "desc").limit(200).get();
+    const { searchParams } = new URL(req.url);
+    const limitParam = Math.min(Math.max(Number(searchParams.get("limit")) || 50, 1), 100);
+    const before = Number(searchParams.get("before"));
+
+    let query = leaveRef().collection("records").orderBy("timestamp", "desc");
+    if (!isNaN(before) && before > 0) {
+      query = query.startAfter(before);
+    }
+
+    const snap = await trackFirestoreRead(
+      "GET /api/leave",
+      "leaves records query",
+      () => query.limit(limitParam).get()
+    );
     const records = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
     return ok(records);
   } catch (e: unknown) {

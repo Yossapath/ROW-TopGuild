@@ -2,15 +2,25 @@ import { dungeonsRef } from "@/lib/firebase-admin";
 import { ok, handleServerError } from "@/lib/server-utils";
 import { DungeonTeamResource } from "@/types";
 import { createInitialTeam } from "@/lib/dungeon/queue-state";
+import { trackFirestoreRead } from "@/lib/firestore-logger";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const snap = await dungeonsRef().collection("dungeon_teams").get();
+    const [snap, scheduleDoc] = await Promise.all([
+      trackFirestoreRead(
+        "GET /api/dungeon/teams",
+        "dungeon_teams query",
+        () => dungeonsRef().collection("dungeon_teams").get()
+      ),
+      trackFirestoreRead(
+        "GET /api/dungeon/teams",
+        "dungeon_schedule doc get",
+        () => dungeonsRef().parent.doc("dungeon_schedule").get()
+      ),
+    ]);
     let teams: DungeonTeamResource[] = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() } as DungeonTeamResource));
-
-    const scheduleDoc = await dungeonsRef().parent.doc("dungeon_schedule").get();
     const carryTeamsCount = scheduleDoc.exists ? (scheduleDoc.data()?.carryTeamsCount || 1) : 1;
 
     // Build team list: if a team doc is missing, use a virtual default (no writes).

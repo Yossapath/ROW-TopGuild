@@ -26,6 +26,8 @@ export default function RosterPage() {
   const { data: roster, isLoading } = useQuery({
     queryKey: ["roster"],
     queryFn: async () => (await axios.get("/api/roster")).data.data,
+    staleTime: 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   const mutation = useMutation({

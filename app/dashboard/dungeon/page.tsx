@@ -69,18 +69,24 @@ export default function DungeonPage() {
       // Only fetch data used by the dashboard. The legacy /queues endpoint
       // is no longer needed here because active queue state is represented by
       // dungeon_queue_items.
+      let rosterData = queryClient.getQueryData<any>(["roster"]);
       const [resT, resQI, resS, resR] = await Promise.all([
         fetch("/api/dungeon/teams"),
         fetch("/api/dungeon/queue-items"),
         fetch("/api/dungeon/schedule"),
-        fetch("/api/roster"),
+        rosterData ? Promise.resolve(null) : fetch("/api/roster"),
       ]);
       const [jsonT, jsonQI, jsonS, jsonR] = await Promise.all([
         resT.json(),
         resQI.json(),
         resS.json(),
-        resR.json(),
+        resR ? resR.json() : Promise.resolve({ ok: true, data: rosterData }),
       ]);
+
+      if (!rosterData && jsonR?.ok && jsonR?.data) {
+        rosterData = jsonR.data;
+        queryClient.setQueryData(["roster"], rosterData);
+      }
 
       const teams: DungeonTeamResource[] = jsonT.ok && Array.isArray(jsonT.data) ? jsonT.data : [];
       const queueItems: DungeonQueueItem[] = jsonQI.ok && Array.isArray(jsonQI.data) ? jsonQI.data : [];
@@ -93,8 +99,9 @@ export default function DungeonPage() {
       };
 
       const rosterMembers: { name: string; job: string }[] = [];
-      if (jsonR.ok && jsonR.data) {
-        for (const [job, arr] of Object.entries(jsonR.data as Record<string, { name: string }[]>)) {
+      const sourceRoster = rosterData || (jsonR?.ok ? jsonR.data : null);
+      if (sourceRoster) {
+        for (const [job, arr] of Object.entries(sourceRoster as Record<string, { name: string }[]>)) {
           for (const m of arr) {
             rosterMembers.push({ name: m.name, job });
           }
@@ -103,9 +110,8 @@ export default function DungeonPage() {
 
       return { teams, queueItems, schedule, rosterMembers };
     },
-    // Do not poll Firestore on a timer. Mutations explicitly invalidate
-    // this query when the dungeon state changes.
-    staleTime: 10_000,
+    staleTime: 15_000,
+    refetchOnWindowFocus: false,
   });
 
   const teams = dungeonData?.teams ?? [];

@@ -2,13 +2,27 @@ export const dynamic = "force-dynamic";
 import { logsRef } from "@/lib/firebase-admin";
 import { requireAuth, requireAdmin } from "@/lib/auth";
 import { ok, err, handleServerError } from "@/lib/server-utils";
+import { trackFirestoreRead } from "@/lib/firestore-logger";
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const auth = await requireAdmin();
     if (auth.errorResponse) return auth.errorResponse;
 
-    const snap = await logsRef().collection("entries").orderBy("timestamp", "desc").limit(300).get();
+    const { searchParams } = new URL(req.url);
+    const limitParam = Math.min(Math.max(Number(searchParams.get("limit")) || 50, 1), 100);
+    const before = Number(searchParams.get("before"));
+
+    let query = logsRef().collection("entries").orderBy("timestamp", "desc");
+    if (!isNaN(before) && before > 0) {
+      query = query.startAfter(before);
+    }
+
+    const snap = await trackFirestoreRead(
+      "GET /api/logs",
+      "logs entries query",
+      () => query.limit(limitParam).get()
+    );
     const logs = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
     return ok(logs);
   } catch (e: unknown) {

@@ -19,41 +19,59 @@ export async function POST(req: Request) {
 
     const db = getDb();
     const userRef = db.collection(COLL_USER).doc(user.discordId);
-    
-    await userRef.update({
-      gameUsername,
-      class: userClass,
-      power: Number(power),
-    });
-
-    // Add to roster
     const rosterDocRef = rosterRef();
-    const rosterDoc = await rosterDocRef.get();
-    let rosterData = rosterDoc.exists ? rosterDoc.data() || {} : {};
-    // Remove this member from every job bucket first (they may be changing
-    // class or name), so switching jobs can't leave a stale duplicate entry behind
-    // in their old class array.
-    for (const jobKey of Object.keys(rosterData)) {
-      if (!Array.isArray(rosterData[jobKey])) continue;
-      rosterData[jobKey] = rosterData[jobKey].filter(
-        (m: any) => m.discordId !== user.discordId && m.name !== gameUsername
-      );
-    }
 
-    if (!rosterData[userClass]) {
-      rosterData[userClass] = [];
-    }
+    await db.runTransaction(async (t) => {
+      const [userDoc, rosterDoc] = await Promise.all([
+        t.get(userRef),
+        t.get(rosterDocRef),
+      ]);
 
-    const memberObj = { 
-      discordId: user.discordId, 
-      discordUsername: user.discordUsername,
-      name: gameUsername, 
-      power: Number(power) 
-    };
+      let rosterData = rosterDoc.exists ? (rosterDoc.data() || {}) : {};
+      if (rosterData.data) rosterData = rosterData.data;
 
-    rosterData[userClass].push(memberObj);
+      // Remove this member from every job bucket first (they may be changing
+      // class or name), so switching jobs can't leave a stale duplicate entry behind
+      // in their old class array.
+      for (const jobKey of Object.keys(rosterData)) {
+        if (!Array.isArray(rosterData[jobKey])) continue;
+        rosterData[jobKey] = rosterData[jobKey].filter(
+          (m: any) => m.discordId !== user.discordId && m.name !== gameUsername
+        );
+      }
 
-    await rosterDocRef.set(rosterData);
+      if (!rosterData[userClass]) {
+        rosterData[userClass] = [];
+      }
+
+      const memberObj = { 
+        discordId: user.discordId, 
+        discordUsername: user.discordUsername,
+        name: gameUsername, 
+        power: Number(power) 
+      };
+
+      rosterData[userClass].push(memberObj);
+
+      if (userDoc.exists) {
+        t.update(userRef, {
+          gameUsername,
+          class: userClass,
+          power: Number(power),
+        });
+      } else {
+        t.set(userRef, {
+          discordId: user.discordId,
+          discordUsername: user.discordUsername,
+          gameUsername,
+          class: userClass,
+          power: Number(power),
+          role: user.role || "member",
+        }, { merge: true });
+      }
+
+      t.set(rosterDocRef, rosterData);
+    });
 
     const payload = {
       ...user,

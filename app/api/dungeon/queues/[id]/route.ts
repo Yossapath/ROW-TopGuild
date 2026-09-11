@@ -209,28 +209,33 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
     // Also delete associated queue_items and remove from any teams
     const qItemsSnap = await dungeonsRef().collection("dungeon_queue_items").where("bookingId", "==", id).get();
     
-    // We need to check if any of these items are assigned to a team
-    const teamUpdates: Record<string, any[]> = {};
-    const teamsSnap = await dungeonsRef().collection("dungeon_teams").get();
-    teamsSnap.docs.forEach(doc => {
-      teamUpdates[doc.id] = doc.data().activeMembers || [];
-    });
+    // Only query and update teams if any deleted queue item was actually assigned to a team
+    const assignedTeamIds = new Set<string>();
+    const deletedItemIds = new Set<string>();
 
     qItemsSnap.docs.forEach(doc => {
-      const qItemData = doc.data();
       batch.delete(doc.ref);
-      
-      if (qItemData.assignedTeamId && teamUpdates[qItemData.assignedTeamId]) {
-        teamUpdates[qItemData.assignedTeamId] = teamUpdates[qItemData.assignedTeamId].filter(
-          (m: any) => m.queueItemId !== doc.id
-        );
+      deletedItemIds.add(doc.id);
+      const qItemData = doc.data();
+      if (qItemData.assignedTeamId) {
+        assignedTeamIds.add(qItemData.assignedTeamId);
       }
     });
 
-    // Apply team updates
-    for (const [teamId, members] of Object.entries(teamUpdates)) {
-      batch.update(dungeonsRef().collection("dungeon_teams").doc(teamId), {
-        activeMembers: members
+    if (assignedTeamIds.size > 0) {
+      const teamSnaps = await Promise.all(
+        Array.from(assignedTeamIds).map(teamId =>
+          dungeonsRef().collection("dungeon_teams").doc(teamId).get()
+        )
+      );
+
+      teamSnaps.forEach(teamSnap => {
+        if (teamSnap.exists) {
+          const members = (teamSnap.data()?.activeMembers || []).filter(
+            (m: any) => !deletedItemIds.has(m.queueItemId)
+          );
+          batch.update(teamSnap.ref, { activeMembers: members });
+        }
       });
     }
     

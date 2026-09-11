@@ -63,6 +63,16 @@ export async function POST(
         return err(`ไม่สามารถลดคนแบกได้: ทีมมีผู้เล่นอยู่ ${team.activeMembers.length} คน`, 400);
       }
 
+      const currentCarriers = team.carriers || [];
+      const isCarriersUnchanged =
+        teamSnap.exists &&
+        currentCarriers.length === nextCarriers.length &&
+        currentCarriers.every((c, i) => c === nextCarriers[i]);
+
+      if (isCarriersUnchanged) {
+        return ok({ message: "Updated carriers" });
+      }
+
       if (teamSnap.exists) {
         await teamRef.update({ carriers: nextCarriers });
       } else {

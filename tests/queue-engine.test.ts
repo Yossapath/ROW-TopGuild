@@ -14,7 +14,10 @@ test('Queue Engine: Sort by Round Number then QueuedAt', () => {
     estimatedDurationSeconds: 300,
     activeMembers: [],
     completedRounds: 0,
+    carriers: ["Carrier1", "Carrier2"],
   };
+
+  const rosterJobs = { Carrier1: "Priest" };
 
   const queueItems: DungeonQueueItem[] = [
     { id: "A2", bookingId: "bA", name: "A", job: "Sniper", power: 100, dungeon: "ดันมายา (Maya)", roundNumber: 2, status: "WAITING", queuedAt: 100, assignedTeamId: null, completedAt: null },
@@ -23,7 +26,7 @@ test('Queue Engine: Sort by Round Number then QueuedAt', () => {
     { id: "A1", bookingId: "bA", name: "A", job: "Sniper", power: 100, dungeon: "ดันมายา (Maya)", roundNumber: 1, status: "WAITING", queuedAt: 50, assignedTeamId: null, completedAt: null },
   ];
 
-  const result = assignPlayersToTeam(team, queueItems);
+  const result = assignPlayersToTeam(team, queueItems, undefined, rosterJobs);
 
   // Expected order: A1, B1, C1 (Round 1 first, then sorted by queuedAt)
   // Max members = 3, so A2 is left waiting.
@@ -45,6 +48,7 @@ test('Queue Engine: Priest Continuous Run', () => {
     estimatedDurationSeconds: 300,
     activeMembers: [],
     completedRounds: 1,
+    carriers: ["Carrier1", "Carrier2"],
   };
 
   const prevMembers = [

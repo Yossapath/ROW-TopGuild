@@ -12,24 +12,28 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
-  const [loadingAuth, setLoadingAuth] = useState(true);
+  const [loadingAuth, setLoadingAuth] = useState(!isAuthenticated);
 
   useEffect(() => {
     setMounted(true);
-    fetch("/api/auth/me")
-      .then(res => res.json())
-      .then(data => {
-        if (data.ok && data.data) {
-          setUser(data.data);
-        } else {
-          if (!isAuthenticated) router.push("/login");
-        }
-      })
-      .catch(() => {
-        if (!isAuthenticated) router.push("/login");
-      })
-      .finally(() => setLoadingAuth(false));
-  }, []);
+    if (!isAuthenticated) {
+      fetch("/api/auth/me")
+        .then(res => res.json())
+        .then(data => {
+          if (data.ok && data.data) {
+            setUser(data.data);
+          } else {
+            router.push("/login");
+          }
+        })
+        .catch(() => {
+          router.push("/login");
+        })
+        .finally(() => setLoadingAuth(false));
+    } else {
+      setLoadingAuth(false);
+    }
+  }, [isAuthenticated, router, setUser]);
 
   if (!mounted || loadingAuth) return (
     <div className="flex h-screen items-center justify-center bg-theme-bg text-theme-text font-bold">

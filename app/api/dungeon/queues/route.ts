@@ -5,12 +5,64 @@ import { isBookingOpen } from "@/lib/utils";
 import { dungeonQueueBookingSchema, validateBody } from "@/lib/validations";
 import { requireAuth } from "@/lib/auth";
 import { checkBookingEligibility } from "@/lib/dungeon/booking-rules";
+import { trackFirestoreRead } from "@/lib/firestore-logger";
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    // ดึงคิวทั้งหมด เรียงตามเวลา
-    const snap = await dungeonsRef().collection("queues").orderBy("timestamp", "asc").get();
-    const queues = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const { searchParams } = new URL(req.url);
+    const type = searchParams.get("type") || "current";
+    const limitParam = Math.min(Math.max(1, Number(searchParams.get("limit")) || 50), 100);
+
+    // 1. History: โหลดเฉพาะคิวที่เสร็จแล้ว (done) บน On-Demand / Pagination
+    if (type === "history") {
+      const snap = await trackFirestoreRead(
+        "GET /api/dungeon/queues?type=history",
+        "queues query (history)",
+        () =>
+          dungeonsRef()
+            .collection("queues")
+            .where("status", "==", "done")
+            .limit(limitParam)
+            .get()
+      );
+      const queues = snap.docs
+        .map((doc) => ({ id: doc.id, ...doc.data() }))
+        .sort((a: any, b: any) => (b.timestamp || 0) - (a.timestamp || 0));
+      return ok(queues);
+    }
+
+    // 2. All: สำหรับหน้า Audit Log ของแอดมิน (จำกัด limit เพื่อป้องกัน unbounded read)
+    if (type === "all") {
+      let query = dungeonsRef().collection("queues").orderBy("timestamp", "desc");
+      const before = Number(searchParams.get("before"));
+      if (!isNaN(before) && before > 0) {
+        query = query.startAfter(before);
+      }
+      const snap = await trackFirestoreRead(
+        "GET /api/dungeon/queues?type=all",
+        "queues query (all)",
+        () => query.limit(limitParam).get()
+      );
+      const queues = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      return ok(queues);
+    }
+
+    // 3. Current (Default): ดึงเฉพาะคิวที่ยังต้องแสดงในบอร์ดสด (waiting, active, skipped)
+    // ไม่ดึงประวัติ done ในรอบ polling ปกติ เพื่อลด Firestore reads อย่างมีนัยสำคัญ
+    const snap = await trackFirestoreRead(
+      "GET /api/dungeon/queues",
+      "queues query (current)",
+      () =>
+        dungeonsRef()
+          .collection("queues")
+          .where("status", "in", ["waiting", "active", "skipped"])
+          .get()
+    );
+
+    const queues = snap.docs
+      .map((doc) => ({ id: doc.id, ...doc.data() }))
+      .sort((a: any, b: any) => (a.timestamp || 0) - (b.timestamp || 0));
+
     return ok(queues);
   } catch (e: unknown) {
     return handleServerError(e, "Failed to load dungeon queues");
