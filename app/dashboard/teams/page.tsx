@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { Shield, Users, Loader2, GripVertical, Lock, Unlock, X, ChevronLeft, ChevronRight, LayoutGrid, Wand2, ChevronDown, Plus, Trash2, Edit2, Check, CheckCircle2 } from "lucide-react";
+import { Shield, Users, Loader2, GripVertical, Lock, Unlock, X, ChevronLeft, ChevronRight, LayoutGrid, Wand2, ChevronDown, Plus, Trash2, Edit2, Check, CheckCircle2, Search } from "lucide-react";
 import axios from "axios";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { JOB_COLORS, JOB_LIST } from "@/lib/utils";
@@ -56,6 +56,7 @@ export default function TeamsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isMounted, setIsMounted] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [saveErrorMsg, setSaveErrorMsg] = useState("");
   const initialLoadRef = useRef(true);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -72,6 +73,9 @@ export default function TeamsPage() {
   const [offlineSearch, setOfflineSearch] = useState("");
   const [isOfflineDropdownOpen, setIsOfflineDropdownOpen] = useState(false);
   const offlineDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Player search feature
+  const [playerSearchQuery, setPlayerSearchQuery] = useState("");
 
   // Zone editing state
   const [editingZoneId, setEditingZoneId] = useState<string | null>(null);
@@ -104,7 +108,12 @@ export default function TeamsPage() {
       if (rosterPayload.ok && rosterPayload.data) {
         Object.entries(rosterPayload.data).forEach(([jobName, members]: [string, any]) => {
           if (Array.isArray(members)) {
-            members.forEach(m => { membersMap[m.name] = { id: m.name, name: m.name, job: jobName, power: Number(m.power || 0) }; });
+            members.forEach(m => { 
+              // Parse power safely (remove commas, handle NaN)
+              let parsedPower = typeof m.power === 'string' ? Number(m.power.replace(/,/g, '')) : Number(m.power);
+              if (isNaN(parsedPower)) parsedPower = 0;
+              membersMap[m.name] = { id: m.name, name: m.name, job: jobName, power: parsedPower }; 
+            });
           }
         });
       }
@@ -225,11 +234,13 @@ export default function TeamsPage() {
       };
       await axios.put("/api/teams", payload);
       setSaveStatus("saved");
+      setSaveErrorMsg("");
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
       saveTimeoutRef.current = setTimeout(() => setSaveStatus("idle"), 3000);
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      console.error("Save error:", err.response?.data || err);
       setSaveStatus("error");
+      setSaveErrorMsg(err.response?.data?.error || err.message || "Unknown error");
     }
   }, [isAdmin]);
 
@@ -245,6 +256,44 @@ export default function TeamsPage() {
     }, 1500); // Debounce auto-save
     return () => clearTimeout(timer);
   }, [data, handleSave, isMounted, isAdmin]);
+
+  // ── Player Search ───────────────────────────────────────────
+  const handleSearchPlayer = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!playerSearchQuery.trim() || !data) return;
+    
+    // Find member by name (case insensitive)
+    const targetId = Object.keys(data.members).find(id => id.toLowerCase().includes(playerSearchQuery.trim().toLowerCase()));
+    
+    if (targetId) {
+      // Find where they are assigned
+      const assignedEl = document.getElementById(`member-assigned-${targetId}`);
+      if (assignedEl) {
+        assignedEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        assignedEl.classList.add('ring-4', 'ring-pink-500', 'animate-pulse', 'z-50', 'relative');
+        setTimeout(() => assignedEl.classList.remove('ring-4', 'ring-pink-500', 'animate-pulse', 'z-50', 'relative'), 3000);
+      } else {
+        const unassignedEl = document.getElementById(`member-unassigned-${targetId}`);
+        if (unassignedEl) {
+           setIsUnassignedCollapsed(false);
+           setTimeout(() => {
+             const uEl = document.getElementById(`member-unassigned-${targetId}`);
+             if (uEl) {
+               uEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+               uEl.classList.add('ring-4', 'ring-pink-500', 'animate-pulse', 'z-50', 'relative');
+               setTimeout(() => uEl.classList.remove('ring-4', 'ring-pink-500', 'animate-pulse', 'z-50', 'relative'), 3000);
+             }
+           }, 150);
+        } else if (data.offlineIds.includes(targetId)) {
+           setActiveTab("leave");
+           alert(`ผู้เล่น ${targetId} อยู่ในสถานะลา/ออฟไลน์`);
+        }
+      }
+      setPlayerSearchQuery(""); // clear after search
+    } else {
+      alert("ไม่พบผู้เล่นที่ค้นหา");
+    }
+  };
 
   // ── Derived values ───────────────────────────────────────────
   const mainPlayerCount = !data ? 0 : data.zones
@@ -516,6 +565,7 @@ export default function TeamsPage() {
   });
 
   const AutoMatchModal = () => {
+    // Modal implementation omitted for brevity
     if (!isAutoModalOpen) return null;
     const names = autoModalText.split("\n").map(n => n.trim()).filter(n => n);
     return (
@@ -618,20 +668,38 @@ export default function TeamsPage() {
 
       {/* Header */}
       <div className="bg-white dark:bg-[#232733] rounded-2xl shadow-sm border border-slate-200 dark:border-[#2D3342] p-4 sm:p-5 mb-5 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center flex-shrink-0 bg-[#0b3d63] dark:bg-[#3B66D1] shadow-sm"><Shield className="w-5 h-5 sm:w-6 sm:h-6 text-white" /></div>
-          <div>
-            <h1 className="text-lg sm:text-xl font-bold text-slate-800 dark:text-white">จัดทีม GVG</h1>
-            <p className="text-xs sm:text-sm text-slate-500 dark:text-[#8B93A7]">{isAdmin ? "ลากและวางเพื่อจัดทีม (ระบบบันทึกอัตโนมัติ)" : "รายชื่อและสมาชิกทีมสำหรับกิลด์วอร์"}</p>
+        <div className="flex items-center justify-between w-full lg:w-auto">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center flex-shrink-0 bg-[#0b3d63] dark:bg-[#3B66D1] shadow-sm"><Shield className="w-5 h-5 sm:w-6 sm:h-6 text-white" /></div>
+            <div>
+              <h1 className="text-lg sm:text-xl font-bold text-slate-800 dark:text-white">จัดทีม GVG</h1>
+              <p className="text-xs sm:text-sm text-slate-500 dark:text-[#8B93A7]">{isAdmin ? "ลากและวางเพื่อจัดทีม (ระบบบันทึกอัตโนมัติ)" : "รายชื่อและสมาชิกทีมสำหรับกิลด์วอร์"}</p>
+            </div>
           </div>
         </div>
+        
+        {/* New Player Search Bar for everyone */}
+        <form onSubmit={handleSearchPlayer} className="flex-1 max-w-sm w-full relative">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+            <input 
+              type="text" 
+              value={playerSearchQuery}
+              onChange={e => setPlayerSearchQuery(e.target.value)}
+              placeholder="ค้นหาตำแหน่งผู้เล่น..." 
+              className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-[#272C38] border border-slate-200 dark:border-[#2D3342] rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#3B66D1] text-slate-800 dark:text-white"
+            />
+          </div>
+        </form>
+
         {isAdmin && (
           <div className="flex items-center gap-2 sm:gap-3 w-full lg:w-auto justify-end flex-wrap">
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium bg-slate-50 dark:bg-[#272C38] border border-slate-200 dark:border-[#2D3342] mr-2 transition-all">
+            <div className="flex flex-col sm:flex-row items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium bg-slate-50 dark:bg-[#272C38] border border-slate-200 dark:border-[#2D3342] mr-2 transition-all" title={saveErrorMsg}>
               {saveStatus === 'idle' && <span className="text-slate-500 font-bold">พร้อมใช้งาน</span>}
               {saveStatus === 'saving' && <span className="text-[#3B66D1] flex items-center gap-1 font-bold"><Loader2 className="w-4 h-4 animate-spin"/> กำลังบันทึก...</span>}
               {saveStatus === 'saved' && <span className="text-emerald-500 flex items-center gap-1 font-bold"><CheckCircle2 className="w-4 h-4"/> บันทึกอัตโนมัติแล้ว</span>}
-              {saveStatus === 'error' && <span className="text-red-500 flex items-center gap-1 font-bold"><X className="w-4 h-4"/> บันทึกไม่สำเร็จ</span>}
+              {saveStatus === 'error' && <span className="text-red-500 flex items-center gap-1 font-bold cursor-pointer"><X className="w-4 h-4"/> บันทึกไม่สำเร็จ</span>}
+              {saveStatus === 'error' && saveErrorMsg && <span className="text-xs text-red-400 truncate max-w-[150px]">({saveErrorMsg})</span>}
             </div>
             <button onClick={handleClearAll} className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 sm:px-4 py-2 bg-white dark:bg-[#272C38] text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/50 rounded-xl font-bold hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors text-xs sm:text-sm shadow-sm">ล้างทั้งหมด</button>
             <button onClick={() => setIsAutoModalOpen(true)} className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 sm:px-4 py-2 bg-white dark:bg-[#272C38] text-[#0b3d63] dark:text-white border border-[#0b3d63] dark:border-[#4D73CD] rounded-xl font-bold hover:bg-blue-50 dark:hover:bg-sky-950/30 transition-colors text-xs sm:text-sm shadow-sm"><Wand2 size={16} /> ออโต้จัดทีม</button>
@@ -898,7 +966,7 @@ function TeamCard({
                             const m = members[memberId];
                             const color = m ? (JOB_COLORS[m.job] || "#475569") : "#475569";
                             const rowContent = (
-                              <div ref={prov.innerRef} {...prov.draggableProps} className={`w-full h-[38px] grid ${isAdmin ? "grid-cols-[30px_minmax(0,1fr)_85px_50px_22px] sm:grid-cols-[36px_minmax(0,1fr)_115px_60px_24px]" : "grid-cols-[30px_minmax(0,1fr)_85px_50px] sm:grid-cols-[36px_minmax(0,1fr)_115px_60px]"} gap-1.5 sm:gap-2 items-center px-2 py-1 rounded-xl bg-white dark:bg-[#272C38] hover:bg-slate-50 dark:hover:bg-[#2A2F3E] group border border-slate-100 dark:border-[#2D3342] ${snap.isDragging ? "shadow-2xl border-blue-400 dark:border-[#4D73CD] ring-2 ring-[#0b3d63]/20 z-[99999]" : "shadow-xs"}`} style={prov.draggableProps.style}>
+                              <div id={`member-assigned-${memberId}`} ref={prov.innerRef} {...prov.draggableProps} className={`w-full h-[38px] grid ${isAdmin ? "grid-cols-[30px_minmax(0,1fr)_85px_50px_22px] sm:grid-cols-[36px_minmax(0,1fr)_115px_60px_24px]" : "grid-cols-[30px_minmax(0,1fr)_85px_50px] sm:grid-cols-[36px_minmax(0,1fr)_115px_60px]"} gap-1.5 sm:gap-2 items-center px-2 py-1 rounded-xl bg-white dark:bg-[#272C38] hover:bg-slate-50 dark:hover:bg-[#2A2F3E] group border border-slate-100 dark:border-[#2D3342] transition-all ${snap.isDragging ? "shadow-2xl border-blue-400 dark:border-[#4D73CD] ring-2 ring-[#0b3d63]/20 z-[99999]" : "shadow-xs"}`} style={prov.draggableProps.style}>
                                 <div className="flex items-center gap-0.5 sm:gap-1 text-slate-400 cursor-grab touch-none p-1 -m-1" {...(isAdmin ? prov.dragHandleProps : {})}>{isAdmin ? <GripVertical size={14} className="text-sky-300 dark:text-sky-400 shrink-0" /> : null}<span className="text-xs font-bold text-sky-500 font-mono w-3 text-center">{slotIdx + 1}</span></div>
                                 <div className="min-w-0 pr-1"><span className="text-xs font-bold text-slate-800 dark:text-white truncate block" title={m?.name}>{m ? m.name : "Unknown"}</span></div>
                                 {m && <div className="h-[24px] sm:h-[26px] px-1.5 sm:px-3 rounded-full text-[10px] sm:text-xs font-bold text-white flex items-center justify-center gap-1 shadow-sm shrink-0 w-[85px] sm:w-[115px]" style={{ backgroundColor: color }}><span className="truncate">{m.job}</span><ChevronDown size={10} className="opacity-80 shrink-0 stroke-[2.5] hidden sm:inline-block" /></div>}
@@ -934,7 +1002,7 @@ function MemberCard({ member, index }: { member: Member; index: number }) {
     <Draggable draggableId={member.id} index={index}>
       {(provided, snapshot) => {
         const content = (
-          <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}
+          <div id={`member-unassigned-${member.id}`} ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}
             className={`flex items-center justify-between p-2 rounded-xl border shadow-sm select-none transition-all touch-none ${snapshot.isDragging ? "shadow-2xl border-[#0b3d63] dark:border-[#4D73CD] z-[99999] ring-2 ring-[#0b3d63]/20 bg-white dark:bg-[#272C38]" : "border-slate-200 dark:border-[#2D3342] hover:border-slate-300"}`}
             style={{ ...provided.draggableProps.style, backgroundColor: snapshot.isDragging ? undefined : hexToRgba(color, 0.05), borderLeftWidth: "4px", borderLeftColor: color }}>
             <div className="flex flex-col truncate pr-2 min-w-0">
