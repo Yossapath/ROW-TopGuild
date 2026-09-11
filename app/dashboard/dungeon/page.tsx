@@ -443,24 +443,33 @@ export default function DungeonPage() {
                 )}
               </div>
 
-              {/* Rounds toggle */}
+              {/* Rounds toggle — members get 1 round/day max */}
               <div>
                 <label className="block text-xs font-semibold text-slate-600 dark:text-white mb-2">จำนวนรอบ</label>
-                <div className="flex gap-2">
-                  {([1, 2] as const).map((r) => (
-                    <button
-                      key={r}
-                      onClick={() => setFormRounds(r)}
-                      className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
-                        formRounds === r
-                          ? "bg-[#0b3d63] dark:bg-[#3B66D1] text-white"
-                          : "bg-slate-100 dark:bg-[#272C38] text-slate-600 dark:text-white hover:bg-slate-200 dark:hover:bg-[#2F3547]"
-                      }`}
-                    >
-                      {r === 1 ? "1 รอบ" : "2 รอบ"}
-                    </button>
-                  ))}
-                </div>
+                {isAdmin ? (
+                  <div className="flex gap-2">
+                    {([1, 2] as const).map((r) => (
+                      <button
+                        key={r}
+                        onClick={() => setFormRounds(r)}
+                        className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          formRounds === r
+                            ? "bg-[#0b3d63] dark:bg-[#3B66D1] text-white"
+                            : "bg-slate-100 dark:bg-[#272C38] text-slate-600 dark:text-white hover:bg-slate-200 dark:hover:bg-[#2F3547]"
+                        }`}
+                      >
+                        {r === 1 ? "1 รอบ" : "2 รอบ"}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="flex-1 py-2 rounded-lg text-sm font-medium text-center bg-[#0b3d63] dark:bg-[#3B66D1] text-white">
+                      1 รอบ
+                    </span>
+                    <p className="text-[11px] text-slate-400 dark:text-[#6B7280]">จองได้ 1 รอบ/วัน · สูงสุด 2 รอบ/อาทิตย์</p>
+                  </div>
+                )}
               </div>
 
               {/* Submit */}

@@ -147,29 +147,22 @@ export const teamControlTransaction = async (
       if (team.activeMembers.length === 0) {
         throw new Error("ไม่มีผู้เล่นในทีมให้กดลงเสร็จ");
       }
-      
+
       const previousMembers = team.activeMembers.map(m => ({ name: m.name, job: m.job, roundNumber: m.roundNumber }));
 
-      // Update the team
-      const updates: Partial<DungeonTeamResource> = {
-        status: "AVAILABLE",
-        startedAt: null,
-        pausedAt: null,
-        pausedDuration: 0,
-        activeMembers: [], // clear members
-        completedRounds: team.completedRounds + 1,
-      };
-      
-      // Update the assigned queue items to COMPLETED
       const queueItemsRef = dRef.collection("dungeon_queue_items");
-      const bookingsToUpdate = new Map<string, { r1?: boolean; r2?: boolean }>();
+      const queuesRef = dRef.collection("queues");
 
-      // First, perform all reads (t.get)
+      // ── READS FIRST ─────────────────────────────────────────────────
+      // Read all queue item docs
       const itemSnaps = await Promise.all(
         team.activeMembers.map(member => t.get(queueItemsRef.doc(member.queueItemId)))
       );
 
-      const queueDocSnaps = new Map<string, any>();
+      // Collect unique booking IDs that need updating
+      const bookingIds: string[] = [];
+      const bookingsToUpdate = new Map<string, { r1?: boolean; r2?: boolean }>();
+
       for (const itemSnap of itemSnaps) {
         if (itemSnap.exists) {
           const itemData = itemSnap.data() as DungeonQueueItem;
@@ -177,45 +170,58 @@ export const teamControlTransaction = async (
           if (itemData.roundNumber === 1) current.r1 = true;
           if (itemData.roundNumber === 2) current.r2 = true;
           bookingsToUpdate.set(itemData.bookingId, current);
-
-          if (!queueDocSnaps.has(itemData.bookingId)) {
-             const qDoc = await t.get(dRef.collection("queues").doc(itemData.bookingId));
-             if (qDoc.exists) queueDocSnaps.set(itemData.bookingId, qDoc.data());
+          if (!bookingIds.includes(itemData.bookingId)) {
+            bookingIds.push(itemData.bookingId);
           }
         }
       }
 
-      // Then, perform all writes (t.update)
-      t.update(teamRef, updates);
+      // Read all booking queue docs in parallel (must happen before any write)
+      const bookingSnaps = await Promise.all(
+        bookingIds.map(bid => t.get(queuesRef.doc(bid)))
+      );
+      const queueDocSnaps = new Map<string, any>();
+      for (const bSnap of bookingSnaps) {
+        if (bSnap.exists) queueDocSnaps.set(bSnap.id, bSnap.data());
+      }
 
+      // ── WRITES AFTER ALL READS ──────────────────────────────────────
+      // Update the team
+      const teamUpdates: Partial<DungeonTeamResource> = {
+        status: "AVAILABLE",
+        startedAt: null,
+        pausedAt: null,
+        pausedDuration: 0,
+        activeMembers: [],
+        completedRounds: team.completedRounds + 1,
+      };
+      t.update(teamRef, teamUpdates);
+
+      // Mark queue items as COMPLETED
       for (const member of team.activeMembers) {
-        const itemRef = queueItemsRef.doc(member.queueItemId);
-        t.update(itemRef, {
+        t.update(queueItemsRef.doc(member.queueItemId), {
           status: "COMPLETED",
           completedAt: now,
         });
       }
 
-      const queuesRef = dRef.collection("queues");
+      // Update parent booking docs
       for (const [bookingId, rounds] of Array.from(bookingsToUpdate.entries())) {
-        const queueDocRef = queuesRef.doc(bookingId);
         const qData = queueDocSnaps.get(bookingId);
-        
-        const updates: any = {};
+        const bookingUpdate: any = {};
         let r1 = qData?.round1 || false;
         let r2 = qData?.round2 || false;
-        
-        if (rounds.r1) { updates.round1 = true; r1 = true; }
-        if (rounds.r2) { updates.round2 = true; r2 = true; }
-        
+
+        if (rounds.r1) { bookingUpdate.round1 = true; r1 = true; }
+        if (rounds.r2) { bookingUpdate.round2 = true; r2 = true; }
+
         const totalRounds = qData?.rounds || 1;
-        const allDone = (totalRounds === 1) ? r1 : (r1 && r2);
-        
-        updates.status = allDone ? "done" : "active";
-        t.update(queueDocRef, updates);
+        const allDone = totalRounds === 1 ? r1 : (r1 && r2);
+        bookingUpdate.status = allDone ? "done" : "active";
+        t.update(queuesRef.doc(bookingId), bookingUpdate);
       }
 
-      return { team: { ...team, ...updates } as DungeonTeamResource, previousMembers };
+      return { team: { ...team, ...teamUpdates } as DungeonTeamResource, previousMembers };
     }
 
     if (action === "eject") {
@@ -314,27 +320,8 @@ export const manualAssignTeamTransaction = async (
       return { team };
     }
 
-    // Check for Priest requirement
-    const rosterSnap = await t.get(rosterRef());
-    let rosterJobs: Record<string, string> = {};
-    if (rosterSnap.exists) {
-      const rosterData = rosterSnap.data() as Record<string, { name: string }[]>;
-      for (const [job, members] of Object.entries(rosterData)) {
-        for (const m of members) {
-          rosterJobs[m.name] = job;
-        }
-      }
-    }
-
-    const carrierHasPriest = (team.carriers || []).some(c => rosterJobs[c] === "Priest");
-    const activeMembersHasPriest = team.activeMembers.some(m => m.job === "Priest");
-    const incomingIsPriest = item.job === "Priest";
-
-    if (!carrierHasPriest && !activeMembersHasPriest && !incomingIsPriest) {
-      throw new Error("ทีมขาดพระ ต้องการพระ priest");
-    }
-
-    // Update team. All transaction reads are complete after the roster read below.
+    // Check for Priest requirement: handled by auto-assign engine.
+    // Manual assign (admin action) allows any player without restriction.
     const updatedMembers = [...team.activeMembers, {
       queueItemId: item.id || queueItemId,
       name: item.name,

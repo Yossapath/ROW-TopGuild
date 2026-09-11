@@ -4,6 +4,7 @@ import { ok, err, handleServerError, logAction } from "@/lib/server-utils";
 import { isBookingOpen } from "@/lib/utils";
 import { dungeonQueueBookingSchema, validateBody } from "@/lib/validations";
 import { requireAuth } from "@/lib/auth";
+import { checkBookingEligibility } from "@/lib/dungeon/booking-rules";
 
 export async function GET() {
   try {
@@ -47,6 +48,17 @@ export async function POST(req: Request) {
       if (!check.open) {
         return err(check.reason || "ระบบจองปิดอยู่", 403);
       }
+    }
+
+    // 1.5 ตรวจกฎการจอง: วันละ 1 รอบ, อาทิตย์ละ 2 รอบ, รวม 30 คน/วัน
+    const eligibility = await checkBookingEligibility(
+      validData.name,
+      validData.rounds,
+      dungeonsRef().collection("queues"),
+      isAdminOrOwner
+    );
+    if (!eligibility.allowed) {
+      return err(eligibility.reason || "ไม่สามารถจองคิวได้", 403);
     }
 
     // 2. + 3. เช็คชื่อซ้ำ + บันทึกข้อมูลคิว ทำในทรานแซกชันเดียวกัน
