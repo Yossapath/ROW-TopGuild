@@ -136,3 +136,95 @@ export async function checkBookingEligibility(
 
   return { allowed: true };
 }
+
+export interface UserQuotaInfo {
+  playerName: string;
+  todayUsed: number;
+  todayRemaining: number;
+  weekUsed: number;
+  weekRemaining: number;
+  dailyTotalBooked: number;
+  dailyTotalLimit: number;
+  canBook: boolean;
+  reason?: string;
+}
+
+/**
+ * Calculates current booking quota and remaining rights for a player.
+ */
+export async function getUserBookingQuota(
+  playerName: string,
+  queuesRef: FirebaseFirestore.CollectionReference,
+  isAdmin = false
+): Promise<UserQuotaInfo> {
+  const today = getTodayRange();
+  const week = getWeekRange();
+
+  const queryStart = Math.min(today.start, week.start);
+  const queryEnd = Math.max(today.end, week.end);
+
+  const [playerSnap, dailyTotalSnap] = await Promise.all([
+    queuesRef
+      .where("name", "==", playerName)
+      .where("timestamp", ">=", queryStart)
+      .where("timestamp", "<=", queryEnd)
+      .get(),
+    queuesRef
+      .where("timestamp", ">=", today.start)
+      .where("timestamp", "<=", today.end)
+      .get(),
+  ]);
+
+  const hasBookedToday = playerSnap.docs.some((doc) => {
+    const ts = doc.data().timestamp;
+    return typeof ts === "number" && ts >= today.start && ts <= today.end;
+  });
+
+  let roundsThisWeek = 0;
+  for (const doc of playerSnap.docs) {
+    const data = doc.data();
+    const ts = data.timestamp;
+    if (typeof ts === "number" && ts >= week.start && ts <= week.end) {
+      roundsThisWeek += Number(data.rounds) || 1;
+    }
+  }
+
+  const uniquePlayersToday = new Set<string>();
+  for (const doc of dailyTotalSnap.docs) {
+    const data = doc.data();
+    if (data.name) uniquePlayersToday.add(data.name as string);
+  }
+
+  const todayRemaining = hasBookedToday ? 0 : 1;
+  const weekRemaining = Math.max(0, 2 - roundsThisWeek);
+  const dailyCapReached = !uniquePlayersToday.has(playerName) && uniquePlayersToday.size >= 30;
+
+  let canBook = true;
+  let reason: string | undefined;
+
+  if (!isAdmin) {
+    if (hasBookedToday) {
+      canBook = false;
+      reason = "คุณจองคิวไปแล้ววันนี้ (จำกัด 1 รอบ/วัน)";
+    } else if (weekRemaining <= 0) {
+      canBook = false;
+      reason = "คุณใช้สิทธิ์ครบ 2 รอบในสัปดาห์นี้แล้ว (รีเซ็ตวันจันทร์ 05:00 น.)";
+    } else if (dailyCapReached) {
+      canBook = false;
+      reason = "วันนี้มีผู้จองครบ 30 คนแล้ว";
+    }
+  }
+
+  return {
+    playerName,
+    todayUsed: hasBookedToday ? 1 : 0,
+    todayRemaining,
+    weekUsed: roundsThisWeek,
+    weekRemaining,
+    dailyTotalBooked: uniquePlayersToday.size,
+    dailyTotalLimit: 30,
+    canBook,
+    reason,
+  };
+}
+

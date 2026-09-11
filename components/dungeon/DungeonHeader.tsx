@@ -8,7 +8,7 @@ export function DungeonHeader() {
       </div>
       <div>
         <h1 className="text-xl font-bold text-slate-800 dark:text-white">ระบบจองดันมายา</h1>
-        <p className="text-sm text-slate-500 dark:text-[#8B93A7]">จองคิวดันเจี้ยนมายา · 5 คนต่อทีม · 1-2 รอบต่อรอบ</p>
+        <p className="text-sm text-slate-500 dark:text-[#8B93A7]">จองคิวดันเจี้ยนมายา · 5 คนต่อทีม · 1 รอบต่อคน/วัน</p>
       </div>
     </div>
   );

@@ -3,7 +3,7 @@ import assert from 'node:assert';
 
 import { sortQueueItems, findContinuousPriest } from '@/lib/dungeon/queue-rules';
 import { assignPlayersToTeam } from '@/lib/dungeon/queue-engine';
-import { checkBookingEligibility } from '@/lib/dungeon/booking-rules';
+import { checkBookingEligibility, getUserBookingQuota } from '@/lib/dungeon/booking-rules';
 import { allocateTeams } from '@/lib/team-allocator';
 import { isBookingOpen } from '@/lib/utils';
 import type { DungeonQueueItem, DungeonTeamResource } from '@/types';
@@ -24,16 +24,33 @@ test('Regression: Booking Window & Quota Validation', async () => {
   assert.strictEqual(isBookingOpen({ isClosed: false, openTime: "00:00", closeTime: "23:59" }).open, true);
 
   // Admin bypass
-  const mockQueuesRef: any = {
-    where: () => ({
-      where: () => ({
-        get: async () => ({ docs: [], size: 0, empty: true })
-      })
-    })
+  const createMockRef = (docs: any[] = []) => {
+    const obj: any = {
+      where: () => obj,
+      get: async () => ({ docs, size: docs.length, empty: docs.length === 0 })
+    };
+    return obj;
   };
+
+  const mockQueuesRef = createMockRef();
 
   const adminCheck = await checkBookingEligibility("AdminPlayer", 1, mockQueuesRef, true);
   assert.strictEqual(adminCheck.allowed, true);
+
+  // Quota test: empty history
+  const freshQuota = await getUserBookingQuota("NewPlayer", mockQueuesRef, false);
+  assert.strictEqual(freshQuota.todayUsed, 0);
+  assert.strictEqual(freshQuota.todayRemaining, 1);
+  assert.strictEqual(freshQuota.weekUsed, 0);
+  assert.strictEqual(freshQuota.weekRemaining, 2);
+  assert.strictEqual(freshQuota.canBook, true);
+
+  // Quota test: user booked today
+  const usedQueuesRef = createMockRef([{ data: () => ({ rounds: 1, timestamp: Date.now() }) }]);
+  const usedQuota = await getUserBookingQuota("ActivePlayer", usedQueuesRef, false);
+  assert.strictEqual(usedQuota.todayUsed, 1);
+  assert.strictEqual(usedQuota.todayRemaining, 0);
+  assert.strictEqual(usedQuota.canBook, false);
 });
 
 test('Regression: Queue Ordering (R1 before R2, then timestamp)', () => {

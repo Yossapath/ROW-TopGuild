@@ -122,6 +122,36 @@ export default function BookingPage() {
   const [success, setSuccess] = useState<{ id: string; name: string; job: string; rounds: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // User booking quota
+  const [userQuota, setUserQuota] = useState<{
+    playerName: string;
+    todayUsed: number;
+    todayRemaining: number;
+    weekUsed: number;
+    weekRemaining: number;
+    dailyTotalBooked: number;
+    dailyTotalLimit: number;
+    canBook: boolean;
+    reason?: string;
+  } | null>(null);
+
+  const fetchUserQuota = async (charName: string) => {
+    if (!charName) return;
+    try {
+      const res = await fetch(`/api/dungeon/quota?name=${encodeURIComponent(charName)}`);
+      const json = await res.json();
+      if (json.ok && json.data) {
+        setUserQuota(json.data);
+      }
+    } catch {}
+  };
+
+  useEffect(() => {
+    if (user?.gameUsername) {
+      fetchUserQuota(user.gameUsername);
+    }
+  }, [user]);
+
   // Queue preview
   const [queues, setQueues] = useState<DungeonQueue[]>([]);
   const [queuesLoading, setQueuesLoading] = useState(false);
@@ -297,6 +327,7 @@ export default function BookingPage() {
       } else {
         setSuccess({ id: data.data.id, name: name.trim(), job, rounds: 1 });
         fetchQueues();
+        if (name.trim()) fetchUserQuota(name.trim());
       }
     } catch {
       setError("เกิดข้อผิดพลาด กรุณาลองใหม่");
@@ -387,7 +418,7 @@ export default function BookingPage() {
               <Clock size={12} /> ~11-12 นาที/รอบ
             </span>
             <span className="text-xs font-bold text-slate-500 dark:text-[#8B93A7] bg-white dark:bg-[#272C38] px-2.5 py-1 rounded-full border border-slate-200 dark:border-[#2D3342]">
-              จองได้ 1-2 รอบ/คน
+              จองได้ 1 รอบ/วัน (สูงสุด 2 รอบ/สัปดาห์)
             </span>
           </div>
         </div>
@@ -452,7 +483,7 @@ export default function BookingPage() {
                         {success.job}
                       </span>
                       <span className="px-3 py-1.5 rounded-full text-sm font-bold bg-indigo-100 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/40">
-                        รอบ 1 (1 รอบ)
+                        1 รอบ
                       </span>
                     </div>
                   </div>
@@ -490,6 +521,44 @@ export default function BookingPage() {
                 <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 rounded-xl p-4 flex items-start gap-3">
                   <XCircle size={20} className="text-red-500 dark:text-red-400 flex-shrink-0 mt-0.5" />
                   <p className="text-red-700 dark:text-red-300 font-medium text-sm">{error}</p>
+                </div>
+              )}
+
+              {/* User Quota Status Card */}
+              {user?.gameUsername && (
+                <div className="bg-slate-50 dark:bg-[#272C38] border border-slate-200 dark:border-[#2D3342] rounded-2xl p-4 shadow-sm space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-700 dark:text-white flex items-center gap-1.5">
+                      <Shield size={14} className="text-[#3B66D1]" />
+                      สิทธิ์การจองของคุณ: <span className="text-[#3B66D1] dark:text-[#82A0F5]">{user.gameUsername}</span>
+                    </span>
+                    {userQuota && (
+                      <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full ${
+                        userQuota.canBook
+                          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
+                          : "bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300 border border-red-200 dark:border-red-800"
+                      }`}>
+                        {userQuota.canBook ? "✓ มีสิทธิ์จอง" : "✕ ครบโควตาแล้ว"}
+                      </span>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 pt-1">
+                    <div className="bg-white dark:bg-[#1E212B] p-2.5 rounded-xl border border-slate-200/80 dark:border-[#2D3342]">
+                      <span className="text-[11px] text-slate-400 block mb-0.5">วันนี้ (วันละ 1 รอบ):</span>
+                      <span className="text-sm font-bold text-slate-800 dark:text-white">
+                        {userQuota ? (userQuota.todayUsed === 0 ? "เหลือ 1 รอบ" : "ใช้แล้ว (เหลือ 0)") : "กำลังตรวจสอบ..."}
+                      </span>
+                    </div>
+                    <div className="bg-white dark:bg-[#1E212B] p-2.5 rounded-xl border border-slate-200/80 dark:border-[#2D3342]">
+                      <span className="text-[11px] text-slate-400 block mb-0.5">สัปดาห์นี้ (สูงสุด 2 รอบ):</span>
+                      <span className="text-sm font-bold text-slate-800 dark:text-white">
+                        {userQuota ? `เหลือ ${userQuota.weekRemaining}/2 รอบ` : "กำลังตรวจสอบ..."}
+                      </span>
+                    </div>
+                  </div>
+                  {userQuota?.reason && (
+                    <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">⚠️ {userQuota.reason}</p>
+                  )}
                 </div>
               )}
 
@@ -742,16 +811,14 @@ export default function BookingPage() {
             <div className="flex flex-col gap-2 p-4">
               {(() => {
                 const activeQueues = queues.filter(q => q.status === "active");
-                const waitingRound1Priests = queues.filter(q => q.status === "waiting" && !(q.rounds === 2 && q.round1 === true) && q.job === "Priest");
-                const waitingRound1Others = queues.filter(q => q.status === "waiting" && !(q.rounds === 2 && q.round1 === true) && q.job !== "Priest");
-                const waitingRound2Priests = queues.filter(q => q.status === "waiting" && (q.rounds === 2 && q.round1 === true) && q.job === "Priest");
-                const waitingRound2Others = queues.filter(q => q.status === "waiting" && (q.rounds === 2 && q.round1 === true) && q.job !== "Priest");
+                const waitingPriests = queues.filter(q => q.status === "waiting" && q.job === "Priest");
+                const waitingOthers = queues.filter(q => q.status === "waiting" && q.job !== "Priest");
                 const skippedQueues = queues.filter(q => q.status === "skipped");
                 const doneQueues = queues.filter(q => q.status === "done");
                 
                 let currentGlobalIdx = 1;
 
-                const renderQueue = (q: DungeonQueue, idx: number, isDone: boolean, isR2 = false) => {
+                const renderQueue = (q: DungeonQueue, idx: number, isDone: boolean) => {
                   const statusBadge = STATUS_BADGE[q.status] ?? STATUS_BADGE.waiting;
                   const jobColor = JOB_COLORS[q.job] ?? "#888";
                   const isMe = (user?.gameUsername && user.gameUsername === q.name) || (inspectedName && inspectedName.toLowerCase() === q.name.toLowerCase());
@@ -769,7 +836,7 @@ export default function BookingPage() {
                           : q.status === "active"
                           ? "border-blue-300/70 dark:border-blue-700/50 bg-blue-50/40 dark:bg-blue-950/20 shadow-sm"
                           : "border-slate-200 dark:border-[#2D3342]"
-                      } ${isDone ? "opacity-60" : ""} ${isR2 && !isDone && !isMe && !isSkipped ? "border-l-4 border-l-purple-500" : ""}`}
+                      } ${isDone ? "opacity-60" : ""}`}
                     >
                       {/* Number */}
                       <span className={`font-bold text-sm w-6 shrink-0 ${isMe ? "text-blue-600 dark:text-white" : "text-slate-400 dark:text-[#6B7280]"}`}>
@@ -803,12 +870,10 @@ export default function BookingPage() {
                             </span>
                           </div>
 
-                          {/* 2 rounds badge */}
-                          {q.rounds === 2 && (
-                            <span className="text-xs bg-purple-100 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 font-medium px-2 py-0.5 rounded-full border border-purple-200 dark:border-purple-800/40">
-                              2 รอบ
-                            </span>
-                          )}
+                          {/* Round badge */}
+                          <span className="text-xs bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 font-medium px-2 py-0.5 rounded-full border border-indigo-200 dark:border-indigo-800/40">
+                            1 รอบ
+                          </span>
 
                           {/* Carry Round & Team Badge — no slot number */}
                           {qEst && qEst.assignedRound > 0 && !isDone && !isSkipped && (
@@ -905,25 +970,15 @@ export default function BookingPage() {
                     )}
                     {activeQueues.map(q => renderQueue(q, currentGlobalIdx++, false))}
 
-                    {waitingRound1Priests.length > 0 && (
-                      <div className="text-xs font-bold text-blue-700 dark:text-white mt-2 px-2">พระ (Priest) - รอคิวรอบ 1</div>
+                    {waitingPriests.length > 0 && (
+                      <div className="text-xs font-bold text-blue-700 dark:text-white mt-2 px-2">พระ (Priest) - รอคิว</div>
                     )}
-                    {waitingRound1Priests.map(q => renderQueue(q, currentGlobalIdx++, false))}
+                    {waitingPriests.map(q => renderQueue(q, currentGlobalIdx++, false))}
                     
-                    {waitingRound1Others.length > 0 && (
-                      <div className="text-xs font-bold text-slate-500 dark:text-[#8B93A7] mt-2 px-2">อาชีพอื่นๆ - รอคิวรอบ 1</div>
+                    {waitingOthers.length > 0 && (
+                      <div className="text-xs font-bold text-slate-500 dark:text-[#8B93A7] mt-2 px-2">อาชีพอื่นๆ - รอคิว</div>
                     )}
-                    {waitingRound1Others.map(q => renderQueue(q, currentGlobalIdx++, false))}
-
-                    {waitingRound2Priests.length > 0 && (
-                      <div className="text-xs font-bold text-purple-700 dark:text-purple-300 mt-2 px-2 border-t border-slate-200 dark:border-[#2D3342] pt-3">พระ (Priest) - รอคิวรอบ 2</div>
-                    )}
-                    {waitingRound2Priests.map(q => renderQueue(q, currentGlobalIdx++, false, true))}
-                    
-                    {waitingRound2Others.length > 0 && (
-                      <div className="text-xs font-bold text-purple-700 dark:text-purple-300 mt-2 px-2 border-t border-slate-200 dark:border-[#2D3342] pt-3">อาชีพอื่นๆ - รอคิวรอบ 2</div>
-                    )}
-                    {waitingRound2Others.map(q => renderQueue(q, currentGlobalIdx++, false, true))}
+                    {waitingOthers.map(q => renderQueue(q, currentGlobalIdx++, false))}
 
                     {skippedQueues.length > 0 && (
                       <div className="text-xs font-bold text-amber-600 dark:text-amber-400 mt-2 px-2 border-t border-slate-200 dark:border-[#2D3342] pt-3 flex items-center gap-1.5">

@@ -157,6 +157,20 @@ export default function DungeonPage() {
   const [submitting, setSubmitting] = useState(false);
   const [formMsg, setFormMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
+  // User/Selected character Quota
+  const targetQuotaName = formName.trim() || (user?.gameUsername ?? "");
+  const { data: quotaData } = useQuery({
+    queryKey: ["dungeon_quota", targetQuotaName],
+    queryFn: async () => {
+      if (!targetQuotaName) return null;
+      const res = await fetch(`/api/dungeon/quota?name=${encodeURIComponent(targetQuotaName)}`);
+      const json = await res.json();
+      return json.ok ? json.data : null;
+    },
+    enabled: !!targetQuotaName,
+    staleTime: 10_000,
+  });
+
   // Clipboard toast
   const [copied, setCopied] = useState(false);
 
@@ -327,7 +341,7 @@ export default function DungeonPage() {
         </div>
         <div>
           <h1 className="text-xl font-bold text-slate-800 dark:text-white">ระบบจองดันมายา</h1>
-          <p className="text-sm text-slate-500 dark:text-[#8B93A7]">จองคิวดันเจี้ยนมายา · 5 คนต่อทีม · 1-2 รอบต่อรอบ</p>
+          <p className="text-sm text-slate-500 dark:text-[#8B93A7]">จองคิวดันเจี้ยนมายา · 5 คนต่อทีม · 1 รอบต่อคน/วัน</p>
         </div>
       </div>
 
@@ -351,7 +365,7 @@ export default function DungeonPage() {
               </div>
               <span className="text-blue-200 text-lg">{formCollapsed ? "▸" : "▾"}</span>
             </button>
-            {!formCollapsed && <p className="text-[#0b3d63] dark:text-white text-xs px-5 pt-2 pb-1 font-medium">5 คนต่อทีม · จองได้ 1-2 รอบต่อรอบ</p>}
+            {!formCollapsed && <p className="text-[#0b3d63] dark:text-white text-xs px-5 pt-2 pb-1 font-medium">5 คนต่อทีม · 1 รอบต่อคน/วัน (สูงสุด 2 รอบ/สัปดาห์)</p>}
 
             {!formCollapsed && <div className="p-5 flex flex-col gap-4">
               {/* Name */}
@@ -362,19 +376,15 @@ export default function DungeonPage() {
                 {isAdmin ? (
                   <div className="relative">
                     <input
+                      type="text"
                       value={formName}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setFormName(val);
-                      }}
+                      onChange={(e) => setFormName(e.target.value)}
                       onFocus={() => {
-                        const dropdownState = document.getElementById("roster-dropdown");
-                        if(dropdownState) dropdownState.style.display = "block";
+                        document.getElementById("roster-dropdown")?.classList.remove("hidden");
                       }}
                       onBlur={() => {
                         setTimeout(() => {
-                          const dropdownState = document.getElementById("roster-dropdown");
-                          if(dropdownState) dropdownState.style.display = "none";
+                          document.getElementById("roster-dropdown")?.classList.add("hidden");
                         }, 200);
                       }}
                       placeholder="พิมพ์หรือเลือกชื่อ…"
@@ -426,6 +436,39 @@ export default function DungeonPage() {
                 )}
               </div>
 
+              {/* User Quota Indicator */}
+              {quotaData && (
+                <div className="bg-slate-50 dark:bg-[#1E212B] border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-xs flex flex-col gap-1.5 shadow-sm">
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-500 dark:text-slate-400 font-medium">สิทธิ์การจองของ <strong>{quotaData.playerName}</strong>:</span>
+                    <span className={`font-bold px-2 py-0.5 rounded text-[10px] ${
+                      quotaData.canBook
+                        ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300"
+                        : "bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300"
+                    }`}>
+                      {quotaData.canBook ? "✓ จองได้" : "✕ ครบสิทธิ์"}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-[11px] pt-1 border-t border-slate-200/60 dark:border-slate-800">
+                    <div className="bg-white dark:bg-[#232733] p-1.5 rounded-lg border border-slate-100 dark:border-slate-800">
+                      <span className="text-slate-400 block text-[10px]">วันนี้:</span>
+                      <span className="font-bold text-slate-700 dark:text-slate-200">
+                        {quotaData.todayUsed === 0 ? "เหลือ 1 รอบ" : "ใช้แล้ว (0 รอบ)"}
+                      </span>
+                    </div>
+                    <div className="bg-white dark:bg-[#232733] p-1.5 rounded-lg border border-slate-100 dark:border-slate-800">
+                      <span className="text-slate-400 block text-[10px]">สัปดาห์นี้:</span>
+                      <span className="font-bold text-slate-700 dark:text-slate-200">
+                        เหลือ {quotaData.weekRemaining}/2 รอบ
+                      </span>
+                    </div>
+                  </div>
+                  {quotaData.reason && (
+                    <p className="text-[10px] text-amber-600 dark:text-amber-400 italic">⚠️ {quotaData.reason}</p>
+                  )}
+                </div>
+              )}
+
               {/* Job */}
               <div>
                 <label className="block text-xs font-semibold text-slate-600 dark:text-white mb-1">
@@ -452,43 +495,34 @@ export default function DungeonPage() {
                 )}
               </div>
 
-              {/* Rounds toggle — members get 1 round/day max */}
+              {/* Rounds — locked to 1 round */}
               <div>
                 <label className="block text-xs font-semibold text-slate-600 dark:text-white mb-2">จำนวนรอบ</label>
-                {isAdmin ? (
-                  <div className="flex gap-2">
-                    {([1, 2] as const).map((r) => (
-                      <button
-                        key={r}
-                        onClick={() => setFormRounds(r)}
-                        className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
-                          formRounds === r
-                            ? "bg-[#0b3d63] dark:bg-[#3B66D1] text-white"
-                            : "bg-slate-100 dark:bg-[#272C38] text-slate-600 dark:text-white hover:bg-slate-200 dark:hover:bg-[#2F3547]"
-                        }`}
-                      >
-                        {r === 1 ? "1 รอบ" : "2 รอบ"}
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <span className="flex-1 py-2 rounded-lg text-sm font-medium text-center bg-[#0b3d63] dark:bg-[#3B66D1] text-white">
-                      1 รอบ
-                    </span>
-                    <p className="text-[11px] text-slate-400 dark:text-[#6B7280]">จองได้ 1 รอบ/วัน · สูงสุด 2 รอบ/อาทิตย์</p>
-                  </div>
-                )}
+                <div className="flex items-center gap-2 bg-slate-50 dark:bg-[#272C38] border border-slate-200 dark:border-[#2D3342] rounded-xl px-3 py-2">
+                  <span className="py-1 px-3 rounded-lg text-xs font-bold bg-[#0b3d63] dark:bg-[#3B66D1] text-white">
+                    1 รอบ
+                  </span>
+                  <p className="text-[11px] text-slate-500 dark:text-[#8B93A7]">จองได้ 1 รอบ/วัน · สูงสุด 2 รอบ/สัปดาห์</p>
+                </div>
               </div>
 
               {/* Submit */}
               <button
                 onClick={handleSubmit}
                 disabled={submitting}
-                className="w-full flex items-center justify-center gap-2 bg-[#3B66D1] hover:bg-[#4D73CD] text-white rounded-lg py-2.5 text-sm font-semibold transition-colors disabled:opacity-50"
+                className="w-full flex items-center justify-center gap-2 bg-[#3B66D1] hover:bg-[#4D73CD] text-white rounded-lg py-2.5 text-sm font-semibold transition-colors disabled:opacity-50 shadow-md shadow-[#3B66D1]/20"
               >
-                <ListPlus size={16} />
-                {submitting ? "กำลังจอง…" : "จองคิวดันมายา"}
+                {submitting ? (
+                  <>
+                    <RefreshCw size={16} className="animate-spin" />
+                    กำลังจอง…
+                  </>
+                ) : (
+                  <>
+                    <ListPlus size={16} />
+                    จองคิวดันมายา
+                  </>
+                )}
               </button>
 
               {/* Form message */}

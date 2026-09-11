@@ -128,8 +128,8 @@ export function QueueBoard({ queueItems, teams = [], isLoading, onRefresh, onAss
                     </span>
 
                     {/* Round Badge */}
-                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono shrink-0 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
-                      รอบ {q.roundNumber}
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium shrink-0 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
+                      1 รอบ
                     </span>
 
                     {/* Status badge */}
@@ -147,9 +147,12 @@ export function QueueBoard({ queueItems, teams = [], isLoading, onRefresh, onAss
                           <button
                             onClick={() => actionMutation.mutate({ id: q.bookingId, action: "skip" })}
                             disabled={actionMutation.isPending}
-                            className="text-[10px] font-bold px-2 py-1 bg-amber-50 text-amber-600 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-400 rounded-lg border border-amber-200 dark:border-amber-800 disabled:opacity-50 transition-colors"
+                            className="text-[10px] font-bold px-2 py-1 bg-amber-50 text-amber-600 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-400 rounded-lg border border-amber-200 dark:border-amber-800 disabled:opacity-50 transition-colors flex items-center gap-1"
                             title="ข้ามคิว"
                           >
+                            {actionMutation.isPending && actionMutation.variables?.id === q.bookingId && actionMutation.variables?.action === "skip" ? (
+                              <RefreshCw size={10} className="animate-spin" />
+                            ) : null}
                             ข้าม
                           </button>
                         )}
@@ -162,7 +165,11 @@ export function QueueBoard({ queueItems, teams = [], isLoading, onRefresh, onAss
                             className="text-red-400 hover:text-red-600 p-1 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 disabled:opacity-50 transition-colors"
                             title="ลบคิว"
                           >
-                            <Trash2 size={13} />
+                            {actionMutation.isPending && actionMutation.variables?.id === q.bookingId && actionMutation.variables?.action === "delete" ? (
+                              <RefreshCw size={12} className="animate-spin text-red-500" />
+                            ) : (
+                              <Trash2 size={13} />
+                            )}
                           </button>
                         )}
                       </div>

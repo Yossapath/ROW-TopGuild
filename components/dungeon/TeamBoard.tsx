@@ -60,19 +60,33 @@ export function TeamBoard({ teams, isLoading, rosterMembers }: TeamBoardProps) {
           rosterMembers={rosterMembers}
           onAction={(action, payload) => actionMutation.mutate({ teamId: team.id, action, payload })}
           isLoading={actionMutation.isPending}
+          activeAction={
+            actionMutation.isPending && actionMutation.variables?.teamId === team.id
+              ? actionMutation.variables
+              : null
+          }
         />
       ))}
     </div>
   );
 }
 
-function TeamCard({ team, index, isAdmin, rosterMembers, onAction, isLoading }: {
+function TeamCard({
+  team,
+  index,
+  isAdmin,
+  rosterMembers,
+  onAction,
+  isLoading,
+  activeAction,
+}: {
   team: DungeonTeamResource;
   index: number;
   isAdmin: boolean;
   rosterMembers: { name: string; job: string }[];
   onAction: (action: string, payload?: any) => void;
   isLoading: boolean;
+  activeAction?: { action: string; payload?: any } | null;
 }) {
   const [newCarrier, setNewCarrier] = useState("");
   const carrierCount = team.carriers?.length || 0;
@@ -81,6 +95,10 @@ function TeamCard({ team, index, isAdmin, rosterMembers, onAction, isLoading }: 
   const hasCarrierPriest = (team.carriers || []).some((c) => rosterMembers.find((m) => m.name === c)?.job === "Priest");
   const hasActivePriest = (team.activeMembers || []).some((m) => m.job === "Priest");
   const needsPriest = !hasCarrierPriest && !hasActivePriest;
+
+  const isUpdatingCarriers = activeAction?.action === "update-carriers";
+  const isCompleting = activeAction?.action === "complete";
+  const isAssigning = activeAction?.action === "assign";
 
   const handleAddCarrier = () => {
     if (!newCarrier.trim()) return;
@@ -133,7 +151,12 @@ function TeamCard({ team, index, isAdmin, rosterMembers, onAction, isLoading }: 
                   <div className="flex items-center gap-1">
                     <span className="text-[10px] text-slate-500 dark:text-slate-400">{job}</span>
                     {isAdmin && (
-                      <button onClick={() => handleRemoveCarrier(i)} className="text-red-400 hover:text-red-600 p-0.5 rounded" title="ลบคนแบก">
+                      <button
+                        onClick={() => handleRemoveCarrier(i)}
+                        disabled={isLoading}
+                        className="text-red-400 hover:text-red-600 p-0.5 rounded disabled:opacity-40 transition-colors"
+                        title="ลบคนแบก"
+                      >
                         <X size={12} />
                       </button>
                     )}
@@ -167,8 +190,12 @@ function TeamCard({ team, index, isAdmin, rosterMembers, onAction, isLoading }: 
                 ))}
               </div>
             </div>
-            <button onClick={handleAddCarrier} disabled={isLoading || !newCarrier.trim()} className="px-2 py-1 bg-[#3B66D1] text-white rounded-lg text-xs hover:bg-blue-600 disabled:opacity-50">
-              <Plus size={13} />
+            <button
+              onClick={handleAddCarrier}
+              disabled={isLoading || !newCarrier.trim()}
+              className="px-2.5 py-1 bg-[#3B66D1] hover:bg-blue-600 text-white rounded-lg text-xs disabled:opacity-50 flex items-center gap-1 transition-all"
+            >
+              {isUpdatingCarriers ? <RefreshCw size={12} className="animate-spin" /> : <Plus size={13} />}
             </button>
           </div>
         )}
@@ -197,15 +224,24 @@ function TeamCard({ team, index, isAdmin, rosterMembers, onAction, isLoading }: 
                   const m = team.activeMembers[slotIdx];
                   if (m) {
                     const jc = JOB_COLORS[m.job] || "#888";
+                    const isEjectingThis =
+                      activeAction?.action === "eject" &&
+                      (activeAction?.payload?.queueItemId === m.queueItemId || activeAction?.payload?.name === m.name);
+
                     return (
-                      <div key={m.queueItemId} className="flex items-center h-8 px-2 border-b last:border-b-0 border-slate-100 dark:border-slate-800/60 bg-white dark:bg-[#232733] gap-2">
+                      <div key={m.queueItemId || `m_${slotIdx}`} className="flex items-center h-8 px-2 border-b last:border-b-0 border-slate-100 dark:border-slate-800/60 bg-white dark:bg-[#232733] gap-2">
                         <span className="font-mono text-[10px] text-slate-400 w-4 text-center shrink-0">{slotIdx + 1}</span>
                         <span className="font-semibold text-xs text-slate-800 dark:text-white flex-1 min-w-0 truncate">{m.name}</span>
                         <span className="text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0" style={{ backgroundColor: jc + "22", color: jc, border: `1px solid ${jc}44` }}>{m.job}</span>
-                        <span className="text-[10px] text-slate-400 font-mono shrink-0">R{m.roundNumber}</span>
+                        <span className="text-[10px] text-slate-400 font-medium shrink-0 bg-slate-50 dark:bg-slate-800 px-1.5 py-0.5 rounded">1 รอบ</span>
                         {isAdmin && (
-                          <button onClick={() => onAction("eject", { queueItemId: m.queueItemId, name: m.name })} className="text-red-400 hover:text-red-600 p-0.5 rounded shrink-0" title="เตะออก">
-                            <X size={12} />
+                          <button
+                            onClick={() => onAction("eject", { queueItemId: m.queueItemId, name: m.name })}
+                            disabled={isLoading}
+                            className="text-red-400 hover:text-red-600 p-0.5 rounded shrink-0 disabled:opacity-40 transition-colors"
+                            title="เตะออก"
+                          >
+                            {isEjectingThis ? <RefreshCw size={11} className="animate-spin text-red-500" /> : <X size={12} />}
                           </button>
                         )}
                       </div>
@@ -241,8 +277,17 @@ function TeamCard({ team, index, isAdmin, rosterMembers, onAction, isLoading }: 
               disabled={isLoading}
               className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-xl font-bold text-sm shadow-md shadow-emerald-600/20 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
             >
-              <CheckCircle size={18} />
-              ลงเสร็จสิ้น — จบรอบดันนี้
+              {isCompleting ? (
+                <>
+                  <RefreshCw size={18} className="animate-spin" />
+                  กำลังจบรอบดัน...
+                </>
+              ) : (
+                <>
+                  <CheckCircle size={18} />
+                  ลงเสร็จสิ้น — จบรอบดันนี้
+                </>
+              )}
             </button>
           )}
           {activeCount < maxQueueSlots && (
@@ -255,8 +300,17 @@ function TeamCard({ team, index, isAdmin, rosterMembers, onAction, isLoading }: 
                   : "py-2 text-xs bg-blue-50 dark:bg-[#272C38] text-[#3B66D1] dark:text-[#82A0F5] border border-blue-200 dark:border-slate-700 hover:bg-blue-100 dark:hover:bg-[#2A2F3E]"
               }`}
             >
-              <Users size={activeCount === 0 ? 17 : 14} />
-              {activeCount === 0 ? "จัดทีมอัตโนมัติ (Auto-Assign)" : "เติมสมาชิกเพิ่ม"}
+              {isAssigning ? (
+                <>
+                  <RefreshCw size={activeCount === 0 ? 16 : 14} className="animate-spin" />
+                  กำลังจัดทีม...
+                </>
+              ) : (
+                <>
+                  <Users size={activeCount === 0 ? 17 : 14} />
+                  {activeCount === 0 ? "จัดทีมอัตโนมัติ (Auto-Assign)" : "เติมสมาชิกเพิ่ม"}
+                </>
+              )}
             </button>
           )}
         </div>
