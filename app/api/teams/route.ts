@@ -31,7 +31,9 @@ export async function PUT(request: Request) {
       return err(validation.error, 400);
     }
 
-    await teamsRef().set(validation.data);
+    // Strip undefined values before saving to Firestore
+    const cleanData = JSON.parse(JSON.stringify(validation.data));
+    await teamsRef().set(cleanData);
 
     // Audit log
     logAction({
@@ -43,7 +45,8 @@ export async function PUT(request: Request) {
     });
 
     return ok({ success: true });
-  } catch (error) {
-    return handleServerError(error, "Failed to save teams");
+  } catch (error: any) {
+    console.error("[TEAMS SAVE ERROR]", error);
+    return err(`Failed to save teams: ${error.message || error}`, 500);
   }
 }
