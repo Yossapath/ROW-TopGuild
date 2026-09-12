@@ -156,7 +156,9 @@ export default function TeamsPage() {
       const dateStr = new Date().toISOString().split("T")[0];
       const dataUrl = canvas.toDataURL("image/png");
       const link = document.createElement("a");
-      link.download = `GVG-Team-Setup-${dateStr}.png`;
+      // UX 5: Include tab name in filename so user can distinguish main vs sub exports
+      const tabLabel = activeTab === "sub" ? "สนามรอง" : "สนามหลัก";
+      link.download = `GVG-${tabLabel}-${dateStr}.png`;
       link.href = dataUrl;
       link.click();
     } catch (err) {
@@ -371,8 +373,10 @@ export default function TeamsPage() {
     e.preventDefault();
     if (!playerSearchQuery.trim() || !data) return;
     
-    // Find member by name (case insensitive)
-    const targetId = Object.keys(data.members).find(id => id.toLowerCase().includes(playerSearchQuery.trim().toLowerCase()));
+    const q = playerSearchQuery.trim().toLowerCase();
+    // Bug Fix: search on member.name explicitly (handles edge cases where key ≠ name)
+    const targetMember = Object.values(data.members).find(m => m.name.toLowerCase().includes(q));
+    const targetId = targetMember?.id;
     
     if (targetId) {
       // Find where they are assigned
@@ -395,7 +399,7 @@ export default function TeamsPage() {
            }, 150);
         } else if (data.offlineIds.includes(targetId)) {
            setActiveTab("leave");
-           alert(`ผู้เล่น ${targetId} อยู่ในสถานะลา/ออฟไลน์`);
+           alert(`ผู้เล่น ${targetMember?.name ?? targetId} อยู่ในสถานะลา/ออฟไลน์`);
         }
       }
       setPlayerSearchQuery(""); // clear after search
@@ -486,10 +490,20 @@ export default function TeamsPage() {
   // ── Auto-match ───────────────────────────────────────────────
   const handlePullTop60 = () => {
     if (!data) return;
-    const all = Object.values(data.members).sort((a, b) => b.power - a.power);
+    const all = Object.values(data.members)
+      .filter(m => !data.offlineIds.includes(m.id))
+      .sort((a, b) => b.power - a.power);
     const priests = all.filter(m => m.job === "Priest").slice(0, 12);
-    const nonPriests = all.filter(m => m.job !== "Priest").slice(0, 48);
-    setAutoModalText([...priests, ...nonPriests].sort((a, b) => b.power - a.power).map(m => m.name).join("\n"));
+    const priestCount = priests.length;
+    // UX 2: Compensate — if fewer than 12 Priests, fill remaining slots with top NonPriests
+    const nonPriestSlots = 60 - priestCount;
+    const nonPriests = all.filter(m => m.job !== "Priest").slice(0, nonPriestSlots);
+    const top60 = [...priests, ...nonPriests].sort((a, b) => b.power - a.power);
+    setAutoModalText(top60.map(m => m.name).join("\n"));
+    if (priestCount < 12) {
+      // Warn inline — the allocator will also show a PRIEST_MISSING warning in preview
+      console.warn(`[handlePullTop60] Priest น้อยกว่า 12 คน (มีแค่ ${priestCount} คน) — เติม NonPriest ชดเชย`);
+    }
   };
 
   const handleProcessAutoMatch = () => {
@@ -603,6 +617,8 @@ export default function TeamsPage() {
       const srcZoneIdx = newData.zones.findIndex(z => z.id === source.droppableId);
       const dstZoneIdx = newData.zones.findIndex(z => z.id === destination.droppableId);
       if (srcZoneIdx === -1 || dstZoneIdx === -1) return;
+      // Bug Fix: prevent dragging a team across zone types (main ↔ sub)
+      if (newData.zones[srcZoneIdx].type !== newData.zones[dstZoneIdx].type) return;
       const srcZone = { ...newData.zones[srcZoneIdx], teamOrder: [...newData.zones[srcZoneIdx].teamOrder] };
       const dstZone = srcZoneIdx === dstZoneIdx ? srcZone : { ...newData.zones[dstZoneIdx], teamOrder: [...newData.zones[dstZoneIdx].teamOrder] };
       srcZone.teamOrder.splice(source.index, 1);
@@ -641,9 +657,15 @@ export default function TeamsPage() {
         cur.splice(destSlotIdx, 0, draggableId);
         const nullIdx = cur.findIndex((v, i) => i > destSlotIdx && v === null);
         if (nullIdx !== -1) cur.splice(nullIdx, 1);
-        else { const kicked = cur.pop(); if (kicked) newData.columns["unassigned"] = { ...newData.columns["unassigned"], memberIds: [kicked, ...newData.columns["unassigned"].memberIds as string[]] }; }
+        else {
+          // Bug Fix: find last real member (non-null) to kick — avoid accidentally popping null
+          const lastMemberIdx = cur.reduce((lastIdx, v, i) => (v !== null ? i : lastIdx), -1);
+          const kicked = lastMemberIdx !== -1 ? cur[lastMemberIdx] : null;
+          if (lastMemberIdx !== -1) cur.splice(lastMemberIdx, 1);
+          if (kicked) newData.columns["unassigned"] = { ...newData.columns["unassigned"], memberIds: [kicked, ...newData.columns["unassigned"].memberIds as string[]] };
+        }
       } else { cur[destSlotIdx] = draggableId; }
-      newData.columns[destColId] = { ...newData.columns[destColId], memberIds: cur };
+      newData.columns[destColId] = { ...newData.columns[destColId], memberIds: cur.slice(0, 5) };
     } else if (!isSourceUnassigned && isDestUnassigned) {
       const memberToMove = newData.columns[sourceColId].memberIds[sourceSlotIdx];
       newData.columns[sourceColId] = { ...newData.columns[sourceColId], memberIds: newData.columns[sourceColId].memberIds.map((v, i) => i === sourceSlotIdx ? null : v) };
@@ -662,8 +684,14 @@ export default function TeamsPage() {
         dst.splice(destSlotIdx, 0, memberA);
         const nullIdx = dst.findIndex((v, i) => i > destSlotIdx && v === null);
         if (nullIdx !== -1) dst.splice(nullIdx, 1);
-        else { const kicked = dst.pop(); if (kicked) newData.columns["unassigned"] = { ...newData.columns["unassigned"], memberIds: [kicked, ...newData.columns["unassigned"].memberIds as string[]] }; }
-        newData.columns[destColId] = { ...newData.columns[destColId], memberIds: dst };
+        else {
+          // Bug Fix: find last real member (non-null) to kick — avoid accidentally popping null
+          const lastMemberIdx = dst.reduce((lastIdx, v, i) => (v !== null ? i : lastIdx), -1);
+          const kicked = lastMemberIdx !== -1 ? dst[lastMemberIdx] : null;
+          if (lastMemberIdx !== -1) dst.splice(lastMemberIdx, 1);
+          if (kicked) newData.columns["unassigned"] = { ...newData.columns["unassigned"], memberIds: [kicked, ...newData.columns["unassigned"].memberIds as string[]] };
+        }
+        newData.columns[destColId] = { ...newData.columns[destColId], memberIds: dst.slice(0, 5) };
       }
     }
     setData(newData);
@@ -816,6 +844,10 @@ export default function TeamsPage() {
               {saveStatus === 'error' && <span className="text-red-500 flex items-center gap-1 font-bold cursor-pointer"><X className="w-4 h-4"/> บันทึกไม่สำเร็จ</span>}
               {saveStatus === 'error' && saveErrorMsg && <span className="text-xs text-red-400 truncate max-w-[150px]">({saveErrorMsg})</span>}
             </div>
+            {/* UX 1: Auto-match button restored */}
+            <button onClick={() => setIsAutoModalOpen(true)} className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 sm:px-4 py-2 bg-white dark:bg-[#272C38] text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-900/50 rounded-xl font-bold hover:bg-purple-50 dark:hover:bg-purple-950/30 transition-colors text-xs sm:text-sm shadow-sm">
+              <Wand2 size={16} /> จัดทีมอัตโนมัติ
+            </button>
             <button onClick={() => setIsClearConfirmOpen(true)} className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 sm:px-4 py-2 bg-white dark:bg-[#272C38] text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/50 rounded-xl font-bold hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors text-xs sm:text-sm shadow-sm">
               <Trash2 size={16} /> ล้างทีม
             </button>

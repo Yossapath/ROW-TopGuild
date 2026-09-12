@@ -183,7 +183,7 @@ export default function UsersPage() {
                       <td className="py-3 px-4">
                         <div className="flex flex-col">
                           <span className="text-sm font-bold text-slate-800 dark:text-white">{u.class || "-"}</span>
-                          <span className="text-xs text-slate-500 dark:text-[#8B93A7]">{u.power ? u.power.toLocaleString() : "0"} CP</span>
+                          <span className="text-xs text-slate-500 dark:text-[#8B93A7]">{u.power ? u.power.toLocaleString() + " CP" : "-"}</span>
                         </div>
                       </td>
                       <td className="py-3 px-4 text-center">

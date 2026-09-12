@@ -14,7 +14,7 @@ interface GVGExportLayoutProps {
   title?: string;
 }
 
-// Custom Leader Finder (Reused from Topguild logic)
+// UX 3: Leader = member with highest power in the team (flexible, no hardcoded names)
 function getTeamLeader(col: Column | undefined, members: Record<string, Member>): string {
   if (!col) return "ว่าง";
   const assigned = col.memberIds
@@ -23,13 +23,9 @@ function getTeamLeader(col: Column | undefined, members: Record<string, Member>)
 
   if (assigned.length === 0) return "ว่าง";
 
-  // Specific prominent leaders prioritized if present
-  const top = assigned.find((m) => m.name.toLowerCase() === "topgameth");
-  if (top) return top.name;
-  const lin = assigned.find((m) => m.name.toLowerCase() === "linping");
-  if (lin) return lin.name;
-
-  return assigned[0].name;
+  // Return the member with the highest power as team leader
+  const leader = assigned.reduce((top, m) => (m.power > top.power ? m : top), assigned[0]);
+  return leader.name;
 }
 
 export const GVGExportLayout = forwardRef<HTMLDivElement, GVGExportLayoutProps>(

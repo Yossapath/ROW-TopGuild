@@ -103,7 +103,9 @@ export default function RosterPage() {
           power: editPower,
           warRole: editRole,
         });
+        // Invalidate both roster and users so the users page reflects updated info
         queryClient.invalidateQueries({ queryKey: ["roster"] });
+        queryClient.invalidateQueries({ queryKey: ["users"] });
         setIsAddingNew(false);
       } else {
         // Edit existing user via targeted API
@@ -116,7 +118,9 @@ export default function RosterPage() {
           power: editPower,
           warRole: editRole
         });
+        // Invalidate both roster and users so the users page reflects updated info
         queryClient.invalidateQueries({ queryKey: ["roster"] });
+        queryClient.invalidateQueries({ queryKey: ["users"] });
         setEditingMember(null);
       }
     } catch (err: any) {

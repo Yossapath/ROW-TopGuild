@@ -203,8 +203,14 @@ export function allocateTeams(input: AllocatorInput): AllocatorResult {
     }
   }
 
+  // Bug Fix: start subTeamCount after the highest existing sub team number to avoid collision with locked teams
+  const existingSubNums = Object.keys(columns)
+    .filter(id => id.startsWith("sub-"))
+    .map(id => parseInt(id.split("-")[1]))
+    .filter(n => !isNaN(n));
+  let subTeamCount = existingSubNums.length > 0 ? Math.max(...existingSubNums) + 1 : 1;
+
   const newSubOrder: string[] = [];
-  let subTeamCount = 1;
   let sIdx = 0;
 
   while (sIdx < subFieldMembers.length) {
