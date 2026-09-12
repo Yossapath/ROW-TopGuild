@@ -73,11 +73,12 @@ export const GVGExportLayout = forwardRef<HTMLDivElement, GVGExportLayoutProps>(
     const N = activeZones.length || 1;
     const ZONE_W = Math.floor((CANVAS_W - PAD * 2 - ZONE_GAP * (N - 1)) / N);
 
-    // Table column widths (px) — named slot / name / job / power
+    // Table column widths — # fixed, then ชื่อ 35% / อาชีพ 35% / ค่าพลัง 30%
     const COL_SLOT = 46;
-    const COL_JOB  = 164;
-    const COL_PWR  = 118;
-    const COL_NAME = ZONE_W - COL_SLOT - COL_JOB - COL_PWR - 4; // 4 = border gaps
+    const REMAINING = ZONE_W - COL_SLOT - 6; // 6 = border margins
+    const COL_NAME = Math.floor(REMAINING * 0.35);
+    const COL_JOB  = Math.floor(REMAINING * 0.35);
+    const COL_PWR  = REMAINING - COL_NAME - COL_JOB; // ~30%
 
     return (
       <div
@@ -346,91 +347,98 @@ export const GVGExportLayout = forwardRef<HTMLDivElement, GVGExportLayoutProps>(
                           ))}
                         </div>
 
-                        {/* Rows */}
-                        {Array.from({ length: 5 }).map((_, slotIdx) => {
-                          const memberId = col.memberIds[slotIdx];
-                          const m = memberId ? members[memberId] : null;
-                          const jobColor = (m?.job && JOB_COLORS[m.job]) || "#64748b";
-                          const isOdd = slotIdx % 2 === 1;
+                        {/* Rows — sorted by power descending */}
+                        {(() => {
+                          // Build sorted list of members (power DESC), fill empty slots at end
+                          const sortedMembers: (Member | null)[] = assignedMembers
+                            .map(item => item.member)
+                            .sort((a, b) => (b.power || 0) - (a.power || 0));
+                          // Pad to 5 slots with nulls
+                          while (sortedMembers.length < 5) sortedMembers.push(null);
 
-                          if (!m) {
-                            return (
+                          return sortedMembers.map((m, rowIdx) => {
+                            const jobColor = (m?.job && JOB_COLORS[m.job]) || "#64748b";
+                            const isOdd = rowIdx % 2 === 1;
+
+                            if (!m) {
+                              return (
+                                <div
+                                  key={`empty-${rowIdx}`}
+                                  style={{
+                                    display: "flex",
+                                    background: isOdd ? "#f8fafc" : "#fff",
+                                    borderBottom: rowIdx < 4 ? "1px solid #f1f5f9" : undefined,
+                                    alignItems: "center",
+                                  }}
+                                >
+                                  <div style={{ width: `${COL_SLOT}px`, flexShrink: 0, fontSize: "13px", fontFamily: "monospace", color: "#cbd5e1", fontWeight: 700, padding: "10px 10px", textAlign: "center", borderRight: "1px solid #f1f5f9" }}>{rowIdx + 1}</div>
+                                  <div style={{ width: `${COL_NAME}px`, flexShrink: 0, fontSize: "13px", color: "#cbd5e1", fontStyle: "italic", padding: "10px 12px", borderRight: "1px solid #f1f5f9" }}>— ว่าง —</div>
+                                  <div style={{ width: `${COL_JOB}px`, flexShrink: 0, fontSize: "13px", color: "#cbd5e1", padding: "10px 10px", textAlign: "center", borderRight: "1px solid #f1f5f9" }}>-</div>
+                                  <div style={{ width: `${COL_PWR}px`, flexShrink: 0, fontSize: "13px", color: "#cbd5e1", padding: "10px 12px", textAlign: "right", fontFamily: "monospace" }}>-</div>
+                                </div>
+                              );
+                            }
+
+                          return (
                               <div
-                                key={slotIdx}
+                                key={`member-${rowIdx}`}
                                 style={{
                                   display: "flex",
                                   background: isOdd ? "#f8fafc" : "#fff",
-                                  borderBottom: slotIdx < 4 ? "1px solid #f1f5f9" : undefined,
+                                  borderBottom: rowIdx < 4 ? "1px solid #f1f5f9" : undefined,
                                   alignItems: "center",
                                 }}
                               >
-                                <div style={{ width: `${COL_SLOT}px`, flexShrink: 0, fontSize: "13px", fontFamily: "monospace", color: "#cbd5e1", fontWeight: 700, padding: "10px 10px", textAlign: "center", borderRight: "1px solid #f1f5f9" }}>{slotIdx + 1}</div>
-                                <div style={{ width: `${COL_NAME}px`, flexShrink: 0, fontSize: "13px", color: "#cbd5e1", fontStyle: "italic", padding: "10px 12px", borderRight: "1px solid #f1f5f9" }}>— ว่าง —</div>
-                                <div style={{ width: `${COL_JOB}px`,  flexShrink: 0, fontSize: "13px", color: "#cbd5e1", padding: "10px 10px", textAlign: "center", borderRight: "1px solid #f1f5f9" }}>-</div>
-                                <div style={{ width: `${COL_PWR}px`,  flexShrink: 0, fontSize: "13px", color: "#cbd5e1", padding: "10px 12px", textAlign: "right", fontFamily: "monospace" }}>-</div>
+                                {/* # */}
+                                <div style={{
+                                  width: `${COL_SLOT}px`, flexShrink: 0,
+                                  fontSize: "14px", fontFamily: "monospace", fontWeight: 900,
+                                  color: pal.border, padding: "10px 10px",
+                                  textAlign: "center", borderRight: "1px solid #f1f5f9",
+                                }}>{rowIdx + 1}</div>
+
+                                {/* ชื่อ */}
+                                <div style={{
+                                  width: `${COL_NAME}px`, flexShrink: 0,
+                                  fontSize: "14px", fontWeight: 700, color: "#0f172a",
+                                  padding: "10px 12px",
+                                  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                                  borderRight: "1px solid #f1f5f9",
+                                }} title={m.name}>{m.name}</div>
+
+                                {/* อาชีพ */}
+                                <div style={{
+                                  width: `${COL_JOB}px`, flexShrink: 0,
+                                  padding: "7px 10px",
+                                  display: "flex", alignItems: "center", justifyContent: "center",
+                                  borderRight: "1px solid #f1f5f9",
+                                }}>
+                                  <span style={{
+                                    fontSize: "12px", fontWeight: 800, color: "#fff",
+                                    background: jobColor,
+                                    borderRadius: "7px",
+                                    padding: "4px 0",
+                                    display: "block",
+                                    width: `${COL_JOB - 20}px`,
+                                    textAlign: "center",
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                    whiteSpace: "nowrap",
+                                    letterSpacing: "0.03em",
+                                  }}>{m.job}</span>
+                                </div>
+
+                                {/* ค่าพลัง */}
+                                <div style={{
+                                  width: `${COL_PWR}px`, flexShrink: 0,
+                                  fontSize: "14px", fontFamily: "monospace", fontWeight: 800,
+                                  color: pal.teamHeaderText,
+                                  padding: "10px 14px", textAlign: "right",
+                                }}>{(m.power || 0).toLocaleString()}</div>
                               </div>
                             );
-                          }
-
-                          return (
-                            <div
-                              key={slotIdx}
-                              style={{
-                                display: "flex",
-                                background: isOdd ? "#f8fafc" : "#fff",
-                                borderBottom: slotIdx < 4 ? "1px solid #f1f5f9" : undefined,
-                                alignItems: "center",
-                              }}
-                            >
-                              {/* # */}
-                              <div style={{
-                                width: `${COL_SLOT}px`, flexShrink: 0,
-                                fontSize: "14px", fontFamily: "monospace", fontWeight: 900,
-                                color: pal.border, padding: "10px 10px",
-                                textAlign: "center", borderRight: "1px solid #f1f5f9",
-                              }}>{slotIdx + 1}</div>
-
-                              {/* ชื่อ */}
-                              <div style={{
-                                width: `${COL_NAME}px`, flexShrink: 0,
-                                fontSize: "14px", fontWeight: 700, color: "#0f172a",
-                                padding: "10px 12px",
-                                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                                borderRight: "1px solid #f1f5f9",
-                              }} title={m.name}>{m.name}</div>
-
-                              {/* อาชีพ */}
-                              <div style={{
-                                width: `${COL_JOB}px`, flexShrink: 0,
-                                padding: "7px 10px",
-                                display: "flex", alignItems: "center", justifyContent: "center",
-                                borderRight: "1px solid #f1f5f9",
-                              }}>
-                                <span style={{
-                                  fontSize: "12px", fontWeight: 800, color: "#fff",
-                                  background: jobColor,
-                                  borderRadius: "7px",
-                                  padding: "4px 0",
-                                  display: "block",
-                                  width: `${COL_JOB - 20}px`,
-                                  textAlign: "center",
-                                  overflow: "hidden",
-                                  textOverflow: "ellipsis",
-                                  whiteSpace: "nowrap",
-                                  letterSpacing: "0.03em",
-                                }}>{m.job}</span>
-                              </div>
-
-                              {/* ค่าพลัง */}
-                              <div style={{
-                                width: `${COL_PWR}px`, flexShrink: 0,
-                                fontSize: "14px", fontFamily: "monospace", fontWeight: 800,
-                                color: pal.teamHeaderText,
-                                padding: "10px 14px", textAlign: "right",
-                              }}>{(m.power || 0).toLocaleString()}</div>
-                            </div>
-                          );
-                        })}
+                          });
+                        })()}
                       </div>
                     );
                   })}
