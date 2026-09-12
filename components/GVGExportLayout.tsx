@@ -75,7 +75,8 @@ export const GVGExportLayout = forwardRef<HTMLDivElement, GVGExportLayoutProps>(
 
     // Table column widths — # fixed, then ชื่อ 35% / อาชีพ 35% / ค่าพลัง 30%
     const COL_SLOT = 46;
-    const REMAINING = ZONE_W - COL_SLOT - 6; // 6 = border margins
+    // Subtract: zone border (2.5×2=5) + zone inner padding (12×2=24) + team card border (1.5×2=3) = 32px
+    const REMAINING = ZONE_W - COL_SLOT - 32;
     const COL_NAME = Math.floor(REMAINING * 0.35);
     const COL_JOB  = Math.floor(REMAINING * 0.35);
     const COL_PWR  = REMAINING - COL_NAME - COL_JOB; // ~30%
