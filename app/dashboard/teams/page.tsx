@@ -8,8 +8,8 @@ import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea
 import { JOB_COLORS, JOB_LIST } from "@/lib/utils";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { allocateTeams, AllocatorResult } from "@/lib/team-allocator";
-import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
+import GVGExportLayout from "@/components/GVGExportLayout";
 
 type Member = { id: string; name: string; job: string; power: number };
 type Column = { id: string; title: string; memberIds: (string | null)[]; type: "main" | "sub" | "unassigned"; locked: boolean };
@@ -90,33 +90,37 @@ export default function TeamsPage() {
   const [editingZoneId, setEditingZoneId] = useState<string | null>(null);
   const [editingZoneName, setEditingZoneName] = useState("");
 
-  const exportContainerRef = useRef<HTMLDivElement>(null);
+  // Clear team confirmation modal state
+  const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
+
+  // PNG Export state
+  const exportLayoutRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
 
-  const handleExportPDF = async () => {
-    if (!exportContainerRef.current) return;
+  const handleExportPNG = async () => {
+    if (!exportLayoutRef.current || isExporting) return;
     setIsExporting(true);
     try {
-      const element = exportContainerRef.current;
+      // Allow brief delay for full render
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      const element = exportLayoutRef.current;
       const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
-        backgroundColor: document.documentElement.classList.contains("dark") ? "#1C1F27" : "#f0f6fc",
+        logging: false,
+        backgroundColor: "#0b1329",
       });
-      
-      const imgData = canvas.toDataURL("image/jpeg", 1.0);
-      const pdf = new jsPDF({
-        orientation: canvas.width > canvas.height ? "landscape" : "portrait",
-        unit: "px",
-        format: [canvas.width, canvas.height]
-      });
-      
-      pdf.addImage(imgData, "JPEG", 0, 0, canvas.width, canvas.height);
-      const dateStr = new Date().toISOString().split('T')[0];
-      pdf.save(`gvg-teams-${dateStr}.pdf`);
+
+      const dateStr = new Date().toISOString().split("T")[0];
+      const dataUrl = canvas.toDataURL("image/png");
+      const link = document.createElement("a");
+      link.download = `gvg-teams-${dateStr}.png`;
+      link.href = dataUrl;
+      link.click();
     } catch (err) {
-      console.error("Failed to export PDF", err);
-      alert("เกิดข้อผิดพลาดในการสร้าง PDF");
+      console.error("Failed to export PNG", err);
+      alert("เกิดข้อผิดพลาดในการสร้างภาพ PNG");
     } finally {
       setIsExporting(false);
     }
@@ -479,18 +483,23 @@ export default function TeamsPage() {
     setIsAutoModalOpen(false);
   };
 
-  const handleClearAll = () => {
-    if (!data) return;
-    if (!confirm("ลบทุกคนออกจากทุกทีม (ยกเว้นทีมที่ล็อก) ใช่หรือไม่?")) return;
-    const newData = { ...data, columns: { ...data.columns } };
-    const unassignedIds = [...newData.columns["unassigned"].memberIds] as string[];
-    Object.keys(newData.columns).forEach(colId => {
-      if (colId === "unassigned" || newData.columns[colId].locked) return;
-      newData.columns[colId].memberIds.forEach(id => { if (id) unassignedIds.push(id); });
-      newData.columns[colId] = { ...newData.columns[colId], memberIds: [null, null, null, null, null] };
-    });
-    newData.columns["unassigned"] = { ...newData.columns["unassigned"], memberIds: unassignedIds };
-    setData(newData);
+  const handleConfirmClearAll = () => {
+    if (!data || isClearing) return;
+    setIsClearing(true);
+    try {
+      const newData = { ...data, columns: { ...data.columns } };
+      const unassignedIds = [...newData.columns["unassigned"].memberIds] as string[];
+      Object.keys(newData.columns).forEach(colId => {
+        if (colId === "unassigned" || newData.columns[colId].locked) return;
+        newData.columns[colId].memberIds.forEach(id => { if (id) unassignedIds.push(id); });
+        newData.columns[colId] = { ...newData.columns[colId], memberIds: [null, null, null, null, null] };
+      });
+      newData.columns["unassigned"] = { ...newData.columns["unassigned"], memberIds: unassignedIds };
+      setData(newData);
+      setIsClearConfirmOpen(false);
+    } finally {
+      setIsClearing(false);
+    }
   };
 
   const toggleLock = (colId: string) => {
@@ -766,10 +775,12 @@ export default function TeamsPage() {
               {saveStatus === 'error' && <span className="text-red-500 flex items-center gap-1 font-bold cursor-pointer"><X className="w-4 h-4"/> บันทึกไม่สำเร็จ</span>}
               {saveStatus === 'error' && saveErrorMsg && <span className="text-xs text-red-400 truncate max-w-[150px]">({saveErrorMsg})</span>}
             </div>
-            <button onClick={handleClearAll} className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 sm:px-4 py-2 bg-white dark:bg-[#272C38] text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/50 rounded-xl font-bold hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors text-xs sm:text-sm shadow-sm">ล้างทั้งหมด</button>
-            <button onClick={handleExportPDF} disabled={isExporting} className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 sm:px-4 py-2 bg-white dark:bg-[#272C38] text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/50 rounded-xl font-bold hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors text-xs sm:text-sm shadow-sm disabled:opacity-50">
+            <button onClick={() => setIsClearConfirmOpen(true)} className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 sm:px-4 py-2 bg-white dark:bg-[#272C38] text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/50 rounded-xl font-bold hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors text-xs sm:text-sm shadow-sm">
+              <Trash2 size={16} /> ล้างทีม
+            </button>
+            <button onClick={handleExportPNG} disabled={isExporting} className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 sm:px-4 py-2 bg-white dark:bg-[#272C38] text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/50 rounded-xl font-bold hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors text-xs sm:text-sm shadow-sm disabled:opacity-50">
               {isExporting ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />} 
-              {isExporting ? "กำลังออกเอกสาร..." : "Export PDF"}
+              {isExporting ? "กำลังออกเอกสาร..." : "Export PNG"}
             </button>
           </div>
         )}
@@ -864,7 +875,7 @@ export default function TeamsPage() {
               {isAdmin && <button onClick={() => setActiveTab("leave")} className={`px-4 sm:px-6 py-2 rounded-lg font-bold text-xs sm:text-sm whitespace-nowrap transition-all ${activeTab === "leave" ? "bg-red-600 text-white shadow-sm" : "text-slate-600 dark:text-white hover:bg-slate-50 dark:hover:bg-[#2A2F3E]"}`}>ลา/ออฟไลน์</button>}
             </div>
 
-            <div className="flex-1" ref={exportContainerRef}>
+            <div className="flex-1">
               {activeTab === "main" && (
                 <div className="space-y-10 pb-12 bg-[#f0f6fc] dark:bg-[#1C1F27] print-export-padding">
                   {/* 60-player progress bar */}
@@ -995,6 +1006,75 @@ export default function TeamsPage() {
           </div>
         </div>
       </DragDropContext>
+
+      {/* Clear Team Confirmation Modal */}
+      {isClearConfirmOpen && (
+        <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-[#232733] rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col border border-slate-200 dark:border-[#2D3342] animate-in zoom-in-95 duration-200">
+            <div className="p-6 text-center flex flex-col items-center">
+              <div className="w-14 h-14 rounded-full bg-red-100 dark:bg-red-950/50 text-red-600 dark:text-red-400 flex items-center justify-center mb-4">
+                <AlertCircle size={32} />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
+                ยืนยันการล้างทีม?
+              </h3>
+              <p className="text-sm text-slate-600 dark:text-[#8B93A7] leading-relaxed">
+                สมาชิกและการจัดทีมทั้งหมดในหน้านี้จะถูกล้างออก คุณต้องการดำเนินการต่อหรือไม่?
+              </p>
+            </div>
+            <div className="p-4 bg-slate-50 dark:bg-[#272C38]/50 border-t border-slate-100 dark:border-[#2D3342] flex items-center justify-end gap-3">
+              <button
+                type="button"
+                disabled={isClearing}
+                onClick={() => setIsClearConfirmOpen(false)}
+                className="px-4 py-2 rounded-xl text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-[#343B4B] transition-colors"
+              >
+                ยกเลิก
+              </button>
+              <button
+                type="button"
+                disabled={isClearing}
+                onClick={handleConfirmClearAll}
+                className="px-5 py-2 rounded-xl text-sm font-bold text-white bg-red-600 hover:bg-red-700 active:bg-red-800 disabled:opacity-50 transition-colors shadow-sm flex items-center gap-1.5"
+              >
+                {isClearing ? <Loader2 size={16} className="animate-spin" /> : null}
+                {isClearing ? "กำลังล้างทีม..." : "ยืนยันล้างทีม"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Offscreen GVG Export Layout for PNG generation */}
+      <div
+        style={{
+          position: "fixed",
+          left: isExporting ? 0 : "-99999px",
+          top: isExporting ? 0 : "-99999px",
+          zIndex: isExporting ? 99998 : -9999,
+          opacity: isExporting ? 1 : 0,
+          pointerEvents: "none",
+          width: "2040px",
+          overflow: "hidden",
+        }}
+      >
+        <GVGExportLayout
+          ref={exportLayoutRef}
+          zones={data.zones.filter((z) => z.type === (activeTab === "sub" ? "sub" : "main"))}
+          columns={data.columns}
+          members={data.members}
+          title={activeTab === "sub" ? "GVG TEAM SETUP (สนามรอง)" : "GVG TEAM SETUP"}
+        />
+      </div>
+
+      {/* Fullscreen loading indicator during PNG generation */}
+      {isExporting && (
+        <div className="fixed inset-0 z-[99999] bg-black/75 backdrop-blur-sm flex flex-col items-center justify-center text-white space-y-3">
+          <Loader2 className="w-10 h-10 animate-spin text-sky-400" />
+          <div className="text-lg font-bold">กำลังสร้างภาพสรุป GVG (PNG 1 หน้ากระดาษ)...</div>
+          <div className="text-xs text-slate-400">กรุณารอสักครู่ ระบบกำลังเรนเดอร์ภาพความละเอียดสูง</div>
+        </div>
+      )}
     </div>
   );
 }
