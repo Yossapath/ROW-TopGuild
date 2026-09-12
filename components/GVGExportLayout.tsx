@@ -29,13 +29,31 @@ function getTeamLeader(col: Column | undefined, members: Record<string, Member>)
   return assigned.reduce((top, m) => ((m.power ?? 0) > (top.power ?? 0) ? m : top), assigned[0]).name;
 }
 
-// ─── Zone accent colors ───────────────────────────────────────────
 const ZONE_PALETTES = [
   { header: "linear-gradient(135deg,#1e3a8a 0%,#2563eb 100%)", border: "#2563eb", teamHeaderBg: "#dbeafe", teamHeaderText: "#1e3a8a", teamHeaderBorder: "#93c5fd" },
   { header: "linear-gradient(135deg,#064e3b 0%,#059669 100%)", border: "#059669", teamHeaderBg: "#d1fae5", teamHeaderText: "#064e3b", teamHeaderBorder: "#6ee7b7" },
   { header: "linear-gradient(135deg,#4c1d95 0%,#7c3aed 100%)", border: "#7c3aed", teamHeaderBg: "#ede9fe", teamHeaderText: "#4c1d95", teamHeaderBorder: "#c4b5fd" },
   { header: "linear-gradient(135deg,#78350f 0%,#d97706 100%)", border: "#d97706", teamHeaderBg: "#fef3c7", teamHeaderText: "#78350f", teamHeaderBorder: "#fcd34d" },
 ];
+
+// Reusable badge style — use flex + explicit height so Thai text always centers correctly in html2canvas
+const badge = (bg: string, color: string, border?: string): React.CSSProperties => ({
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  height: "28px",
+  padding: "0 14px",
+  borderRadius: "8px",
+  background: bg,
+  border: border ? `1.5px solid ${border}` : undefined,
+  color,
+  fontWeight: 800,
+  fontSize: "13px",
+  fontFamily: "monospace",
+  lineHeight: 1,
+  whiteSpace: "nowrap" as const,
+  flexShrink: 0,
+});
 
 export const GVGExportLayout = forwardRef<HTMLDivElement, GVGExportLayoutProps>(
   ({ zones, columns, members, title = "GVG TEAM SETUP" }, ref) => {
@@ -65,21 +83,27 @@ export const GVGExportLayout = forwardRef<HTMLDivElement, GVGExportLayoutProps>(
         return ts + col.memberIds.reduce((ms, mid) => ms + (mid && members[mid] ? members[mid].power || 0 : 0), 0);
       }, 0), 0);
 
-    // ── canvas & column sizing ────────────────────────────────────
-    // Zones sit side-by-side; teams inside each zone stack vertically
     const CANVAS_W = 2400;
     const PAD = 36;
     const ZONE_GAP = 20;
     const N = activeZones.length || 1;
     const ZONE_W = Math.floor((CANVAS_W - PAD * 2 - ZONE_GAP * (N - 1)) / N);
 
-    // Table column widths — # fixed, then ชื่อ 35% / อาชีพ 35% / ค่าพลัง 30%
     const COL_SLOT = 46;
-    // Subtract: zone border (2.5×2=5) + zone inner padding (12×2=24) + team card border (1.5×2=3) = 32px
+    // zone border(5) + zone padding(24) + team border(3) = 32px overhead
     const REMAINING = ZONE_W - COL_SLOT - 32;
     const COL_NAME = Math.floor(REMAINING * 0.35);
     const COL_JOB  = Math.floor(REMAINING * 0.35);
-    const COL_PWR  = REMAINING - COL_NAME - COL_JOB; // ~30%
+    const COL_PWR  = REMAINING - COL_NAME - COL_JOB;
+
+    // Global text style — lineHeight:1.3 prevents Thai font baseline drop in html2canvas
+    const txt = (size: number, weight: number, color: string, extra?: React.CSSProperties): React.CSSProperties => ({
+      fontSize: `${size}px`,
+      fontWeight: weight,
+      color,
+      lineHeight: 1.3,
+      ...extra,
+    });
 
     return (
       <div
@@ -92,9 +116,10 @@ export const GVGExportLayout = forwardRef<HTMLDivElement, GVGExportLayoutProps>(
           padding: `${PAD}px`,
           fontFamily: "'Segoe UI','Noto Sans Thai',Arial,sans-serif",
           color: "#0f172a",
+          lineHeight: 1.3,
         }}
       >
-        {/* ═══════════════ HEADER ═══════════════ */}
+        {/* ═══ HEADER ═══ */}
         <div style={{
           background: "linear-gradient(135deg,#0f172a 0%,#1e3a8a 60%,#2563eb 100%)",
           borderRadius: "18px",
@@ -109,41 +134,42 @@ export const GVGExportLayout = forwardRef<HTMLDivElement, GVGExportLayoutProps>(
             <div style={{
               width: "64px", height: "64px",
               background: "rgba(255,255,255,0.15)",
-              borderRadius: "14px", border: "1.5px solid rgba(255,255,255,0.25)",
+              borderRadius: "14px",
+              border: "1.5px solid rgba(255,255,255,0.25)",
               display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: "32px",
+              fontSize: "32px", lineHeight: 1,
             }}>🛡️</div>
             <div>
-              <div style={{ fontSize: "28px", fontWeight: 900, color: "#fff", letterSpacing: "0.03em", lineHeight: 1.15 }}>
+              <div style={txt(28, 900, "#fff", { letterSpacing: "0.03em" })}>
                 {title === "GVG TEAM SETUP" ? "รายชื่อผู้เล่นสนามหลัก (GVG TEAM SETUP)" : title}
               </div>
-              <div style={{ fontSize: "13px", color: "rgba(255,255,255,0.65)", fontWeight: 700, letterSpacing: "0.09em", marginTop: "5px" }}>
+              <div style={txt(13, 700, "rgba(255,255,255,0.65)", { letterSpacing: "0.09em", marginTop: "5px" })}>
                 GUILD VS GUILD BATTLE SQUAD ROSTER • {activeZones.length} ZONE{activeZones.length > 1 ? "S" : ""}
               </div>
             </div>
           </div>
           <div style={{ textAlign: "right" }}>
-            <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.5)", fontWeight: 700, letterSpacing: "0.1em", marginBottom: "5px" }}>EXPORTED DATE</div>
-            <div style={{ fontSize: "18px", fontWeight: 800, color: "#fff", fontFamily: "monospace" }}>
+            <div style={txt(11, 700, "rgba(255,255,255,0.5)", { letterSpacing: "0.1em", marginBottom: "5px" })}>EXPORTED DATE</div>
+            <div style={txt(18, 800, "#fff", { fontFamily: "monospace" })}>
               {new Date().toLocaleDateString("th-TH", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
             </div>
           </div>
         </div>
 
-        {/* ═══════════════ SUMMARY BAR ═══════════════ */}
+        {/* ═══ SUMMARY BAR ═══ */}
         <div style={{
           background: "#fff",
           borderRadius: "12px",
-          padding: "15px 28px",
+          padding: "14px 28px",
           marginBottom: "24px",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
           border: "2px solid #bfdbfe",
           boxShadow: "0 2px 10px rgba(0,0,0,0.06)",
+          minHeight: "62px",
         }}>
-          {/* Per-zone counts */}
-          <div style={{ display: "flex", gap: "24px", flexWrap: "wrap", alignItems: "center" }}>
+          <div style={{ display: "flex", gap: "20px", flexWrap: "wrap", alignItems: "center" }}>
             {activeZones.map((zone, zIdx) => {
               const pal = ZONE_PALETTES[zIdx % ZONE_PALETTES.length];
               const count = zone.teamOrder.reduce((s, colId) => {
@@ -154,47 +180,36 @@ export const GVGExportLayout = forwardRef<HTMLDivElement, GVGExportLayoutProps>(
               return (
                 <div key={zone.id} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                   <div style={{ width: "10px", height: "10px", borderRadius: "3px", background: pal.border, flexShrink: 0 }} />
-                  <span style={{ fontWeight: 900, color: "#1e293b", fontSize: "15px" }}>{zone.name}:</span>
-                  <span style={{
-                    fontFamily: "monospace", fontWeight: 800, color: pal.teamHeaderText,
-                    background: pal.teamHeaderBg, border: `1.5px solid ${pal.teamHeaderBorder}`,
-                    borderRadius: "8px", padding: "3px 14px", fontSize: "14px",
-                  }}>{count}/{cap} คน</span>
+                  <span style={txt(15, 900, "#1e293b")}>{zone.name}:</span>
+                  <span style={badge(pal.teamHeaderBg, pal.teamHeaderText, pal.teamHeaderBorder)}>
+                    {count}/{cap} คน
+                  </span>
                 </div>
               );
             })}
           </div>
-          {/* Totals */}
-          <div style={{ display: "flex", gap: "18px", alignItems: "center" }}>
+          <div style={{ display: "flex", gap: "16px", alignItems: "center" }}>
             {[
               { label: "สมาชิกทั้งหมด", val: `${totalMembers} คน`, bg: "#f0fdf4", bd: "#86efac", col: "#166534" },
-              { label: "จำนวนทีม",       val: `${totalTeams} ทีม`,   bg: "#faf5ff", bd: "#d8b4fe", col: "#6b21a8" },
+              { label: "จำนวนทีม",       val: `${totalTeams} ทีม`,  bg: "#faf5ff", bd: "#d8b4fe", col: "#6b21a8" },
               { label: "พลังรบรวม",      val: totalPower.toLocaleString(), bg: "#fffbeb", bd: "#fcd34d", col: "#78350f" },
             ].map(({ label, val, bg, bd, col }) => (
               <div key={label} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <span style={{ fontWeight: 800, color: col, fontSize: "14px" }}>{label}:</span>
-                <span style={{
-                  fontFamily: "monospace", fontWeight: 800, color: col,
-                  background: bg, border: `1.5px solid ${bd}`,
-                  borderRadius: "8px", padding: "3px 16px", fontSize: "14px",
-                }}>{val}</span>
+                <span style={txt(14, 800, col)}>{label}:</span>
+                <span style={badge(bg, col, bd)}>{val}</span>
               </div>
             ))}
           </div>
         </div>
 
         {activeZones.length === 0 && (
-          <div style={{ padding: "80px", textAlign: "center", color: "#94a3b8", border: "2px dashed #cbd5e1", borderRadius: "16px", background: "#fff", fontSize: "20px", fontWeight: 700 }}>
+          <div style={{ padding: "80px", textAlign: "center", color: "#94a3b8", border: "2px dashed #cbd5e1", borderRadius: "16px", background: "#fff", ...txt(20, 700, "#94a3b8") }}>
             ไม่มีทีมที่มีสมาชิกสำหรับการ Export
           </div>
         )}
 
-        {/* ═══════════════ ZONES — side-by-side columns ═══════════════ */}
-        <div style={{
-          display: "flex",
-          gap: `${ZONE_GAP}px`,
-          alignItems: "flex-start",
-        }}>
+        {/* ═══ ZONES ═══ */}
+        <div style={{ display: "flex", gap: `${ZONE_GAP}px`, alignItems: "flex-start" }}>
           {activeZones.map((zone, zIdx) => {
             const pal = ZONE_PALETTES[zIdx % ZONE_PALETTES.length];
 
@@ -213,45 +228,40 @@ export const GVGExportLayout = forwardRef<HTMLDivElement, GVGExportLayoutProps>(
               : "ว่าง";
 
             return (
-              <div
-                key={zone.id}
-                style={{
-                  width: `${ZONE_W}px`,
-                  flexShrink: 0,
-                  border: `2.5px solid ${pal.border}`,
-                  borderRadius: "16px",
-                  background: "#f8fafc",
-                  overflow: "hidden",
-                  boxShadow: "0 4px 18px rgba(0,0,0,0.10)",
-                }}
-              >
+              <div key={zone.id} style={{
+                width: `${ZONE_W}px`,
+                flexShrink: 0,
+                border: `2.5px solid ${pal.border}`,
+                borderRadius: "16px",
+                background: "#f8fafc",
+                overflow: "hidden",
+                boxShadow: "0 4px 18px rgba(0,0,0,0.10)",
+              }}>
                 {/* Zone Header */}
-                <div style={{
-                  background: pal.header,
-                  padding: "16px 22px",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "6px",
-                }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <span style={{ fontSize: "20px", fontWeight: 900, color: "#fff", letterSpacing: "0.02em" }}>
-                      {zone.name}
-                    </span>
-                    <span style={{
-                      fontFamily: "monospace", fontSize: "15px", fontWeight: 800, color: "#fff",
-                      background: "rgba(255,255,255,0.18)", borderRadius: "8px", padding: "4px 16px",
-                    }}>⚡ {zonePower.toLocaleString()}</span>
+                <div style={{ background: pal.header, padding: "16px 22px" }}>
+                  {/* Row 1: Zone name + power */}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
+                    <span style={txt(20, 900, "#fff", { letterSpacing: "0.02em" })}>{zone.name}</span>
+                    <div style={{
+                      ...badge("rgba(255,255,255,0.18)", "#fff"),
+                      fontFamily: "monospace", fontSize: "15px",
+                      border: "1px solid rgba(255,255,255,0.25)",
+                    }}>⚡ {zonePower.toLocaleString()}</div>
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-                    <span style={{ fontSize: "13px", color: "rgba(255,255,255,0.85)", fontWeight: 700 }}>
+                  {/* Row 2: leader + count */}
+                  <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+                    <span style={txt(13, 700, "rgba(255,255,255,0.9)")}>
                       👑 หัวตี้: <strong style={{ color: "#fff" }}>{zoneLeader}</strong>
                     </span>
-                    <span style={{
-                      fontSize: "13px", color: "rgba(255,255,255,0.85)", fontWeight: 700,
-                      background: "rgba(255,255,255,0.15)", borderRadius: "6px", padding: "2px 12px",
+                    <div style={{
+                      ...badge("rgba(255,255,255,0.15)", "rgba(255,255,255,0.9)"),
+                      border: "1px solid rgba(255,255,255,0.2)",
+                      fontSize: "12px",
+                      fontFamily: "'Segoe UI','Noto Sans Thai',Arial,sans-serif",
+                      fontWeight: 700,
                     }}>
                       {zoneMembersCount} คน • {zone.teamOrder.length} ทีม
-                    </span>
+                    </div>
                   </div>
                 </div>
 
@@ -270,172 +280,150 @@ export const GVGExportLayout = forwardRef<HTMLDivElement, GVGExportLayoutProps>(
                     const isFull = assignedCount === 5;
 
                     return (
-                      <div
-                        key={colId}
-                        style={{
-                          background: "#fff",
-                          border: `1.5px solid ${pal.teamHeaderBorder}`,
-                          borderRadius: "10px",
-                          overflow: "hidden",
-                          boxShadow: "0 1px 6px rgba(0,0,0,0.07)",
-                        }}
-                      >
+                      <div key={colId} style={{
+                        background: "#fff",
+                        border: `1.5px solid ${pal.teamHeaderBorder}`,
+                        borderRadius: "10px",
+                        overflow: "hidden",
+                        boxShadow: "0 1px 6px rgba(0,0,0,0.07)",
+                      }}>
                         {/* Team Header */}
                         <div style={{
                           background: pal.teamHeaderBg,
                           borderBottom: `1.5px solid ${pal.teamHeaderBorder}`,
-                          padding: "10px 16px",
+                          padding: "10px 14px",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "space-between",
-                          gap: "12px",
+                          gap: "10px",
+                          minHeight: "56px",
                         }}>
-                          <div style={{ display: "flex", flexDirection: "column", minWidth: 0, flex: 1 }}>
-                            <span style={{ fontSize: "16px", fontWeight: 900, color: pal.teamHeaderText, lineHeight: 1.2, letterSpacing: "0.01em" }}>
-                              {col.title}
-                            </span>
-                            <span style={{
-                              fontSize: "12px", fontWeight: 700, color: pal.teamHeaderText,
-                              opacity: 0.75, marginTop: "2px",
-                              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                            }}>
+                          <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", minWidth: 0, flex: 1, gap: "3px" }}>
+                            <span style={txt(16, 900, pal.teamHeaderText, { letterSpacing: "0.01em" })}>{col.title}</span>
+                            <span style={txt(12, 700, pal.teamHeaderText, { opacity: 0.72, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" })}>
                               👑 {teamLeader}
                             </span>
                           </div>
-                          <div style={{ display: "flex", alignItems: "center", gap: "10px", flexShrink: 0 }}>
-                            <span style={{
-                              fontFamily: "monospace", fontSize: "14px", fontWeight: 800,
-                              color: pal.teamHeaderText,
-                              background: "rgba(255,255,255,0.7)",
-                              border: `1px solid ${pal.teamHeaderBorder}`,
-                              borderRadius: "7px", padding: "3px 12px",
-                            }}>⚡ {teamPower.toLocaleString()}</span>
-                            <span style={{
-                              fontSize: "13px", fontWeight: 900, color: "#fff",
-                              background: isFull ? "#16a34a" : pal.border,
-                              borderRadius: "20px", padding: "3px 14px",
-                              minWidth: "48px", textAlign: "center",
-                            }}>{assignedCount}/5</span>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
+                            <div style={{
+                              ...badge("rgba(255,255,255,0.7)", pal.teamHeaderText, pal.teamHeaderBorder),
+                              fontFamily: "monospace", fontSize: "13px",
+                            }}>⚡ {teamPower.toLocaleString()}</div>
+                            <div style={{
+                              ...badge(isFull ? "#16a34a" : pal.border, "#fff"),
+                              fontSize: "13px",
+                              fontFamily: "'Segoe UI','Noto Sans Thai',Arial,sans-serif",
+                            }}>{assignedCount}/5</div>
                           </div>
                         </div>
 
-                        {/* Table column header */}
+                        {/* Column Headers */}
                         <div style={{
                           display: "flex",
                           background: "#f1f5f9",
                           borderBottom: "1.5px solid #e2e8f0",
+                          height: "34px",
                         }}>
                           {[
-                            { label: "#",          w: COL_SLOT, align: "center" as const },
-                            { label: "ชื่อตัวละคร", w: COL_NAME, align: "left"   as const },
-                            { label: "อาชีพ",       w: COL_JOB,  align: "center" as const },
-                            { label: "ค่าพลัง",     w: COL_PWR,  align: "right"  as const },
-                          ].map((col, ci) => (
-                            <div
-                              key={col.label}
-                              style={{
-                                width: `${col.w}px`,
-                                flexShrink: 0,
-                                fontSize: "12px",
-                                fontWeight: 800,
-                                color: "#475569",
-                                padding: "8px 10px",
-                                textAlign: col.align,
-                                borderRight: ci < 3 ? "1px solid #e2e8f0" : undefined,
-                                letterSpacing: "0.04em",
-                              }}
-                            >{col.label}</div>
+                            { label: "#",           w: COL_SLOT, align: "center" as const },
+                            { label: "ชื่อตัวละคร",  w: COL_NAME, align: "left"   as const },
+                            { label: "อาชีพ",        w: COL_JOB,  align: "center" as const },
+                            { label: "ค่าพลัง",      w: COL_PWR,  align: "right"  as const },
+                          ].map((c, ci) => (
+                            <div key={c.label} style={{
+                              width: `${c.w}px`,
+                              flexShrink: 0,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: c.align === "center" ? "center" : c.align === "right" ? "flex-end" : "flex-start",
+                              padding: "0 10px",
+                              ...txt(12, 800, "#475569"),
+                              letterSpacing: "0.04em",
+                              borderRight: ci < 3 ? "1px solid #e2e8f0" : undefined,
+                            }}>{c.label}</div>
                           ))}
                         </div>
 
-                        {/* Rows — sorted by power descending */}
+                        {/* Rows — sorted by power DESC */}
                         {(() => {
-                          // Build sorted list of members (power DESC), fill empty slots at end
-                          const sortedMembers: (Member | null)[] = assignedMembers
-                            .map(item => item.member)
+                          const sorted: (Member | null)[] = assignedMembers
+                            .map(i => i.member)
                             .sort((a, b) => (b.power || 0) - (a.power || 0));
-                          // Pad to 5 slots with nulls
-                          while (sortedMembers.length < 5) sortedMembers.push(null);
+                          while (sorted.length < 5) sorted.push(null);
 
-                          return sortedMembers.map((m, rowIdx) => {
+                          return sorted.map((m, rowIdx) => {
                             const jobColor = (m?.job && JOB_COLORS[m.job]) || "#64748b";
                             const isOdd = rowIdx % 2 === 1;
 
-                            if (!m) {
-                              return (
-                                <div
-                                  key={`empty-${rowIdx}`}
-                                  style={{
-                                    display: "flex",
-                                    background: isOdd ? "#f8fafc" : "#fff",
-                                    borderBottom: rowIdx < 4 ? "1px solid #f1f5f9" : undefined,
-                                    alignItems: "center",
-                                  }}
-                                >
-                                  <div style={{ width: `${COL_SLOT}px`, flexShrink: 0, fontSize: "13px", fontFamily: "monospace", color: "#cbd5e1", fontWeight: 700, padding: "10px 10px", textAlign: "center", borderRight: "1px solid #f1f5f9" }}>{rowIdx + 1}</div>
-                                  <div style={{ width: `${COL_NAME}px`, flexShrink: 0, fontSize: "13px", color: "#cbd5e1", fontStyle: "italic", padding: "10px 12px", borderRight: "1px solid #f1f5f9" }}>— ว่าง —</div>
-                                  <div style={{ width: `${COL_JOB}px`, flexShrink: 0, fontSize: "13px", color: "#cbd5e1", padding: "10px 10px", textAlign: "center", borderRight: "1px solid #f1f5f9" }}>-</div>
-                                  <div style={{ width: `${COL_PWR}px`, flexShrink: 0, fontSize: "13px", color: "#cbd5e1", padding: "10px 12px", textAlign: "right", fontFamily: "monospace" }}>-</div>
-                                </div>
-                              );
-                            }
-
-                          return (
-                              <div
-                                key={`member-${rowIdx}`}
-                                style={{
-                                  display: "flex",
-                                  background: isOdd ? "#f8fafc" : "#fff",
-                                  borderBottom: rowIdx < 4 ? "1px solid #f1f5f9" : undefined,
-                                  alignItems: "center",
-                                }}
-                              >
+                            return (
+                              <div key={rowIdx} style={{
+                                display: "flex",
+                                background: isOdd ? "#f8fafc" : "#fff",
+                                borderBottom: rowIdx < 4 ? "1px solid #f1f5f9" : undefined,
+                                alignItems: "center",
+                                height: "40px",
+                              }}>
                                 {/* # */}
                                 <div style={{
                                   width: `${COL_SLOT}px`, flexShrink: 0,
-                                  fontSize: "14px", fontFamily: "monospace", fontWeight: 900,
-                                  color: pal.border, padding: "10px 10px",
-                                  textAlign: "center", borderRight: "1px solid #f1f5f9",
+                                  display: "flex", alignItems: "center", justifyContent: "center",
+                                  height: "100%",
+                                  borderRight: "1px solid #f1f5f9",
+                                  ...txt(14, 900, m ? pal.border : "#cbd5e1", { fontFamily: "monospace" }),
                                 }}>{rowIdx + 1}</div>
 
                                 {/* ชื่อ */}
                                 <div style={{
                                   width: `${COL_NAME}px`, flexShrink: 0,
-                                  fontSize: "14px", fontWeight: 700, color: "#0f172a",
-                                  padding: "10px 12px",
-                                  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                                  display: "flex", alignItems: "center",
+                                  height: "100%",
+                                  padding: "0 12px",
                                   borderRight: "1px solid #f1f5f9",
-                                }} title={m.name}>{m.name}</div>
+                                  overflow: "hidden",
+                                }}>
+                                  <span style={{
+                                    ...txt(14, m ? 700 : 400, m ? "#0f172a" : "#cbd5e1"),
+                                    fontStyle: m ? "normal" : "italic",
+                                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                                    display: "block",
+                                  }} title={m?.name}>{m ? m.name : "— ว่าง —"}</span>
+                                </div>
 
                                 {/* อาชีพ */}
                                 <div style={{
                                   width: `${COL_JOB}px`, flexShrink: 0,
-                                  padding: "7px 10px",
                                   display: "flex", alignItems: "center", justifyContent: "center",
+                                  height: "100%",
                                   borderRight: "1px solid #f1f5f9",
                                 }}>
-                                  <span style={{
-                                    fontSize: "12px", fontWeight: 800, color: "#fff",
-                                    background: jobColor,
-                                    borderRadius: "7px",
-                                    padding: "4px 0",
-                                    display: "block",
-                                    width: `${COL_JOB - 20}px`,
-                                    textAlign: "center",
-                                    overflow: "hidden",
-                                    textOverflow: "ellipsis",
-                                    whiteSpace: "nowrap",
-                                    letterSpacing: "0.03em",
-                                  }}>{m.job}</span>
+                                  {m ? (
+                                    <span style={{
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      height: "26px",
+                                      padding: "0",
+                                      width: `${COL_JOB - 18}px`,
+                                      background: jobColor,
+                                      borderRadius: "7px",
+                                      ...txt(12, 800, "#fff", { letterSpacing: "0.03em", lineHeight: 1 }),
+                                      overflow: "hidden",
+                                      textOverflow: "ellipsis",
+                                      whiteSpace: "nowrap",
+                                    }}>{m.job}</span>
+                                  ) : (
+                                    <span style={txt(13, 400, "#cbd5e1")}>-</span>
+                                  )}
                                 </div>
 
                                 {/* ค่าพลัง */}
                                 <div style={{
                                   width: `${COL_PWR}px`, flexShrink: 0,
-                                  fontSize: "14px", fontFamily: "monospace", fontWeight: 800,
-                                  color: pal.teamHeaderText,
-                                  padding: "10px 14px", textAlign: "right",
-                                }}>{(m.power || 0).toLocaleString()}</div>
+                                  display: "flex", alignItems: "center", justifyContent: "flex-end",
+                                  height: "100%",
+                                  padding: "0 14px",
+                                  ...txt(14, 800, m ? pal.teamHeaderText : "#cbd5e1", { fontFamily: "monospace" }),
+                                }}>{m ? (m.power || 0).toLocaleString() : "-"}</div>
                               </div>
                             );
                           });
