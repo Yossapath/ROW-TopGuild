@@ -17,6 +17,11 @@ import {
 import { useAuthStore } from "@/stores/useAuthStore";
 import type { LeaveRecord } from "@/types";
 import { useQueryClient } from "@tanstack/react-query";
+import {
+  getDefaultWarDate,
+  isValidSavedDate,
+} from "@/lib/war-dates";
+
 
 type WarDay = "อังคาร" | "พฤหัสบดี" | "อาทิตย์";
 type Status = "มา" | "ขาด" | "ลา" | null;
@@ -68,9 +73,6 @@ function getWeekDates(weekOffset: number): Record<WarDay, string> {
   return { "อังคาร": fmt(tue), "พฤหัสบดี": fmt(thu), "อาทิตย์": fmt(sun) };
 }
 
-function getCurrentWeekIndex(): number {
-  return 0; // weekOffset 0 always = this week
-}
 
 
 function formatDateTH(dateStr: string): string {
@@ -120,43 +122,49 @@ export default function AttendancePage() {
   const initialStatusMapRef = useRef<Map<string, Status>>(new Map());
 
   useEffect(() => {
-    // todayStr in Thai time (+7h)
-    const todayStr = new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().split("T")[0];
+    // ── Default date logic (Asia/Bangkok UTC+7) ───────────────────────────
+    // Rule: always default to the current or next war day (Tue/Thu/Sun)
+    // starting from 2026-09-15.
+    //
+    // localStorage is only used to preserve a user's EXPLICIT manual selection
+    // during the same browser session for UX convenience. It must NEVER override
+    // the business default if the saved date is stale (pre-cycle, or too old).
 
     const savedDate = localStorage.getItem("att_date");
-    const savedDay = localStorage.getItem("att_day") as WarDay | null;
-    const savedWeek = localStorage.getItem("att_week");
 
-    if (savedDate && savedDay) {
-      // Restore exact selection from localStorage
-      const wOffset = savedWeek !== null ? parseInt(savedWeek, 10) : 0;
-      setWeekOffset(isNaN(wOffset) ? 0 : wOffset);
+    // isValidSavedDate: passes only if savedDate is >= WAR_START_DATE (2026-09-15)
+    // and <= today + 7 days. Dates from old cycles are rejected.
+    if (isValidSavedDate(savedDate)) {
+      // Restore user's last explicit selection — it is within the new cycle.
       setSelectedDate(savedDate);
-      setSelectedDay(savedDay);
-    } else {
-      // Default: pick today's war day or first upcoming (Tue, Thu, Sun)
-      const dates = getWeekDates(0); // this week
-      let initialDay: WarDay = "อาทิตย์";
-      if (todayStr >= dates["พฤหัสบดี"]) initialDay = "อาทิตย์";
-      else if (todayStr >= dates["อังคาร"]) initialDay = "พฤหัสบดี";
-      else initialDay = "อังคาร";
+      // weekOffset is no longer stored/restored; derive it live from the date.
       setWeekOffset(0);
-      setSelectedDate(dates[initialDay]);
-      setSelectedDay(initialDay);
+    } else {
+      // Stale / missing / pre-cycle localStorage → always use smart default.
+      // Clear any stale values so they don't confuse future sessions.
+      localStorage.removeItem("att_date");
+      localStorage.removeItem("att_day");
+      localStorage.removeItem("att_week");
+
+      const defaultDate = getDefaultWarDate();
+      setSelectedDate(defaultDate);
+      setWeekOffset(0);
     }
   }, []);
+
+
 
 
   const [attendanceRecords, setAttendanceRecords] = useState<any[]>([]);
   const [offlineNames, setOfflineNames] = useState<{ name: string; job: string }[]>([]);
 
-  const loadAttendanceForWeek = useCallback(async (offset: number) => {
-    const mon = getMondayOfWeek(offset);
-    const monStr = mon.toISOString().split("T")[0];
-    const dates = getWeekDates(offset);
-    const sunStr = dates["อาทิตย์"];
+  // Fetch attendance records for a specific date only.
+  // Uses ?date=YYYY-MM-DD which maps to a Firestore equality query — much cheaper
+  // than the old startDate..endDate week range (which read up to 7x the data).
+  const loadAttendanceForDate = useCallback(async (dateStr: string) => {
+    if (!dateStr) return;
     try {
-      const res = await fetch(`/api/attendance?startDate=${monStr}&endDate=${sunStr}`);
+      const res = await fetch(`/api/attendance?date=${dateStr}`);
       if (res.ok) {
         const json = await res.json();
         const data = json.data ?? json;
@@ -170,8 +178,10 @@ export default function AttendancePage() {
   }, []);
 
   useEffect(() => {
-    loadAttendanceForWeek(weekOffset);
-  }, [weekOffset, loadAttendanceForWeek]);
+    loadAttendanceForDate(selectedDate);
+  }, [selectedDate, loadAttendanceForDate]);
+
+
 
   useEffect(() => {
     async function fetchData() {
@@ -232,8 +242,9 @@ export default function AttendancePage() {
 
   useEffect(() => {
     if (!selectedDate) { setRows([]); return; }
+    // Save only the selected date as a UX preference — validated on next load.
+    // att_day and att_week are no longer saved (they caused stale-state bugs).
     localStorage.setItem("att_date", selectedDate);
-    localStorage.setItem("att_day", getDayName(selectedDate));
 
     const dayName = getDayName(selectedDate);
     const baseRows = flattenRoster(roster);
@@ -272,9 +283,9 @@ export default function AttendancePage() {
     setSelectedDay(day);
     const dates = getWeekDates(weekOffset);
     setSelectedDate(dates[day]);
-    localStorage.setItem("att_day", day);
-    localStorage.setItem("att_week", String(weekOffset));
+    // att_date is saved by the selectedDate useEffect — no extra writes needed here.
   };
+
 
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const v = e.target.value;
@@ -365,7 +376,8 @@ export default function AttendancePage() {
         initialStatusMapRef.current.set(rec.name, rec.status);
       });
 
-      await loadAttendanceForWeek(weekOffset);
+      await loadAttendanceForDate(selectedDate);
+
     } catch (e: unknown) {
       setMsg({ type: "err", text: e instanceof Error ? e.message : "เกิดข้อผิดพลาด" });
     } finally {
@@ -411,7 +423,8 @@ export default function AttendancePage() {
       });
       setRows((prev) => prev.map((r) => ({ ...r, status: null })));
 
-      await loadAttendanceForWeek(weekOffset);
+      await loadAttendanceForDate(selectedDate);
+
     } catch (e: unknown) {
       setMsg({ type: "err", text: e instanceof Error ? e.message : "เกิดข้อผิดพลาด" });
     } finally {
