@@ -100,6 +100,47 @@ export default function TeamsPage() {
 
   const handleExportPNG = async () => {
     if (!exportLayoutRef.current || isExporting) return;
+    if (!data) {
+      alert("ไม่พบข้อมูลสำหรับการ Export");
+      return;
+    }
+
+    // Data Consistency Check (Section 13)
+    const targetZones = data.zones.filter((z) => z.type === (activeTab === "sub" ? "sub" : "main"));
+    const assignedMemberSet = new Set<string>();
+    const duplicateMembers: string[] = [];
+    let totalAssignedInZones = 0;
+
+    for (const zone of targetZones) {
+      for (const colId of zone.teamOrder) {
+        const col = data.columns[colId];
+        if (!col) continue;
+        for (const memId of col.memberIds) {
+          if (!memId) continue;
+          totalAssignedInZones++;
+          if (assignedMemberSet.has(memId)) {
+            duplicateMembers.push(data.members[memId]?.name || memId);
+          } else {
+            assignedMemberSet.add(memId);
+          }
+          if (!data.members[memId]) {
+            alert(`ไม่สามารถ Export ได้ เนื่องจากข้อมูลทีมไม่สมบูรณ์ (ไม่พบข้อมูลผู้เล่น: ${memId})`);
+            return;
+          }
+        }
+      }
+    }
+
+    if (totalAssignedInZones === 0) {
+      alert("ไม่สามารถ Export ได้ เนื่องจากยังไม่มีการจัดสมาชิกลงในทีม");
+      return;
+    }
+
+    if (duplicateMembers.length > 0) {
+      alert(`ไม่สามารถ Export ได้ เนื่องจากพบสมาชิกซ้ำในหลายทีม: ${duplicateMembers.join(", ")}`);
+      return;
+    }
+
     setIsExporting(true);
     try {
       // Allow brief delay for full render
@@ -109,13 +150,13 @@ export default function TeamsPage() {
         scale: 2,
         useCORS: true,
         logging: false,
-        backgroundColor: "#0b1329",
+        backgroundColor: "#090f1f",
       });
 
       const dateStr = new Date().toISOString().split("T")[0];
       const dataUrl = canvas.toDataURL("image/png");
       const link = document.createElement("a");
-      link.download = `gvg-teams-${dateStr}.png`;
+      link.download = `GVG-Team-Setup-${dateStr}.png`;
       link.href = dataUrl;
       link.click();
     } catch (err) {
@@ -1019,7 +1060,7 @@ export default function TeamsPage() {
                 ยืนยันการล้างทีม?
               </h3>
               <p className="text-sm text-slate-600 dark:text-[#8B93A7] leading-relaxed">
-                สมาชิกและการจัดทีมทั้งหมดในหน้านี้จะถูกล้างออก คุณต้องการดำเนินการต่อหรือไม่?
+                สมาชิกทั้งหมดจะถูกนำออกจากการจัดทีม คุณต้องการดำเนินการต่อหรือไม่?
               </p>
             </div>
             <div className="p-4 bg-slate-50 dark:bg-[#272C38]/50 border-t border-slate-100 dark:border-[#2D3342] flex items-center justify-end gap-3">
@@ -1054,7 +1095,7 @@ export default function TeamsPage() {
           zIndex: isExporting ? 99998 : -9999,
           opacity: isExporting ? 1 : 0,
           pointerEvents: "none",
-          width: "2040px",
+          width: "2100px",
           overflow: "hidden",
         }}
       >

@@ -16,20 +16,35 @@ interface GVGExportLayoutProps {
 
 export const GVGExportLayout = forwardRef<HTMLDivElement, GVGExportLayoutProps>(
   ({ zones, columns, members, title = "GVG TEAM SETUP" }, ref) => {
-    // Calculate total summary values
-    const totalMembers = zones.reduce((sum, z) => {
+    // 1. Filter only teams that have at least one valid member
+    // 2. Filter only zones that have at least one active team
+    const activeZones = zones
+      .map((zone) => {
+        const activeTeamOrder = zone.teamOrder.filter((colId) => {
+          const col = columns[colId];
+          return col && col.memberIds.some((id) => id && members[id]);
+        });
+        return {
+          ...zone,
+          teamOrder: activeTeamOrder,
+        };
+      })
+      .filter((zone) => zone.teamOrder.length > 0);
+
+    // Calculate total summary statistics based on active teams
+    const totalMembers = activeZones.reduce((sum, z) => {
       return (
         sum +
         z.teamOrder.reduce((tSum, colId) => {
           const col = columns[colId];
-          return tSum + (col ? col.memberIds.filter(Boolean).length : 0);
+          return tSum + (col ? col.memberIds.filter((id) => id && members[id]).length : 0);
         }, 0)
       );
     }, 0);
 
-    const totalTeams = zones.reduce((sum, z) => sum + z.teamOrder.length, 0);
+    const totalTeams = activeZones.reduce((sum, z) => sum + z.teamOrder.length, 0);
 
-    const totalPower = zones.reduce((sum, z) => {
+    const totalPower = activeZones.reduce((sum, z) => {
       return (
         sum +
         z.teamOrder.reduce((tSum, colId) => {
@@ -45,22 +60,25 @@ export const GVGExportLayout = forwardRef<HTMLDivElement, GVGExportLayoutProps>(
       );
     }, 0);
 
-    // Determine grid columns: 3 columns if max teams in a zone <= 6, else 4 columns
-    const maxTeamsInZone = Math.max(...zones.map((z) => z.teamOrder.length), 1);
+    // Determine grid columns dynamically:
+    // If a zone has <= 3 teams: 3 cols
+    // If <= 6 teams: 3 cols (2 rows of 3)
+    // If > 6 teams: 4 cols
+    const maxTeamsInZone = Math.max(...activeZones.map((z) => z.teamOrder.length), 1);
     const gridColsClass = maxTeamsInZone > 6 ? "grid-cols-4" : "grid-cols-3";
 
     return (
       <div
         ref={ref}
         id="gvg-export-canvas"
-        className="w-[2040px] bg-[#0b1329] text-white p-8 space-y-7 font-sans"
-        style={{ boxSizing: "border-box", minHeight: "1400px" }}
+        className="w-[2100px] bg-[#090f1f] text-white p-8 space-y-6 font-sans"
+        style={{ boxSizing: "border-box", minHeight: "1485px" }}
       >
         {/* Main Header & Global Summary */}
-        <div className="bg-[#111c35] border border-slate-700/80 rounded-2xl p-6 shadow-xl space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-700/70 pb-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-600 to-blue-500 flex items-center justify-center font-black text-xl shadow-lg">
+        <div className="bg-[#0f192e] border border-slate-700/80 rounded-2xl p-5 shadow-2xl space-y-3.5">
+          <div className="flex items-center justify-between border-b border-slate-700/70 pb-3.5">
+            <div className="flex items-center gap-3.5">
+              <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-sky-600 to-blue-500 flex items-center justify-center font-black text-2xl shadow-lg">
                 🛡️
               </div>
               <div>
@@ -68,12 +86,12 @@ export const GVGExportLayout = forwardRef<HTMLDivElement, GVGExportLayoutProps>(
                   {title}
                 </h1>
                 <p className="text-xs text-slate-400 font-semibold tracking-wide">
-                  GUILD VS GUILD BATTLE SQUAD OVERVIEW
+                  GUILD VS GUILD BATTLE SQUAD OVERVIEW • {activeZones.length} ACTIVE ZONE{activeZones.length > 1 ? "S" : ""}
                 </p>
               </div>
             </div>
             <div className="text-right">
-              <span className="text-xs font-bold text-slate-400 block">EXPORTED DATE</span>
+              <span className="text-[11px] font-bold text-slate-400 block tracking-wider uppercase">EXPORTED DATE</span>
               <span className="text-sm font-mono font-bold text-sky-400">
                 {new Date().toLocaleDateString("th-TH", {
                   year: "numeric",
@@ -87,20 +105,20 @@ export const GVGExportLayout = forwardRef<HTMLDivElement, GVGExportLayoutProps>(
           </div>
 
           {/* Top Summary Bar */}
-          <div className="flex flex-wrap items-center justify-between gap-4 text-sm font-bold bg-[#0a1122]/80 px-6 py-3.5 rounded-xl border border-slate-700/50">
+          <div className="flex flex-wrap items-center justify-between gap-4 text-sm font-bold bg-[#070c18]/90 px-5 py-3 rounded-xl border border-slate-700/50">
             {/* Zones summary badges */}
-            <div className="flex items-center gap-5 flex-wrap">
-              {zones.map((zone) => {
+            <div className="flex items-center gap-4 flex-wrap">
+              {activeZones.map((zone) => {
                 const count = zone.teamOrder.reduce((sum, colId) => {
                   const col = columns[colId];
-                  return sum + (col ? col.memberIds.filter(Boolean).length : 0);
+                  return sum + (col ? col.memberIds.filter((id) => id && members[id]).length : 0);
                 }, 0);
-                const cap = zone.teamOrder.length > 0 ? zone.teamOrder.length * 5 : 60;
+                const cap = zone.teamOrder.length * 5;
                 const zoneDisplayName = zone.name.replace(/โซน/i, "Zone ").trim();
                 return (
                   <div key={zone.id} className="flex items-center gap-2">
                     <span className="text-sky-300 font-black">{zoneDisplayName}:</span>
-                    <span className="text-white font-mono bg-slate-800/80 border border-slate-600/50 px-2.5 py-0.5 rounded-md text-xs">
+                    <span className="text-white font-mono bg-slate-800 border border-slate-600/60 px-2.5 py-0.5 rounded-md text-xs">
                       {count}/{cap} คน
                     </span>
                   </div>
@@ -109,7 +127,7 @@ export const GVGExportLayout = forwardRef<HTMLDivElement, GVGExportLayoutProps>(
             </div>
 
             {/* Total stats */}
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-5">
               <div className="flex items-center gap-2">
                 <span className="text-emerald-400 font-black">สมาชิกทั้งหมด:</span>
                 <span className="text-white font-mono bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 px-3 py-0.5 rounded-md text-xs">
@@ -134,11 +152,18 @@ export const GVGExportLayout = forwardRef<HTMLDivElement, GVGExportLayoutProps>(
           </div>
         </div>
 
+        {/* If no active teams are present */}
+        {activeZones.length === 0 && (
+          <div className="p-16 text-center text-slate-400 border-2 border-dashed border-slate-700 rounded-2xl bg-[#0f192e]/60 font-bold text-lg">
+            ไม่มีทีมที่มีสมาชิกสำหรับการ Export
+          </div>
+        )}
+
         {/* Zones and Team Cards */}
-        {zones.map((zone) => {
+        {activeZones.map((zone) => {
           const zoneMembersCount = zone.teamOrder.reduce((sum, colId) => {
             const col = columns[colId];
-            return sum + (col ? col.memberIds.filter(Boolean).length : 0);
+            return sum + (col ? col.memberIds.filter((id) => id && members[id]).length : 0);
           }, 0);
 
           const zonePower = zone.teamOrder.reduce((sum, colId) => {
@@ -155,48 +180,50 @@ export const GVGExportLayout = forwardRef<HTMLDivElement, GVGExportLayoutProps>(
           const zoneHeading = zone.name.replace(/โซน/i, "ZONE ").trim().toUpperCase();
 
           return (
-            <div key={zone.id} className="space-y-4">
+            <div key={zone.id} className="space-y-3.5">
               {/* Distinct Zone Header */}
-              <div className="flex items-center justify-between pb-3 border-b-2 border-slate-700/80">
+              <div className="flex items-center justify-between pb-2.5 border-b-2 border-slate-700/80">
                 <div className="flex items-center gap-3">
-                  <div className="w-2.5 h-7 bg-sky-500 rounded-full" />
-                  <h2 className="text-2xl font-black text-white tracking-wider uppercase">
+                  <div className="w-2.5 h-6 bg-sky-500 rounded-full" />
+                  <h2 className="text-xl font-black text-white tracking-wider uppercase">
                     {zoneHeading}
                   </h2>
-                  <span className="text-xs font-bold bg-sky-500/20 text-sky-300 border border-sky-500/30 px-3 py-1 rounded-full">
+                  <span className="text-xs font-bold bg-sky-500/20 text-sky-300 border border-sky-500/30 px-2.5 py-0.5 rounded-full">
                     {zone.teamOrder.length} ทีม
                   </span>
-                  <span className="text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-3 py-1 rounded-full">
+                  <span className="text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2.5 py-0.5 rounded-full">
                     {zoneMembersCount} คน
                   </span>
                 </div>
-                <div className="text-sm font-bold text-slate-400">
+                <div className="text-xs font-bold text-slate-400">
                   พลังรวมโซน:{" "}
-                  <span className="font-mono text-amber-400 text-base font-bold">
+                  <span className="font-mono text-amber-400 text-sm font-bold">
                     {zonePower.toLocaleString()}
                   </span>
                 </div>
               </div>
 
               {/* Team Cards Grid */}
-              <div className={`grid ${gridColsClass} gap-4`}>
+              <div className={`grid ${gridColsClass} gap-3.5`}>
                 {zone.teamOrder.map((colId) => {
                   const col = columns[colId];
                   if (!col) return null;
 
-                  const assignedCount = col.memberIds.filter(Boolean).length;
+                  const assignedMembers = col.memberIds
+                    .map((id, idx) => ({ id, slotIdx: idx, member: id ? members[id] : null }))
+                    .filter((item) => item.member !== null);
+
+                  const assignedCount = assignedMembers.length;
                   const isFull = assignedCount === 5;
-                  const teamPower = col.memberIds.reduce((sum, memId) => {
-                    return sum + (memId && members[memId] ? members[memId].power || 0 : 0);
-                  }, 0);
+                  const teamPower = assignedMembers.reduce((sum, item) => sum + (item.member?.power || 0), 0);
 
                   return (
                     <div
                       key={colId}
-                      className="bg-[#141e33] rounded-xl border border-slate-700/80 overflow-hidden shadow-md flex flex-col"
+                      className="bg-[#121c32] rounded-xl border border-slate-700/80 overflow-hidden shadow-md flex flex-col"
                     >
                       {/* Team Card Header */}
-                      <div className="bg-[#0e172a] px-4 py-2.5 border-b border-slate-700/80 flex items-center justify-between">
+                      <div className="bg-[#0b1325] px-3.5 py-2 border-b border-slate-700/80 flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-black text-white tracking-wide">
                             {col.title.toUpperCase()}
@@ -210,7 +237,7 @@ export const GVGExportLayout = forwardRef<HTMLDivElement, GVGExportLayoutProps>(
                             className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
                               isFull
                                 ? "bg-emerald-500 text-white"
-                                : "bg-slate-700/80 text-slate-300"
+                                : "bg-slate-700 text-slate-300"
                             }`}
                           >
                             {assignedCount}/5
@@ -218,8 +245,8 @@ export const GVGExportLayout = forwardRef<HTMLDivElement, GVGExportLayoutProps>(
                         </div>
                       </div>
 
-                      {/* Team Member Rows (5 slots) */}
-                      <div className="p-2 space-y-1.5 flex-1 bg-[#10182b]">
+                      {/* Team Member Rows */}
+                      <div className="p-2 space-y-1.5 flex-1 bg-[#0d162a]">
                         {Array.from({ length: 5 }).map((_, slotIdx) => {
                           const memberId = col.memberIds[slotIdx];
                           const m = memberId ? members[memberId] : null;
@@ -229,7 +256,7 @@ export const GVGExportLayout = forwardRef<HTMLDivElement, GVGExportLayoutProps>(
                             return (
                               <div
                                 key={slotIdx}
-                                className="h-9 px-3 rounded-lg border border-dashed border-slate-800 bg-[#0a101f]/60 flex items-center justify-between text-slate-600"
+                                className="h-8 px-2.5 rounded-lg border border-dashed border-slate-800 bg-[#080d1a]/50 flex items-center justify-between text-slate-600"
                               >
                                 <span className="text-xs font-mono font-bold text-slate-600 w-4">
                                   {slotIdx + 1}
@@ -245,7 +272,7 @@ export const GVGExportLayout = forwardRef<HTMLDivElement, GVGExportLayoutProps>(
                           return (
                             <div
                               key={slotIdx}
-                              className="h-9 px-3 rounded-lg border border-slate-700/60 bg-[#16223b] flex items-center gap-2.5 shadow-xs"
+                              className="h-8 px-2.5 rounded-lg border border-slate-700/60 bg-[#16233d] flex items-center gap-2 shadow-xs"
                             >
                               <span className="text-xs font-mono font-extrabold text-sky-400 w-4 text-center shrink-0">
                                 {slotIdx + 1}
@@ -257,12 +284,12 @@ export const GVGExportLayout = forwardRef<HTMLDivElement, GVGExportLayoutProps>(
                                 {m.name}
                               </span>
                               <span
-                                className="text-[10px] font-bold text-white px-2.5 py-0.5 rounded-full shrink-0 shadow-xs text-center"
+                                className="text-[10px] font-bold text-white px-2 py-0.5 rounded-full shrink-0 shadow-xs text-center"
                                 style={{ backgroundColor: jobColor }}
                               >
                                 {m.job}
                               </span>
-                              <span className="text-xs font-bold text-amber-300 font-mono text-right shrink-0 tabular-nums w-16">
+                              <span className="text-xs font-bold text-amber-300 font-mono text-right shrink-0 tabular-nums w-14">
                                 {(m.power || 0).toLocaleString()}
                               </span>
                             </div>
@@ -273,12 +300,6 @@ export const GVGExportLayout = forwardRef<HTMLDivElement, GVGExportLayoutProps>(
                   );
                 })}
               </div>
-
-              {zone.teamOrder.length === 0 && (
-                <div className="p-8 text-center text-slate-500 border border-dashed border-slate-800 rounded-xl bg-[#0a101f]/40 font-bold">
-                  ไม่มีทีมในโซนนี้
-                </div>
-              )}
             </div>
           );
         })}
