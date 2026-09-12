@@ -19,12 +19,13 @@ function getTeamLeader(col: Column | undefined, members: Record<string, Member>)
   if (!col) return "ว่าง";
   const assigned = col.memberIds
     .map((id) => (id ? members[id] : null))
-    .filter((m): m is Member => m !== null && Boolean(m.name));
+    // Fix: use != null (loose) to guard against both null AND undefined (when members[id] doesn't exist)
+    .filter((m): m is Member => m != null && Boolean(m.name));
 
   if (assigned.length === 0) return "ว่าง";
 
   // Return the member with the highest power as team leader
-  const leader = assigned.reduce((top, m) => (m.power > top.power ? m : top), assigned[0]);
+  const leader = assigned.reduce((top, m) => ((m.power ?? 0) > (top.power ?? 0) ? m : top), assigned[0]);
   return leader.name;
 }
 
@@ -233,7 +234,8 @@ export const GVGExportLayout = forwardRef<HTMLDivElement, GVGExportLayoutProps>(
                     const teamLeader = getTeamLeader(col, members);
                     const assignedMembers = col.memberIds
                       .map((id, idx) => ({ id, slotIdx: idx, member: id ? members[id] : null }))
-                      .filter((item) => item.member !== null);
+                      // Fix: use != null to guard against both null AND undefined
+                      .filter((item): item is { id: string; slotIdx: number; member: Member } => item.member != null);
 
                     const assignedCount = assignedMembers.length;
                     const teamPower = assignedMembers.reduce((sum, item) => sum + (item.member?.power || 0), 0);
