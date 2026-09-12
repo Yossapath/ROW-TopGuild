@@ -41,14 +41,14 @@ const txt = (size: number, weight: number | string, color: string, align: "left"
 
 const pill = (bg: string, color: string, border?: string): React.CSSProperties => ({
   display: "inline-block",
-  padding: "6px 16px 8px 16px",
+  padding: "8px 16px 10px 16px",
   backgroundColor: bg,
   color,
   border: border ? "2px solid " + border : "none",
   borderRadius: "10px",
   fontWeight: 900,
   fontSize: "16px",
-  lineHeight: 1.1,
+  lineHeight: 1,
   textAlign: "center",
   whiteSpace: "nowrap",
 });
@@ -66,25 +66,8 @@ export const GVGExportLayout = forwardRef<HTMLDivElement, GVGExportLayoutProps>(
       }))
       .filter((zone) => zone.teamOrder.length > 0);
 
-    // Split zones into 2 columns (Left and Right)
-    const leftZones: Zone[] = [];
-    const rightZones: Zone[] = [];
-    let leftCount = 0;
-    let rightCount = 0;
-
-    activeZones.forEach(zone => {
-      const tCount = zone.teamOrder.length;
-      if (leftCount <= rightCount) {
-        leftZones.push(zone);
-        leftCount += tCount;
-      } else {
-        rightZones.push(zone);
-        rightCount += tCount;
-      }
-    });
-
     const renderZone = (zone: Zone, zIdx: number) => {
-      const pal = ZONE_PALETTES[activeZones.findIndex(z => z.id === zone.id) % ZONE_PALETTES.length];
+      const pal = ZONE_PALETTES[zIdx % ZONE_PALETTES.length];
       const teams = zone.teamOrder;
       const teamCount = teams.length;
       
@@ -103,7 +86,6 @@ export const GVGExportLayout = forwardRef<HTMLDivElement, GVGExportLayoutProps>(
           background: "#f8fafc",
           borderRadius: "24px",
           border: "4px solid " + pal.border,
-          overflow: "hidden",
           boxShadow: "0 8px 30px rgba(0,0,0,0.08)",
           display: "flex",
           flexDirection: "column",
@@ -111,10 +93,11 @@ export const GVGExportLayout = forwardRef<HTMLDivElement, GVGExportLayoutProps>(
           {/* ZONE HEADER */}
           <div style={{
             background: pal.bg,
-            padding: "24px 32px 28px 32px",
+            padding: "24px 32px 30px 32px",
             display: "flex",
             justifyContent: "space-between",
-            alignItems: "center"
+            alignItems: "center",
+            borderRadius: "18px 18px 0 0",
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
               <span style={txt(32, 900, "#fff")}>{zone.name}</span>
@@ -145,17 +128,17 @@ export const GVGExportLayout = forwardRef<HTMLDivElement, GVGExportLayoutProps>(
                   background: "#fff",
                   border: "2px solid " + pal.teamBorder,
                   borderRadius: "16px",
-                  overflow: "hidden",
                   boxShadow: "0 4px 12px rgba(0,0,0,0.03)",
                 }}>
                   {/* TEAM HEADER */}
                   <div style={{
                     background: pal.teamBg,
                     borderBottom: "2px solid " + pal.teamBorder,
-                    padding: "16px 24px",
+                    padding: "16px 24px 20px 24px",
                     display: "flex",
                     justifyContent: "space-between",
                     alignItems: "center",
+                    borderRadius: "14px 14px 0 0",
                   }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
                       <span style={txt(24, 900, pal.teamText)}>{col.title}</span>
@@ -189,22 +172,18 @@ export const GVGExportLayout = forwardRef<HTMLDivElement, GVGExportLayoutProps>(
                         <div key={slotIdx} style={{
                           display: "flex",
                           alignItems: "center",
-                          height: "64px",
                           background: isOdd ? "#f8fafc" : "#fff",
                           borderRadius: "12px",
-                          padding: "0 12px",
+                          padding: "16px 12px",
                         }}>
                           {/* # */}
-                          <div style={{ width: "60px", flexShrink: 0, ...txt(20, 900, m ? pal.border : "#cbd5e1", "center") }}>
+                          <div style={{ width: "60px", flexShrink: 0, ...txt(20, 900, m ? pal.border : "#cbd5e1", "center", { lineHeight: "normal" }) }}>
                             {slotIdx + 1}
                           </div>
                           
                           {/* NAME */}
-                          <div style={{ flex: 1, padding: "0 20px", minWidth: 0 }}>
-                            <div style={{
-                              ...txt(24, m ? 800 : 400, m ? "#0f172a" : "#cbd5e1", "left"),
-                              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"
-                            }}>
+                          <div style={{ flex: 1, padding: "0 20px" }}>
+                            <div style={txt(26, m ? 800 : 400, m ? "#0f172a" : "#cbd5e1", "left", { lineHeight: "normal", wordBreak: "break-word" })}>
                               {m ? m.name : "- ว่าง -"}
                             </div>
                           </div>
@@ -213,17 +192,19 @@ export const GVGExportLayout = forwardRef<HTMLDivElement, GVGExportLayoutProps>(
                           <div style={{ width: "200px", flexShrink: 0, display: "flex", justifyContent: "center" }}>
                             {m ? (
                               <div style={{
+                                display: "inline-block",
                                 background: jobColor,
                                 color: "#fff",
                                 fontSize: "16px",
                                 fontWeight: "bold",
-                                padding: "6px 16px 8px 16px",
+                                padding: "8px 16px 10px 16px",
                                 borderRadius: "8px",
                                 width: "90%",
                                 textAlign: "center",
                                 whiteSpace: "nowrap",
                                 overflow: "hidden",
                                 textOverflow: "ellipsis",
+                                lineHeight: 1.1,
                               }}>
                                 {m.job}
                               </div>
@@ -243,7 +224,7 @@ export const GVGExportLayout = forwardRef<HTMLDivElement, GVGExportLayoutProps>(
       );
     };
 
-    const CANVAS_W = 2000;
+    const CANVAS_W = 2800; // Wide enough for 3 columns side-by-side
     const PAD = 60;
 
     return (
@@ -256,7 +237,6 @@ export const GVGExportLayout = forwardRef<HTMLDivElement, GVGExportLayoutProps>(
           padding: PAD + "px",
           boxSizing: "border-box",
           fontFamily: "'Segoe UI', 'Noto Sans Thai', sans-serif",
-          lineHeight: 1.3,
           position: "relative",
           display: "flex",
           flexDirection: "column",
@@ -300,21 +280,14 @@ export const GVGExportLayout = forwardRef<HTMLDivElement, GVGExportLayoutProps>(
           </div>
         </div>
 
-        {/* 2-COLUMN LAYOUT */}
+        {/* 3-COLUMN ZONES LAYOUT (Side-by-side) */}
         <div style={{
           display: "grid",
-          gridTemplateColumns: "1fr 1fr",
+          gridTemplateColumns: "repeat(" + activeZones.length + ", 1fr)",
           gap: "40px",
           alignItems: "start",
         }}>
-          {/* LEFT COLUMN */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "40px" }}>
-            {leftZones.map(renderZone)}
-          </div>
-          {/* RIGHT COLUMN */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "40px" }}>
-            {rightZones.map(renderZone)}
-          </div>
+          {activeZones.map((zone, idx) => renderZone(zone, idx))}
         </div>
       </div>
     );
