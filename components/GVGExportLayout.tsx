@@ -36,13 +36,10 @@ const ZONE_PALETTES = [
   { header: "linear-gradient(135deg,#78350f 0%,#d97706 100%)", border: "#d97706", teamHeaderBg: "#fef3c7", teamHeaderText: "#78350f", teamHeaderBorder: "#fcd34d" },
 ];
 
-// Reusable badge style — use flex + explicit height so Thai text always centers correctly in html2canvas
+// Reusable badge style — use padding with more bottom space to offset Thai font baseline drop in html2canvas
 const badge = (bg: string, color: string, border?: string): React.CSSProperties => ({
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  height: "28px",
-  padding: "0 14px",
+  display: "inline-block",
+  padding: "4px 14px 6px 14px", // Top 4px, Bottom 6px to push text up
   borderRadius: "8px",
   background: bg,
   border: border ? `1.5px solid ${border}` : undefined,
@@ -50,9 +47,9 @@ const badge = (bg: string, color: string, border?: string): React.CSSProperties 
   fontWeight: 800,
   fontSize: "13px",
   fontFamily: "monospace",
-  lineHeight: 1,
+  lineHeight: 1.1, // Increase from 1.0 to prevent cropping
   whiteSpace: "nowrap" as const,
-  flexShrink: 0,
+  textAlign: "center",
 });
 
 export const GVGExportLayout = forwardRef<HTMLDivElement, GVGExportLayoutProps>(
@@ -116,7 +113,7 @@ export const GVGExportLayout = forwardRef<HTMLDivElement, GVGExportLayoutProps>(
           padding: `${PAD}px`,
           fontFamily: "'Segoe UI','Noto Sans Thai',Arial,sans-serif",
           color: "#0f172a",
-          lineHeight: 1.3,
+          lineHeight: 1.4,
         }}
       >
         {/* ═══ HEADER ═══ */}
@@ -238,7 +235,7 @@ export const GVGExportLayout = forwardRef<HTMLDivElement, GVGExportLayoutProps>(
                 boxShadow: "0 4px 18px rgba(0,0,0,0.10)",
               }}>
                 {/* Zone Header */}
-                <div style={{ background: pal.header, padding: "16px 22px" }}>
+                <div style={{ background: pal.header, padding: "16px 22px 20px 22px" }}>
                   {/* Row 1: Zone name + power */}
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
                     <span style={txt(20, 900, "#fff", { letterSpacing: "0.02em" })}>{zone.name}</span>
@@ -291,12 +288,11 @@ export const GVGExportLayout = forwardRef<HTMLDivElement, GVGExportLayoutProps>(
                         <div style={{
                           background: pal.teamHeaderBg,
                           borderBottom: `1.5px solid ${pal.teamHeaderBorder}`,
-                          padding: "10px 14px",
+                          padding: "10px 14px 14px 14px",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "space-between",
                           gap: "10px",
-                          minHeight: "56px",
                         }}>
                           <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", minWidth: 0, flex: 1, gap: "3px" }}>
                             <span style={txt(16, 900, pal.teamHeaderText, { letterSpacing: "0.01em" })}>{col.title}</span>
