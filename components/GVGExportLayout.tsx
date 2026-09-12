@@ -4,7 +4,13 @@ import React, { forwardRef } from "react";
 import { JOB_COLORS } from "@/lib/utils";
 
 type Member = { id: string; name: string; job: string; power: number };
-type Column = { id: string; title: string; memberIds: (string | null)[]; type: "main" | "sub" | "unassigned"; locked: boolean };
+type Column = {
+  id: string;
+  title: string;
+  memberIds: (string | null)[];
+  type: "main" | "sub" | "unassigned";
+  locked: boolean;
+};
 type Zone = { id: string; name: string; type: "main" | "sub"; teamOrder: string[] };
 
 interface GVGExportLayoutProps {
@@ -14,214 +20,253 @@ interface GVGExportLayoutProps {
   title?: string;
 }
 
-// UX 3: Leader = member with highest power in the team (flexible, no hardcoded names)
 function getTeamLeader(col: Column | undefined, members: Record<string, Member>): string {
   if (!col) return "ว่าง";
   const assigned = col.memberIds
     .map((id) => (id ? members[id] : null))
-    // Fix: use != null (loose) to guard against both null AND undefined (when members[id] doesn't exist)
     .filter((m): m is Member => m != null && Boolean(m.name));
-
   if (assigned.length === 0) return "ว่าง";
-
-  // Return the member with the highest power as team leader
-  const leader = assigned.reduce((top, m) => ((m.power ?? 0) > (top.power ?? 0) ? m : top), assigned[0]);
-  return leader.name;
+  return assigned.reduce((top, m) => ((m.power ?? 0) > (top.power ?? 0) ? m : top), assigned[0]).name;
 }
+
+const ZONE_PALETTES = [
+  { header: "linear-gradient(135deg,#1e3a8a 0%,#2563eb 100%)", border: "#2563eb", teamHeaderBg: "#dbeafe", teamHeaderText: "#1e3a8a", teamHeaderBorder: "#93c5fd" },
+  { header: "linear-gradient(135deg,#064e3b 0%,#059669 100%)", border: "#059669", teamHeaderBg: "#d1fae5", teamHeaderText: "#064e3b", teamHeaderBorder: "#6ee7b7" },
+  { header: "linear-gradient(135deg,#4c1d95 0%,#7c3aed 100%)", border: "#7c3aed", teamHeaderBg: "#ede9fe", teamHeaderText: "#4c1d95", teamHeaderBorder: "#c4b5fd" },
+  { header: "linear-gradient(135deg,#78350f 0%,#d97706 100%)", border: "#d97706", teamHeaderBg: "#fef3c7", teamHeaderText: "#78350f", teamHeaderBorder: "#fcd34d" },
+];
+
+// Reusable badge style — use flex + explicit height so Thai text always centers correctly in html2canvas
+const badge = (bg: string, color: string, border?: string): React.CSSProperties => ({
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  height: "28px",
+  padding: "0 14px",
+  borderRadius: "8px",
+  background: bg,
+  border: border ? `1.5px solid ${border}` : undefined,
+  color,
+  fontWeight: 800,
+  fontSize: "13px",
+  fontFamily: "monospace",
+  lineHeight: 1,
+  whiteSpace: "nowrap" as const,
+  flexShrink: 0,
+});
 
 export const GVGExportLayout = forwardRef<HTMLDivElement, GVGExportLayoutProps>(
   ({ zones, columns, members, title = "GVG TEAM SETUP" }, ref) => {
-    // Filter only teams that have at least one valid member (Topguild logic: Skip empty teams)
+
     const activeZones = zones
-      .map((zone) => {
-        const activeTeamOrder = zone.teamOrder.filter((colId) => {
+      .map((zone) => ({
+        ...zone,
+        teamOrder: zone.teamOrder.filter((colId) => {
           const col = columns[colId];
           return col && col.memberIds.some((id) => id && members[id]);
-        });
-        return {
-          ...zone,
-          teamOrder: activeTeamOrder,
-        };
-      })
+        }),
+      }))
       .filter((zone) => zone.teamOrder.length > 0);
 
-    // Calculate total summary statistics based on active teams
-    const totalMembers = activeZones.reduce((sum, z) => {
-      return (
-        sum +
-        z.teamOrder.reduce((tSum, colId) => {
-          const col = columns[colId];
-          return tSum + (col ? col.memberIds.filter((id) => id && members[id]).length : 0);
-        }, 0)
-      );
-    }, 0);
+    const totalMembers = activeZones.reduce(
+      (s, z) => s + z.teamOrder.reduce((ts, colId) => {
+        const col = columns[colId];
+        return ts + (col ? col.memberIds.filter((id) => id && members[id]).length : 0);
+      }, 0), 0);
 
-    const totalTeams = activeZones.reduce((sum, z) => sum + z.teamOrder.length, 0);
+    const totalTeams = activeZones.reduce((s, z) => s + z.teamOrder.length, 0);
 
-    const totalPower = activeZones.reduce((sum, z) => {
-      return (
-        sum +
-        z.teamOrder.reduce((tSum, colId) => {
-          const col = columns[colId];
-          if (!col) return tSum;
-          return (
-            tSum +
-            col.memberIds.reduce((mSum, memId) => {
-              return mSum + (memId && members[memId] ? members[memId].power || 0 : 0);
-            }, 0)
-          );
-        }, 0)
-      );
-    }, 0);
+    const totalPower = activeZones.reduce(
+      (s, z) => s + z.teamOrder.reduce((ts, colId) => {
+        const col = columns[colId];
+        if (!col) return ts;
+        return ts + col.memberIds.reduce((ms, mid) => ms + (mid && members[mid] ? members[mid].power || 0 : 0), 0);
+      }, 0), 0);
 
-    // Layout configuration:
-    // If 2 zones (e.g. Zone 1 & Zone 2): Side-by-side 2-column layout (Topguild layout!)
-    // If 1 zone: Full width with 3 or 4 team columns
-    const hasMultipleZones = activeZones.length >= 2;
+    const CANVAS_W = 2400;
+    const PAD = 36;
+    const ZONE_GAP = 20;
+    const N = activeZones.length || 1;
+    const ZONE_W = Math.floor((CANVAS_W - PAD * 2 - ZONE_GAP * (N - 1)) / N);
+
+    const COL_SLOT = 46;
+    // zone border(5) + zone padding(24) + team border(3) = 32px overhead
+    const REMAINING = ZONE_W - COL_SLOT - 32;
+    // Ratio 35 : 35 : 40 (sum = 110)
+    const COL_NAME = Math.floor(REMAINING * (35 / 110));
+    const COL_JOB  = Math.floor(REMAINING * (35 / 110));
+    const COL_PWR  = REMAINING - COL_NAME - COL_JOB;
+    // Global text style — lineHeight:1.3 prevents Thai font baseline drop in html2canvas
+    const txt = (size: number, weight: number, color: string, extra?: React.CSSProperties): React.CSSProperties => ({
+      fontSize: `${size}px`,
+      fontWeight: weight,
+      color,
+      lineHeight: 1.3,
+      ...extra,
+    });
 
     return (
       <div
         ref={ref}
         id="gvg-export-canvas"
-        className="w-[2200px] bg-[#f8fafc] text-slate-800 p-8 space-y-6 font-sans select-none"
-        style={{ boxSizing: "border-box", minHeight: "1450px", lineHeight: 1.2 }}
+        style={{
+          width: `${CANVAS_W}px`,
+          boxSizing: "border-box",
+          background: "#f1f5f9",
+          padding: `${PAD}px`,
+          fontFamily: "'Segoe UI','Noto Sans Thai',Arial,sans-serif",
+          color: "#0f172a",
+          lineHeight: 1.3,
+        }}
       >
-        {/* Main Document Header (Topguild Style) */}
-        <div className="bg-white border-2 border-[#2563eb] rounded-2xl p-5 shadow-sm space-y-3.5">
-          <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-            <div className="flex items-center gap-3.5">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-[#1e3a8a] to-[#2563eb] flex items-center justify-center font-black text-2xl text-white shadow-md">
-                🛡️
+        {/* ═══ HEADER ═══ */}
+        <div style={{
+          background: "linear-gradient(135deg,#0f172a 0%,#1e3a8a 60%,#2563eb 100%)",
+          borderRadius: "18px",
+          padding: "28px 36px",
+          marginBottom: "20px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          boxShadow: "0 6px 32px rgba(37,99,235,0.28)",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "18px" }}>
+            <div style={{
+              width: "64px", height: "64px",
+              background: "rgba(255,255,255,0.15)",
+              borderRadius: "14px",
+              border: "1.5px solid rgba(255,255,255,0.25)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: "32px", lineHeight: 1,
+            }}>🛡️</div>
+            <div>
+              <div style={txt(28, 900, "#fff", { letterSpacing: "0.03em" })}>
+                {title === "GVG TEAM SETUP" ? "รายชื่อผู้เล่นสนามหลัก (GVG TEAM SETUP)" : title}
               </div>
-              <div>
-                <h1 className="text-2xl font-black tracking-wide text-[#1e3a8a] uppercase">
-                  {title === "GVG TEAM SETUP" ? "รายชื่อผู้เล่นสนามหลัก (GVG TEAM SETUP)" : title}
-                </h1>
-                <p className="text-xs text-slate-500 font-bold tracking-wider uppercase">
-                  GUILD VS GUILD BATTLE SQUAD ROSTER • {activeZones.length} ZONE{activeZones.length > 1 ? "S" : ""}
-                </p>
+              <div style={txt(13, 700, "rgba(255,255,255,0.65)", { letterSpacing: "0.09em", marginTop: "5px" })}>
+                GUILD VS GUILD BATTLE SQUAD ROSTER • {activeZones.length} ZONE{activeZones.length > 1 ? "S" : ""}
               </div>
-            </div>
-            <div className="text-right">
-              <span className="text-[11px] font-bold text-slate-400 block tracking-wider uppercase">EXPORTED DATE</span>
-              <span className="text-sm font-mono font-bold text-[#2563eb]">
-                {new Date().toLocaleDateString("th-TH", {
-                  year: "numeric",
-                  month: "short",
-                  day: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </span>
             </div>
           </div>
-
-          {/* Top Summary Bar */}
-          <div className="flex flex-wrap items-center justify-between gap-4 text-sm font-bold bg-[#eff6ff] px-5 h-12 rounded-xl border border-blue-200">
-            {/* Zones summary badges */}
-            <div className="flex items-center gap-4 flex-wrap">
-              {activeZones.map((zone) => {
-                const count = zone.teamOrder.reduce((sum, colId) => {
-                  const col = columns[colId];
-                  return sum + (col ? col.memberIds.filter((id) => id && members[id]).length : 0);
-                }, 0);
-                const cap = zone.teamOrder.length * 5;
-                const zoneDisplayName = zone.name.replace(/โซน/i, "Zone ").trim();
-                return (
-                  <div key={zone.id} className="flex items-center gap-2">
-                    <span className="text-[#1e3a8a] font-black">{zoneDisplayName}:</span>
-                    <span className="text-[#1e3a8a] font-mono bg-white border border-blue-300 px-2.5 h-6 inline-flex items-center justify-center rounded-md text-xs shadow-xs">
-                      {count}/{cap} คน
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Total stats */}
-            <div className="flex items-center gap-5">
-              <div className="flex items-center gap-2">
-                <span className="text-emerald-700 font-black">สมาชิกทั้งหมด:</span>
-                <span className="text-emerald-800 font-mono bg-emerald-100 border border-emerald-300 px-3 h-6 inline-flex items-center justify-center rounded-md text-xs shadow-xs">
-                  {totalMembers} คน
-                </span>
-              </div>
-              <div className="h-4 w-px bg-blue-200" />
-              <div className="flex items-center gap-2">
-                <span className="text-purple-700 font-black">จำนวนทีม:</span>
-                <span className="text-purple-800 font-mono bg-purple-100 border border-purple-300 px-3 h-6 inline-flex items-center justify-center rounded-md text-xs shadow-xs">
-                  {totalTeams} ทีม
-                </span>
-              </div>
-              <div className="h-4 w-px bg-blue-200" />
-              <div className="flex items-center gap-2">
-                <span className="text-amber-700 font-black">พลังรบรวม:</span>
-                <span className="text-amber-900 font-mono bg-amber-100 border border-amber-300 px-3 h-6 inline-flex items-center justify-center rounded-md text-xs shadow-xs">
-                  {totalPower.toLocaleString()}
-                </span>
-              </div>
+          <div style={{ textAlign: "right" }}>
+            <div style={txt(11, 700, "rgba(255,255,255,0.5)", { letterSpacing: "0.1em", marginBottom: "5px" })}>EXPORTED DATE</div>
+            <div style={txt(18, 800, "#fff", { fontFamily: "monospace" })}>
+              {new Date().toLocaleDateString("th-TH", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
             </div>
           </div>
         </div>
 
-        {/* If no active teams are present */}
+        {/* ═══ SUMMARY BAR ═══ */}
+        <div style={{
+          background: "#fff",
+          borderRadius: "12px",
+          padding: "14px 28px",
+          marginBottom: "24px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          border: "2px solid #bfdbfe",
+          boxShadow: "0 2px 10px rgba(0,0,0,0.06)",
+          minHeight: "62px",
+        }}>
+          <div style={{ display: "flex", gap: "20px", flexWrap: "wrap", alignItems: "center" }}>
+            {activeZones.map((zone, zIdx) => {
+              const pal = ZONE_PALETTES[zIdx % ZONE_PALETTES.length];
+              const count = zone.teamOrder.reduce((s, colId) => {
+                const col = columns[colId];
+                return s + (col ? col.memberIds.filter((id) => id && members[id]).length : 0);
+              }, 0);
+              const cap = zone.teamOrder.length * 5;
+              return (
+                <div key={zone.id} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <div style={{ width: "10px", height: "10px", borderRadius: "3px", background: pal.border, flexShrink: 0 }} />
+                  <span style={txt(15, 900, "#1e293b")}>{zone.name}:</span>
+                  <span style={badge(pal.teamHeaderBg, pal.teamHeaderText, pal.teamHeaderBorder)}>
+                    {count}/{cap} คน
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+          <div style={{ display: "flex", gap: "16px", alignItems: "center" }}>
+            {[
+              { label: "สมาชิกทั้งหมด", val: `${totalMembers} คน`, bg: "#f0fdf4", bd: "#86efac", col: "#166534" },
+              { label: "จำนวนทีม",       val: `${totalTeams} ทีม`,  bg: "#faf5ff", bd: "#d8b4fe", col: "#6b21a8" },
+              { label: "พลังรบรวม",      val: totalPower.toLocaleString(), bg: "#fffbeb", bd: "#fcd34d", col: "#78350f" },
+            ].map(({ label, val, bg, bd, col }) => (
+              <div key={label} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <span style={txt(14, 800, col)}>{label}:</span>
+                <span style={badge(bg, col, bd)}>{val}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
         {activeZones.length === 0 && (
-          <div className="p-16 text-center text-slate-400 border-2 border-dashed border-slate-300 rounded-2xl bg-white font-bold text-lg">
+          <div style={{ padding: "80px", textAlign: "center", color: "#94a3b8", border: "2px dashed #cbd5e1", borderRadius: "16px", background: "#fff", ...txt(20, 700, "#94a3b8") }}>
             ไม่มีทีมที่มีสมาชิกสำหรับการ Export
           </div>
         )}
 
-        {/* Zones Container - Vertical layout (Stacked) */}
-        <div className="flex flex-col gap-6 items-stretch">
+        {/* ═══ ZONES ═══ */}
+        <div style={{ display: "flex", gap: `${ZONE_GAP}px`, alignItems: "flex-start" }}>
           {activeZones.map((zone, zIdx) => {
-            const zoneMembersCount = zone.teamOrder.reduce((sum, colId) => {
+            const pal = ZONE_PALETTES[zIdx % ZONE_PALETTES.length];
+
+            const zoneMembersCount = zone.teamOrder.reduce((s, colId) => {
               const col = columns[colId];
-              return sum + (col ? col.memberIds.filter((id) => id && members[id]).length : 0);
+              return s + (col ? col.memberIds.filter((id) => id && members[id]).length : 0);
+            }, 0);
+            const zonePower = zone.teamOrder.reduce((s, colId) => {
+              const col = columns[colId];
+              if (!col) return s;
+              return s + col.memberIds.reduce((ms, mid) => ms + (mid && members[mid] ? members[mid].power || 0 : 0), 0);
             }, 0);
 
-            const zonePower = zone.teamOrder.reduce((sum, colId) => {
-              const col = columns[colId];
-              if (!col) return sum;
-              return (
-                sum +
-                col.memberIds.reduce((mSum, memId) => {
-                  return mSum + (memId && members[memId] ? members[memId].power || 0 : 0);
-                }, 0)
-              );
-            }, 0);
-
-            // Zone Leader detection (Topguild logic)
-            const zoneLeader =
-              zone.teamOrder.length > 0 ? getTeamLeader(columns[zone.teamOrder[0]], members) : "ว่าง";
-
-            const zoneHeading = `${zone.name} - หัวตี้: ${zoneLeader} (${zoneMembersCount} คน)`;
-
-            // Teams grid inside this zone: Use 3 or 4 columns since it takes full width
-            const teamsInZoneCount = zone.teamOrder.length;
-            const zoneTeamsGridClass =
-              teamsInZoneCount > 4
-                ? "grid-cols-3"
-                : teamsInZoneCount === 4
-                ? "grid-cols-4"
-                : teamsInZoneCount === 3
-                ? "grid-cols-3"
-                : "grid-cols-2";
+            const zoneLeader = zone.teamOrder.length > 0
+              ? getTeamLeader(columns[zone.teamOrder[0]], members)
+              : "ว่าง";
 
             return (
-              <div
-                key={zone.id}
-                className="border-2 border-[#2563eb] rounded-xl p-4 bg-[#f8fafc] shadow-sm flex flex-col space-y-4"
-              >
-                {/* Zone Main Title Header (Topguild Style: .main-team-title) */}
-                <div className="bg-[#2563eb] text-white text-center py-2.5 px-4 rounded-lg shadow-sm flex items-center justify-between">
-                  <span className="text-base font-black tracking-wide">{zoneHeading}</span>
-                  <span className="text-xs font-mono font-bold bg-white/20 px-2.5 h-6 inline-flex items-center justify-center rounded text-white">
-                    Power: {zonePower.toLocaleString()}
-                  </span>
+              <div key={zone.id} style={{
+                width: `${ZONE_W}px`,
+                flexShrink: 0,
+                border: `2.5px solid ${pal.border}`,
+                borderRadius: "16px",
+                background: "#f8fafc",
+                overflow: "hidden",
+                boxShadow: "0 4px 18px rgba(0,0,0,0.10)",
+              }}>
+                {/* Zone Header */}
+                <div style={{ background: pal.header, padding: "16px 22px" }}>
+                  {/* Row 1: Zone name + power */}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
+                    <span style={txt(20, 900, "#fff", { letterSpacing: "0.02em" })}>{zone.name}</span>
+                    <div style={{
+                      ...badge("rgba(255,255,255,0.18)", "#fff"),
+                      fontFamily: "monospace", fontSize: "15px",
+                      border: "1px solid rgba(255,255,255,0.25)",
+                    }}>⚡ {zonePower.toLocaleString()}</div>
+                  </div>
+                  {/* Row 2: leader + count */}
+                  <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+                    <span style={txt(13, 700, "rgba(255,255,255,0.9)")}>
+                      👑 หัวตี้: <strong style={{ color: "#fff" }}>{zoneLeader}</strong>
+                    </span>
+                    <div style={{
+                      ...badge("rgba(255,255,255,0.15)", "rgba(255,255,255,0.9)"),
+                      border: "1px solid rgba(255,255,255,0.2)",
+                      fontSize: "12px",
+                      fontFamily: "'Segoe UI','Noto Sans Thai',Arial,sans-serif",
+                      fontWeight: 700,
+                    }}>
+                      {zoneMembersCount} คน • {zone.teamOrder.length} ทีม
+                    </div>
+                  </div>
                 </div>
 
-                {/* Teams Grid inside Zone */}
-                <div className={`grid ${zoneTeamsGridClass} gap-3.5`}>
+                {/* Teams stacked vertically */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px", padding: "12px" }}>
                   {zone.teamOrder.map((colId) => {
                     const col = columns[colId];
                     if (!col) return null;
@@ -229,97 +274,160 @@ export const GVGExportLayout = forwardRef<HTMLDivElement, GVGExportLayoutProps>(
                     const teamLeader = getTeamLeader(col, members);
                     const assignedMembers = col.memberIds
                       .map((id, idx) => ({ id, slotIdx: idx, member: id ? members[id] : null }))
-                      // Fix: use != null to guard against both null AND undefined
                       .filter((item): item is { id: string; slotIdx: number; member: Member } => item.member != null);
-
                     const assignedCount = assignedMembers.length;
-                    const teamPower = assignedMembers.reduce((sum, item) => sum + (item.member?.power || 0), 0);
+                    const teamPower = assignedMembers.reduce((s, item) => s + (item.member.power || 0), 0);
+                    const isFull = assignedCount === 5;
 
                     return (
-                      <div
-                        key={colId}
-                        className="bg-white border border-[#cbd5e1] rounded-lg overflow-hidden shadow-xs flex flex-col"
-                      >
-                        {/* Team Title Header (Topguild Style: .party-title) */}
-                        <div className="bg-[#bfdbfe] text-[#1e3a8a] px-3 h-9 border-b border-[#cbd5e1] flex items-center justify-between font-bold text-xs">
-                          <div className="flex items-center gap-1.5 truncate">
-                            <span className="font-black text-sm">{col.title}</span>
-                            <span className="text-[11px] text-[#1d4ed8] truncate">(หัวตี้: {teamLeader})</span>
+                      <div key={colId} style={{
+                        background: "#fff",
+                        border: `1.5px solid ${pal.teamHeaderBorder}`,
+                        borderRadius: "10px",
+                        overflow: "hidden",
+                        boxShadow: "0 1px 6px rgba(0,0,0,0.07)",
+                      }}>
+                        {/* Team Header */}
+                        <div style={{
+                          background: pal.teamHeaderBg,
+                          borderBottom: `1.5px solid ${pal.teamHeaderBorder}`,
+                          padding: "10px 14px",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          gap: "10px",
+                          minHeight: "56px",
+                        }}>
+                          <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", minWidth: 0, flex: 1, gap: "3px" }}>
+                            <span style={txt(16, 900, pal.teamHeaderText, { letterSpacing: "0.01em" })}>{col.title}</span>
+                            <span style={txt(12, 700, pal.teamHeaderText, { opacity: 0.72, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" })}>
+                              👑 {teamLeader}
+                            </span>
                           </div>
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            <span className="font-mono text-[11px] text-[#1e3a8a] bg-white/70 px-1.5 h-5 inline-flex items-center justify-center rounded border border-blue-200">
-                              {teamPower.toLocaleString()}
-                            </span>
-                            <span className="bg-[#2563eb] text-white px-2 h-5 inline-flex items-center justify-center rounded-full text-[10px] font-black">
-                              {assignedCount}/5
-                            </span>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
+                            <div style={{
+                              ...badge("rgba(255,255,255,0.7)", pal.teamHeaderText, pal.teamHeaderBorder),
+                              fontFamily: "monospace", fontSize: "13px",
+                            }}>⚡ {teamPower.toLocaleString()}</div>
+                            <div style={{
+                              ...badge(isFull ? "#16a34a" : pal.border, "#fff"),
+                              fontSize: "13px",
+                              fontFamily: "'Segoe UI','Noto Sans Thai',Arial,sans-serif",
+                            }}>{assignedCount}/5</div>
                           </div>
                         </div>
 
-                        {/* Team Member Table (Topguild Style: table) */}
-                        <table className="w-full border-collapse text-xs table-fixed">
-                          <thead>
-                            <tr className="bg-[#e2e8f0] text-[#334155] border-b border-[#cbd5e1] text-[11px] font-bold">
-                              <th className="w-10 py-1.5 px-1.5 text-center border-r border-[#cbd5e1]">ลำดับ</th>
-                              <th className="w-[35%] py-1.5 px-2 text-left border-r border-[#cbd5e1]">ชื่อตัวละคร</th>
-                              <th className="w-[35%] py-1.5 px-1.5 text-center border-r border-[#cbd5e1]">อาชีพ</th>
-                              <th className="w-[30%] py-1.5 px-2 text-right">ค่าพลัง</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-[#cbd5e1]">
-                            {(() => {
-                              const sortedMembers: (Member | null)[] = assignedMembers
-                                .map((item) => item.member)
-                                .sort((a, b) => (b.power || 0) - (a.power || 0));
-                              while (sortedMembers.length < 5) sortedMembers.push(null);
+                        {/* Column Headers */}
+                        <div style={{
+                          display: "flex",
+                          background: "#f1f5f9",
+                          borderBottom: "1.5px solid #e2e8f0",
+                          height: "34px",
+                        }}>
+                          {[
+                            { label: "#",           w: COL_SLOT, align: "center" as const },
+                            { label: "ชื่อตัวละคร",  w: COL_NAME, align: "left"   as const },
+                            { label: "อาชีพ",        w: COL_JOB,  align: "center" as const },
+                            { label: "ค่าพลัง",      w: COL_PWR,  align: "right"  as const },
+                          ].map((c, ci) => (
+                            <div key={c.label} style={{
+                              width: `${c.w}px`,
+                              flexShrink: 0,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: c.align === "center" ? "center" : c.align === "right" ? "flex-end" : "flex-start",
+                              padding: "0 10px",
+                              ...txt(12, 800, "#475569"),
+                              letterSpacing: "0.04em",
+                              borderRight: ci < 3 ? "1px solid #e2e8f0" : undefined,
+                            }}>{c.label}</div>
+                          ))}
+                        </div>
 
-                              return sortedMembers.map((m, rowIdx) => {
-                                const jobColor = (m?.job && JOB_COLORS[m.job]) || "#475569";
+                        {/* Rows — sorted by power DESC */}
+                        {(() => {
+                          const sorted: (Member | null)[] = assignedMembers
+                            .map(i => i.member)
+                            .sort((a, b) => (b.power || 0) - (a.power || 0));
+                          while (sorted.length < 5) sorted.push(null);
 
-                                if (!m) {
-                                  return (
-                                    <tr key={`empty-${rowIdx}`} className="h-8 bg-slate-50/50 text-slate-400 text-[11px]">
-                                      <td className="text-center align-middle font-mono border-r border-[#cbd5e1] text-slate-400 font-bold">
-                                        {rowIdx + 1}
-                                      </td>
-                                      <td className="px-2 align-middle italic text-slate-400 border-r border-[#cbd5e1] truncate">- ว่าง -</td>
-                                      <td className="text-center align-middle text-slate-400 border-r border-[#cbd5e1]">-</td>
-                                      <td className="text-right align-middle px-2 font-mono text-slate-400">-</td>
-                                    </tr>
-                                  );
-                                }
+                          return sorted.map((m, rowIdx) => {
+                            const jobColor = (m?.job && JOB_COLORS[m.job]) || "#64748b";
+                            const isOdd = rowIdx % 2 === 1;
 
-                                return (
-                                  <tr
-                                    key={`member-${rowIdx}`}
-                                    className="h-8 hover:bg-blue-50/40 transition-colors text-[11px] bg-white"
-                                  >
-                                    <td className="text-center align-middle font-mono font-black text-[#2563eb] border-r border-[#cbd5e1]">
-                                      {rowIdx + 1}
-                                    </td>
-                                    <td
-                                      className="px-2 align-middle font-bold text-slate-900 truncate border-r border-[#cbd5e1]"
-                                      title={m.name}
-                                    >
-                                      {m.name}
-                                    </td>
-                                    <td className="px-1.5 align-middle text-center border-r border-[#cbd5e1]">
-                                      <div
-                                        className="inline-flex items-center justify-center text-[10px] font-bold text-white px-2 h-5 rounded-md shadow-xs w-full max-w-[90px] truncate"
-                                        style={{ backgroundColor: jobColor }}
-                                      >
-                                        {m.job}
-                                      </div>
-                                    </td>
-                                    <td className="text-right align-middle px-2 font-mono font-bold text-[#1e3a8a]">
-                                      {(m.power || 0).toLocaleString()}
-                                    </td>
-                                  </tr>
-                                );
-                              });
-                            })()}
-                          </tbody>
-                        </table>
+                            return (
+                              <div key={rowIdx} style={{
+                                display: "flex",
+                                background: isOdd ? "#f8fafc" : "#fff",
+                                borderBottom: rowIdx < 4 ? "1px solid #f1f5f9" : undefined,
+                                alignItems: "center",
+                                height: "40px",
+                              }}>
+                                {/* # */}
+                                <div style={{
+                                  width: `${COL_SLOT}px`, flexShrink: 0,
+                                  display: "flex", alignItems: "center", justifyContent: "center",
+                                  height: "100%",
+                                  borderRight: "1px solid #f1f5f9",
+                                  ...txt(14, 900, m ? pal.border : "#cbd5e1", { fontFamily: "monospace" }),
+                                }}>{rowIdx + 1}</div>
+
+                                {/* ชื่อ */}
+                                <div style={{
+                                  width: `${COL_NAME}px`, flexShrink: 0,
+                                  display: "flex", alignItems: "center",
+                                  height: "100%",
+                                  padding: "0 12px",
+                                  borderRight: "1px solid #f1f5f9",
+                                  overflow: "hidden",
+                                }}>
+                                  <span style={{
+                                    ...txt(14, m ? 700 : 400, m ? "#0f172a" : "#cbd5e1"),
+                                    fontStyle: m ? "normal" : "italic",
+                                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                                    display: "block",
+                                  }} title={m?.name}>{m ? m.name : "— ว่าง —"}</span>
+                                </div>
+
+                                {/* อาชีพ */}
+                                <div style={{
+                                  width: `${COL_JOB}px`, flexShrink: 0,
+                                  display: "flex", alignItems: "center", justifyContent: "center",
+                                  height: "100%",
+                                  borderRight: "1px solid #f1f5f9",
+                                }}>
+                                  {m ? (
+                                    <span style={{
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      height: "26px",
+                                      padding: "0",
+                                      width: `${COL_JOB - 18}px`,
+                                      background: jobColor,
+                                      borderRadius: "7px",
+                                      ...txt(12, 800, "#fff", { letterSpacing: "0.03em", lineHeight: 1 }),
+                                      overflow: "hidden",
+                                      textOverflow: "ellipsis",
+                                      whiteSpace: "nowrap",
+                                    }}>{m.job}</span>
+                                  ) : (
+                                    <span style={txt(13, 400, "#cbd5e1")}>-</span>
+                                  )}
+                                </div>
+
+                                {/* ค่าพลัง */}
+                                <div style={{
+                                  width: `${COL_PWR}px`, flexShrink: 0,
+                                  display: "flex", alignItems: "center", justifyContent: "flex-end",
+                                  height: "100%",
+                                  padding: "0 14px",
+                                  ...txt(14, 800, m ? pal.teamHeaderText : "#cbd5e1", { fontFamily: "monospace" }),
+                                }}>{m ? (m.power || 0).toLocaleString() : "-"}</div>
+                              </div>
+                            );
+                          });
+                        })()}
                       </div>
                     );
                   })}
