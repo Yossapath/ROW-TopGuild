@@ -117,7 +117,7 @@ export const GVGExportLayout = forwardRef<HTMLDivElement, GVGExportLayoutProps>(
           </div>
 
           {/* Top Summary Bar */}
-          <div className="flex flex-wrap items-center justify-between gap-4 text-sm font-bold bg-[#eff6ff] px-5 py-2.5 rounded-xl border border-blue-200">
+          <div className="flex flex-wrap items-center justify-between gap-4 text-sm font-bold bg-[#eff6ff] px-5 h-12 rounded-xl border border-blue-200">
             {/* Zones summary badges */}
             <div className="flex items-center gap-4 flex-wrap">
               {activeZones.map((zone) => {
@@ -130,7 +130,7 @@ export const GVGExportLayout = forwardRef<HTMLDivElement, GVGExportLayoutProps>(
                 return (
                   <div key={zone.id} className="flex items-center gap-2">
                     <span className="text-[#1e3a8a] font-black">{zoneDisplayName}:</span>
-                    <span className="text-[#1e3a8a] font-mono bg-white border border-blue-300 px-2.5 py-0.5 rounded-md text-xs shadow-xs">
+                    <span className="text-[#1e3a8a] font-mono bg-white border border-blue-300 px-2.5 h-6 inline-flex items-center justify-center rounded-md text-xs shadow-xs">
                       {count}/{cap} คน
                     </span>
                   </div>
@@ -142,21 +142,21 @@ export const GVGExportLayout = forwardRef<HTMLDivElement, GVGExportLayoutProps>(
             <div className="flex items-center gap-5">
               <div className="flex items-center gap-2">
                 <span className="text-emerald-700 font-black">สมาชิกทั้งหมด:</span>
-                <span className="text-emerald-800 font-mono bg-emerald-100 border border-emerald-300 px-3 py-0.5 rounded-md text-xs shadow-xs">
+                <span className="text-emerald-800 font-mono bg-emerald-100 border border-emerald-300 px-3 h-6 inline-flex items-center justify-center rounded-md text-xs shadow-xs">
                   {totalMembers} คน
                 </span>
               </div>
               <div className="h-4 w-px bg-blue-200" />
               <div className="flex items-center gap-2">
                 <span className="text-purple-700 font-black">จำนวนทีม:</span>
-                <span className="text-purple-800 font-mono bg-purple-100 border border-purple-300 px-3 py-0.5 rounded-md text-xs shadow-xs">
+                <span className="text-purple-800 font-mono bg-purple-100 border border-purple-300 px-3 h-6 inline-flex items-center justify-center rounded-md text-xs shadow-xs">
                   {totalTeams} ทีม
                 </span>
               </div>
               <div className="h-4 w-px bg-blue-200" />
               <div className="flex items-center gap-2">
                 <span className="text-amber-700 font-black">พลังรบรวม:</span>
-                <span className="text-amber-900 font-mono bg-amber-100 border border-amber-300 px-3 py-0.5 rounded-md text-xs shadow-xs">
+                <span className="text-amber-900 font-mono bg-amber-100 border border-amber-300 px-3 h-6 inline-flex items-center justify-center rounded-md text-xs shadow-xs">
                   {totalPower.toLocaleString()}
                 </span>
               </div>
@@ -171,8 +171,8 @@ export const GVGExportLayout = forwardRef<HTMLDivElement, GVGExportLayoutProps>(
           </div>
         )}
 
-        {/* Zones Container - Two columns side-by-side if multiple zones (Topguild Layout) */}
-        <div className={`grid ${hasMultipleZones ? "grid-cols-2 gap-6" : "grid-cols-1"} items-start`}>
+        {/* Zones Container - Vertical layout (Stacked) */}
+        <div className="flex flex-col gap-6 items-stretch">
           {activeZones.map((zone, zIdx) => {
             const zoneMembersCount = zone.teamOrder.reduce((sum, colId) => {
               const col = columns[colId];
@@ -194,21 +194,16 @@ export const GVGExportLayout = forwardRef<HTMLDivElement, GVGExportLayoutProps>(
             const zoneLeader =
               zone.teamOrder.length > 0 ? getTeamLeader(columns[zone.teamOrder[0]], members) : "ว่าง";
 
-            const sideLabel = zIdx === 0 ? " (ซ้าย)" : zIdx === 1 ? " (ขวา)" : "";
-            const zoneHeading = `${zone.name}${sideLabel} - หัวตี้: ${zoneLeader} (${zoneMembersCount} คน)`;
+            const zoneHeading = `${zone.name} - หัวตี้: ${zoneLeader} (${zoneMembersCount} คน)`;
 
-            // Teams grid inside this zone column:
-            // If zone has <= 3 teams: 1 column
-            // If zone has > 3 teams: 2 columns side-by-side
+            // Teams grid inside this zone: Use 3 or 4 columns since it takes full width
             const teamsInZoneCount = zone.teamOrder.length;
             const zoneTeamsGridClass =
-              hasMultipleZones
-                ? teamsInZoneCount > 3
-                  ? "grid-cols-2"
-                  : "grid-cols-1"
-                : teamsInZoneCount > 6
+              teamsInZoneCount > 4
+                ? "grid-cols-3"
+                : teamsInZoneCount === 4
                 ? "grid-cols-4"
-                : teamsInZoneCount > 3
+                : teamsInZoneCount === 3
                 ? "grid-cols-3"
                 : "grid-cols-2";
 
@@ -220,7 +215,7 @@ export const GVGExportLayout = forwardRef<HTMLDivElement, GVGExportLayoutProps>(
                 {/* Zone Main Title Header (Topguild Style: .main-team-title) */}
                 <div className="bg-[#2563eb] text-white text-center py-2.5 px-4 rounded-lg shadow-sm flex items-center justify-between">
                   <span className="text-base font-black tracking-wide">{zoneHeading}</span>
-                  <span className="text-xs font-mono font-bold bg-white/20 px-2.5 py-0.5 rounded text-white">
+                  <span className="text-xs font-mono font-bold bg-white/20 px-2.5 h-6 inline-flex items-center justify-center rounded text-white">
                     Power: {zonePower.toLocaleString()}
                   </span>
                 </div>
@@ -246,16 +241,16 @@ export const GVGExportLayout = forwardRef<HTMLDivElement, GVGExportLayoutProps>(
                         className="bg-white border border-[#cbd5e1] rounded-lg overflow-hidden shadow-xs flex flex-col"
                       >
                         {/* Team Title Header (Topguild Style: .party-title) */}
-                        <div className="bg-[#bfdbfe] text-[#1e3a8a] px-3 py-1.5 border-b border-[#cbd5e1] flex items-center justify-between font-bold text-xs">
+                        <div className="bg-[#bfdbfe] text-[#1e3a8a] px-3 h-9 border-b border-[#cbd5e1] flex items-center justify-between font-bold text-xs">
                           <div className="flex items-center gap-1.5 truncate">
                             <span className="font-black text-sm">{col.title}</span>
                             <span className="text-[11px] text-[#1d4ed8] truncate">(หัวตี้: {teamLeader})</span>
                           </div>
                           <div className="flex items-center gap-1.5 shrink-0">
-                            <span className="font-mono text-[11px] text-[#1e3a8a] bg-white/70 px-1.5 py-0.5 rounded border border-blue-200">
+                            <span className="font-mono text-[11px] text-[#1e3a8a] bg-white/70 px-1.5 h-5 inline-flex items-center justify-center rounded border border-blue-200">
                               {teamPower.toLocaleString()}
                             </span>
-                            <span className="bg-[#2563eb] text-white px-2 py-0.5 rounded-full text-[10px] font-black">
+                            <span className="bg-[#2563eb] text-white px-2 h-5 inline-flex items-center justify-center rounded-full text-[10px] font-black">
                               {assignedCount}/5
                             </span>
                           </div>
@@ -284,12 +279,12 @@ export const GVGExportLayout = forwardRef<HTMLDivElement, GVGExportLayoutProps>(
                                 if (!m) {
                                   return (
                                     <tr key={`empty-${rowIdx}`} className="h-8 bg-slate-50/50 text-slate-400 text-[11px]">
-                                      <td className="text-center font-mono border-r border-[#cbd5e1] text-slate-400 font-bold">
+                                      <td className="text-center align-middle font-mono border-r border-[#cbd5e1] text-slate-400 font-bold">
                                         {rowIdx + 1}
                                       </td>
-                                      <td className="px-2 italic text-slate-400 border-r border-[#cbd5e1] truncate">- ว่าง -</td>
-                                      <td className="text-center text-slate-400 border-r border-[#cbd5e1]">-</td>
-                                      <td className="text-right px-2 font-mono text-slate-400">-</td>
+                                      <td className="px-2 align-middle italic text-slate-400 border-r border-[#cbd5e1] truncate">- ว่าง -</td>
+                                      <td className="text-center align-middle text-slate-400 border-r border-[#cbd5e1]">-</td>
+                                      <td className="text-right align-middle px-2 font-mono text-slate-400">-</td>
                                     </tr>
                                   );
                                 }
@@ -299,24 +294,24 @@ export const GVGExportLayout = forwardRef<HTMLDivElement, GVGExportLayoutProps>(
                                     key={`member-${rowIdx}`}
                                     className="h-8 hover:bg-blue-50/40 transition-colors text-[11px] bg-white"
                                   >
-                                    <td className="text-center font-mono font-black text-[#2563eb] border-r border-[#cbd5e1]">
+                                    <td className="text-center align-middle font-mono font-black text-[#2563eb] border-r border-[#cbd5e1]">
                                       {rowIdx + 1}
                                     </td>
                                     <td
-                                      className="px-2 font-bold text-slate-900 truncate border-r border-[#cbd5e1]"
+                                      className="px-2 align-middle font-bold text-slate-900 truncate border-r border-[#cbd5e1]"
                                       title={m.name}
                                     >
                                       {m.name}
                                     </td>
-                                    <td className="px-1.5 text-center border-r border-[#cbd5e1]">
+                                    <td className="px-1.5 align-middle text-center border-r border-[#cbd5e1]">
                                       <div
-                                        className="inline-flex items-center justify-center text-[10px] font-bold text-white px-2 py-0.5 rounded-md shadow-xs w-full max-w-[90px] truncate"
+                                        className="inline-flex items-center justify-center text-[10px] font-bold text-white px-2 h-5 rounded-md shadow-xs w-full max-w-[90px] truncate"
                                         style={{ backgroundColor: jobColor }}
                                       >
                                         {m.job}
                                       </div>
                                     </td>
-                                    <td className="text-right px-2 font-mono font-bold text-[#1e3a8a]">
+                                    <td className="text-right align-middle px-2 font-mono font-bold text-[#1e3a8a]">
                                       {(m.power || 0).toLocaleString()}
                                     </td>
                                   </tr>
