@@ -82,22 +82,21 @@ export async function checkBookingEligibility(
   const today = getTodayRange();
   const week = getWeekRange();
 
-  // Combine player lookup into a single query spanning the union of today and week ranges.
-  // This saves 1 Firestore query on every booking validation while preserving 100% exact business logic.
-  const queryStart = Math.min(today.start, week.start);
-  const queryEnd = Math.max(today.end, week.end);
-
+  // NOTE: Firestore requires a composite index for equality + range on DIFFERENT
+  // fields (name == x AND timestamp >= y). Since we can't guarantee that index
+  // exists, we split into two simple queries that work without any composite index:
+  //   - playerSnap: equality only on "name" → no composite index needed
+  //   - dailyTotalSnap: range only on "timestamp" → no composite index needed
+  // Timestamp filtering is then done in-memory, which is safe given that each
+  // player has at most a few bookings per week.
   const [playerSnap, dailyTotalSnap] = await Promise.all([
-    queuesRef
-      .where("name", "==", playerName)
-      .where("timestamp", ">=", queryStart)
-      .where("timestamp", "<=", queryEnd)
-      .get(),
+    queuesRef.where("name", "==", playerName).get(), // equality only — no index required
     queuesRef
       .where("timestamp", ">=", today.start)
       .where("timestamp", "<=", today.end)
-      .get(),
+      .get(), // range on single field — no composite index required
   ]);
+
 
   // ── Rule 1: วันละ 1 รอบ ต่อคน ─────────────────────────────────
   const hasBookedToday = playerSnap.docs.some((doc) => {
@@ -171,20 +170,16 @@ export async function getUserBookingQuota(
   const today = getTodayRange();
   const week = getWeekRange();
 
-  const queryStart = Math.min(today.start, week.start);
-  const queryEnd = Math.max(today.end, week.end);
-
+  // Same fix as checkBookingEligibility: avoid composite index requirement
+  // by querying only by name (equality only) and filtering timestamp in-memory.
   const [playerSnap, dailyTotalSnap] = await Promise.all([
-    queuesRef
-      .where("name", "==", playerName)
-      .where("timestamp", ">=", queryStart)
-      .where("timestamp", "<=", queryEnd)
-      .get(),
+    queuesRef.where("name", "==", playerName).get(), // equality only — no composite index
     queuesRef
       .where("timestamp", ">=", today.start)
       .where("timestamp", "<=", today.end)
       .get(),
   ]);
+
 
   const hasBookedToday = playerSnap.docs.some((doc) => {
     const ts = getBookingTimestamp(doc.data());
