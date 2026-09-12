@@ -150,7 +150,7 @@ export default function TeamsPage() {
         scale: 2,
         useCORS: true,
         logging: false,
-        backgroundColor: "#090f1f",
+        backgroundColor: "#f8fafc",
       });
 
       const dateStr = new Date().toISOString().split("T")[0];
@@ -1095,7 +1095,7 @@ export default function TeamsPage() {
           zIndex: isExporting ? 99998 : -9999,
           opacity: isExporting ? 1 : 0,
           pointerEvents: "none",
-          width: "2100px",
+          width: "2200px",
           overflow: "hidden",
         }}
       >
