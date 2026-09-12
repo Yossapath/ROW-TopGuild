@@ -13,20 +13,21 @@ function LoginForm() {
   const { isAuthenticated, setUser } = useAuthStore();
 
   useEffect(() => {
+    const callbackUrl = searchParams.get("callbackUrl") || "/dashboard/roster";
     if (isAuthenticated) {
-      router.replace("/dashboard/roster");
+      router.replace(callbackUrl);
     } else {
       fetch("/api/auth/me")
         .then(res => res.json())
         .then(data => {
           if (data.ok && data.data) {
             setUser(data.data);
-            router.replace("/dashboard/roster");
+            router.replace(callbackUrl);
           }
         })
         .catch(() => {});
     }
-  }, [isAuthenticated, router, setUser]);
+  }, [isAuthenticated, router, setUser, searchParams]);
 
   return (
     <div className="relative rounded-2xl bg-white dark:bg-[#232733] p-8 shadow-2xl overflow-hidden border border-slate-100 dark:border-[#2D3342] text-center">

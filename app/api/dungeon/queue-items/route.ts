@@ -2,35 +2,39 @@ import { dungeonsRef } from "@/lib/firebase-admin";
 import { ok, handleServerError } from "@/lib/server-utils";
 import { DungeonQueueItem } from "@/types";
 import { trackFirestoreRead } from "@/lib/firestore-logger";
+import { requireAuth } from "@/lib/auth";
+import { getOrSetQueueItemsCache } from "@/lib/dungeon/queue-cache";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    // Only read queue items that can currently appear on the board.
-    // Completed/skipped history is intentionally left in Firestore but is
-    // not fetched, which significantly reduces Firestore document reads.
-    const snap = await trackFirestoreRead(
-      "GET /api/dungeon/queue-items",
-      "dungeon_queue_items query (active)",
-      () =>
-        dungeonsRef()
-          .collection("dungeon_queue_items")
-          .where("status", "in", ["WAITING", "ASSIGNED"])
-          .get()
-    );
+    const auth = await requireAuth();
+    if (auth.errorResponse) return auth.errorResponse;
 
-    const activeItems: DungeonQueueItem[] = snap.docs.map(
-      (doc: FirebaseFirestore.QueryDocumentSnapshot) => ({ id: doc.id, ...doc.data() } as DungeonQueueItem)
-    );
+    const activeItems = await getOrSetQueueItemsCache(async () => {
+      const snap = await trackFirestoreRead(
+        "GET /api/dungeon/queue-items",
+        "dungeon_queue_items query (active)",
+        () =>
+          dungeonsRef()
+            .collection("dungeon_queue_items")
+            .where("status", "in", ["WAITING", "ASSIGNED"])
+            .get()
+      );
 
-    // Keep ordering consistent with the queue engine: round first, then
-    // original queue time. The UI handles the Priest/Other grouping.
-    activeItems.sort((a: DungeonQueueItem, b: DungeonQueueItem) => {
-      if (a.roundNumber !== b.roundNumber) {
-        return a.roundNumber - b.roundNumber;
-      }
-      return a.queuedAt - b.queuedAt;
+      const items: DungeonQueueItem[] = snap.docs.map(
+        (doc: FirebaseFirestore.QueryDocumentSnapshot) => ({ id: doc.id, ...doc.data() } as DungeonQueueItem)
+      );
+
+      items.sort((a: DungeonQueueItem, b: DungeonQueueItem) => {
+        if (a.roundNumber !== b.roundNumber) {
+          return a.roundNumber - b.roundNumber;
+        }
+        return a.queuedAt - b.queuedAt;
+      });
+
+      return items;
     });
 
     return ok(activeItems);

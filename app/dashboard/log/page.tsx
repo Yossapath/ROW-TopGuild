@@ -265,7 +265,6 @@ export default function LogPage() {
   return (
     <div
       className="space-y-6 bg-[#f0f6fc] dark:bg-[#1C1F27] min-h-screen p-4 lg:py-8 lg:px-12 xl:px-24 2xl:px-32 relative"
-      style={{ zoom: 0.85 }}
     >
       {/* ── Header Card ──────────────────────────────────────── */}
       <div className="bg-white dark:bg-[#232733] rounded-2xl shadow-sm border border-slate-200 dark:border-[#2D3342] p-5 mb-5 flex flex-col md:flex-row items-center justify-between gap-4">

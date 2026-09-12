@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 import { dungeonsRef } from "@/lib/firebase-admin";
 import { requireAdmin } from "@/lib/auth";
-import { ok, err, handleServerError } from "@/lib/server-utils";
+import { ok, err, notFound, handleServerError } from "@/lib/server-utils";
 
 // สร้างทีมจัดดันเจี้ยน
 export async function POST(req: Request) {
@@ -34,7 +34,13 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     const body = await req.json();
     const { id } = params;
 
-    await dungeonsRef().collection("teams").doc(id).set(body, { merge: true });
+    const docRef = dungeonsRef().collection("teams").doc(id);
+    const snap = await docRef.get();
+    if (!snap.exists) {
+      return notFound("ไม่พบทีมดันเจี้ยนนี้");
+    }
+
+    await docRef.set(body, { merge: true });
     
     return ok({ message: "อัปเดตทีมสำเร็จ" });
   } catch (e: unknown) {
@@ -48,7 +54,13 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
     if (auth.errorResponse) return auth.errorResponse;
 
     const { id } = params;
-    await dungeonsRef().collection("teams").doc(id).delete();
+    const docRef = dungeonsRef().collection("teams").doc(id);
+    const snap = await docRef.get();
+    if (!snap.exists) {
+      return notFound("ไม่พบทีมดันเจี้ยนนี้");
+    }
+
+    await docRef.delete();
     
     return ok({ message: "ลบทีมสำเร็จ" });
   } catch (e: unknown) {

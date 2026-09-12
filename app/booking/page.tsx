@@ -10,14 +10,10 @@ import {
   Share2,
   Info,
   Clock,
-  Search,
-  Sparkles,
   Shield,
   AlertCircle,
-  Play,
 } from "lucide-react";
 import { JOB_LIST, JOB_COLORS, isBookingOpen, formatTimestamp } from "@/lib/utils";
-import { calculateDungeonEstimates, type QueueEstimate } from "@/lib/dungeon-estimator";
 import type { DungeonQueue, DungeonSchedule } from "@/types";
 import { useAuthStore } from "@/stores/useAuthStore";
 import Link from "next/link";
@@ -188,14 +184,6 @@ export default function BookingPage() {
     return () => clearInterval(timer);
   }, []);
 
-  // ── ค่า "เวลา" แบบอัปเดตช้า สำหรับใช้คำนวณ estimates เท่านั้น ──
-  // เดิม estimates (useMemo ด้านล่าง) ผูกกับ `now` ที่ tick ทุกวินาที ทำให้
-  // คำนวณคิว/เวลาโดยประมาณใหม่ทั้งหมดทุกวินาทีโดยไม่จำเป็น (ตัวเลขหน่วยนาที
-  // ไม่ต้องละเอียดระดับวินาที) และลาก re-render รายการคิวทั้งหมดตามไปด้วย
-  // อัปเดตค่านี้พร้อมกับรอบ fetchQueues (ทุก 15 วินาที) แทน ส่วนตัวนับถอยหลัง
-  // ของคนที่ "กำลังลง" ยังคงใช้ `now` ตรงๆ แยกต่างหากเหมือนเดิม ไม่กระทบ
-  const [estimateNow, setEstimateNow] = useState(Date.now());
-
   // ── Fetch schedule ───────────────────────────────────────────
   useEffect(() => {
     fetch("/api/dungeon/schedule")
@@ -252,7 +240,6 @@ export default function BookingPage() {
       setQueues(all);
       const nowTime = Date.now();
       setLastRefresh(nowTime);
-      setEstimateNow(nowTime);
       lastFetchTimeRef.current = nowTime;
     } catch (e: any) {
       if (e?.name !== "AbortError") {
@@ -353,24 +340,6 @@ export default function BookingPage() {
     }
   }
 
-  const [selectedCheckName, setSelectedCheckName] = useState<string>("");
-
-  const estimates = useMemo(() => {
-    return calculateDungeonEstimates(queues, new Date(estimateNow), carryTeamsCount);
-  }, [queues, carryTeamsCount, estimateNow]);
-
-  const inspectedName = selectedCheckName || success?.name || user?.gameUsername || "";
-  const myQueueEstimate = useMemo(() => {
-    if (!inspectedName) return null;
-    return estimates.estimatesByName[inspectedName.toLowerCase()] || null;
-  }, [inspectedName, estimates]);
-
-  const waitingMembers = useMemo(() => {
-    return queues.filter(q => q.status !== "done");
-  }, [queues]);
-
-  const visibleQueues = queues;
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-100 to-blue-50 dark:from-[#1C1F27] dark:to-[#1C1F27] py-8 px-4">
       <div className="max-w-2xl mx-auto space-y-6">
@@ -410,7 +379,7 @@ export default function BookingPage() {
           <div className="flex items-center gap-2">
             <Info size={18} className="text-blue-500 dark:text-[#82A0F5] flex-shrink-0" />
             <span className="text-xs font-bold text-blue-800 dark:text-[#82A0F5] flex items-center gap-1">
-              <Shield size={14} /> ทีมแบกกิลด์ {carryTeamsCount} ทีม (รองรับ พระ {estimates.capacityPerRound.priest} คน + อาชีพอื่น {estimates.capacityPerRound.others} คน/รอบ)
+              <Shield size={14} /> ทีมแบกกิลด์ {carryTeamsCount} ทีม (รองรับ พระ {carryTeamsCount * 1} คน + อาชีพอื่น {carryTeamsCount * 2} คน/รอบ)
             </span>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
@@ -432,71 +401,32 @@ export default function BookingPage() {
 
           {/* Success state */}
           {success ? (
-            (() => {
-              const myQueueIdx = queues.findIndex(q => q.id === success.id);
-              const myQueue = myQueueIdx >= 0 ? queues[myQueueIdx] : null;
-              const myEst = (success.id && estimates.estimatesById[success.id]) || (success.name && estimates.estimatesByName[success.name.toLowerCase()]);
-              
-              return (
-                <div className="space-y-4">
-                  <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800/40 rounded-xl p-6 text-center">
-                    <CheckCircle size={48} className="text-green-500 mx-auto mb-3" />
-                    <h3 className="text-xl font-bold text-green-700 dark:text-green-400 mb-1">จองสำเร็จ!</h3>
-                    <p className="text-green-600 dark:text-green-300 font-medium text-lg">{success.name}</p>
-                    
-                    {myEst && (
-                      <div className="mt-4 bg-white/90 dark:bg-[#232733] p-4 rounded-xl border border-green-200 dark:border-[#2D3342] text-left max-w-md mx-auto space-y-2 shadow-xs">
-                        <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-white">
-                          <span>ตำแหน่งคิว:</span>
-                          <span className="text-[#3B66D1] dark:text-[#82A0F5] text-sm font-extrabold">
-                            {myEst.track === "priest"
-                              ? `โควตาพระ · รอบที่ ${myEst.assignedRound} (ทีม ${myEst.assignedTeam})`
-                              : `รอบที่ ${myEst.assignedRound} · ทีม ${myEst.assignedTeam}`}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-white">
-                          <span>คิวก่อนหน้า:</span>
-                          <span className="text-amber-600 dark:text-amber-400 font-bold">
-                            {myEst.queuesAhead === 0 ? "รอบแรก (พร้อมลงทันที)" : `อีก ${myEst.queuesAhead} รอบ`}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-white">
-                          <span>เวลารอโดยประมาณ:</span>
-                          <span className="text-slate-800 dark:text-slate-200 font-bold">
-                            {myEst.queuesAhead === 0 ? "พร้อมลงทันที" : `~${myEst.waitMinutesMin} - ${myEst.waitMinutesMax} นาที`}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-white">
-                          <span>คาดว่าจะถึงคิว:</span>
-                          <span className="text-blue-600 dark:text-[#82A0F5] font-extrabold">
-                            {myEst.queuesAhead === 0 ? "รอบถัดไป" : myEst.estimatedStartTimeText}
-                          </span>
-                        </div>
-                      </div>
-                    )}
+            <div className="space-y-4">
+              <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800/40 rounded-xl p-6 text-center">
+                <CheckCircle size={48} className="text-green-500 mx-auto mb-3" />
+                <h3 className="text-xl font-bold text-green-700 dark:text-green-400 mb-1">จองสำเร็จ!</h3>
+                <p className="text-green-600 dark:text-green-300 font-medium text-lg">{success.name}</p>
 
-                    <div className="flex justify-center gap-3 mt-4 flex-wrap">
-                      <span
-                        className="px-3 py-1.5 rounded-full text-sm font-bold text-white"
-                        style={{ backgroundColor: JOB_COLORS[success.job] ?? "#64748b" }}
-                      >
-                        {success.job}
-                      </span>
-                      <span className="px-3 py-1.5 rounded-full text-sm font-bold bg-indigo-100 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/40">
-                        1 รอบ
-                      </span>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={resetForm}
-                    className="w-full py-3 rounded-xl border-2 border-[#3B66D1] text-[#3B66D1] dark:text-[#4D73CD] font-bold hover:bg-[#3B66D1] hover:text-white hover:text-white transition-all mt-4"
+                <div className="flex justify-center gap-3 mt-4 flex-wrap">
+                  <span
+                    className="px-3 py-1.5 rounded-full text-sm font-bold text-white"
+                    style={{ backgroundColor: JOB_COLORS[success.job] ?? "#64748b" }}
                   >
-                    จองใหม่อีกคน
-                  </button>
+                    {success.job}
+                  </span>
+                  <span className="px-3 py-1.5 rounded-full text-sm font-bold bg-indigo-100 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/40">
+                    1 รอบ
+                  </span>
                 </div>
-              );
-            })()
+              </div>
+
+              <button
+                onClick={resetForm}
+                className="w-full py-3 rounded-xl border-2 border-[#3B66D1] text-[#3B66D1] dark:text-[#4D73CD] font-bold hover:bg-[#3B66D1] hover:text-white transition-all mt-4"
+              >
+                จองใหม่อีกคน
+              </button>
+            </div>
           ) : isAuthChecking ? (
             <div className="text-center py-12 flex flex-col items-center justify-center space-y-3">
               <div className="w-8 h-8 border-4 border-blue-200 border-t-[#3B66D1] rounded-full animate-spin"></div>
@@ -653,138 +583,6 @@ export default function BookingPage() {
           )}
         </div>
 
-        {/* ── Queue & Time Estimator Card ────────────────────── */}
-        <div className="bg-white dark:bg-[#232733] rounded-2xl shadow-sm border border-slate-200 dark:border-[#2D3342] p-6 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-slate-100 dark:border-[#2D3342] pb-3">
-            <div className="flex items-center gap-2">
-              <Clock size={20} className="text-[#3B66D1] dark:text-[#4D73CD]" />
-              <h2 className="font-bold text-slate-800 dark:text-white text-base">
-                ระบบคำนวณคิวและเวลาโดยประมาณ
-              </h2>
-            </div>
-            <span className="text-xs font-bold text-slate-600 dark:text-[#8B93A7] bg-slate-100 dark:bg-[#272C38] px-3 py-1 rounded-full border border-slate-200 dark:border-[#2D3342] w-fit">
-              ⏱️ 1 คิว (ตี้) ลงประมาณ 11 - 12 นาที
-            </span>
-          </div>
-
-          {/* Quick Check Selector */}
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2.5">
-            <label className="text-xs font-bold text-slate-600 dark:text-slate-300 shrink-0 flex items-center gap-1.5">
-              <Search size={14} className="text-[#3B66D1]" />
-              ตรวจเช็คคิวของตัวละคร:
-            </label>
-            <div className="relative flex-1">
-              <select
-                value={selectedCheckName || (user?.gameUsername ?? "")}
-                onChange={(e) => setSelectedCheckName(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-[#2D3342] bg-slate-50 dark:bg-[#272C38] text-slate-800 dark:text-white text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[#4D73CD]"
-              >
-                <option value="">-- เลือกหรือค้นหาชื่อตัวละครในคิว ({waitingMembers.length} คน) --</option>
-                {waitingMembers.map((q: DungeonQueue) => (
-                  <option key={q.id} value={q.name}>
-                    {q.name} ({q.job}) - {q.status === "active" ? "กำลังลง" : `รอคิว`}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Result Card */}
-          {myQueueEstimate ? (
-            <div className="bg-gradient-to-r from-blue-50/90 via-indigo-50/50 to-blue-50/90 dark:from-[#252E42] dark:via-[#22293A] dark:to-[#252E42] border-2 border-[#3B66D1] dark:border-[#4D73CD] rounded-xl p-4 shadow-sm">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div>
-                  <div className="flex items-center gap-2 mb-1 flex-wrap">
-                    <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-[#3B66D1] text-white">
-                      คิวของคุณ
-                    </span>
-                    <span className="font-bold text-base text-slate-800 dark:text-white">
-                      {myQueueEstimate.name}
-                    </span>
-                    <span
-                      className="text-xs font-bold px-2 py-0.5 rounded-full text-white"
-                      style={{ backgroundColor: JOB_COLORS[myQueueEstimate.job] ?? "#475569" }}
-                    >
-                      {myQueueEstimate.job}
-                    </span>
-                  </div>
-
-                  <p className="text-xs font-medium text-slate-600 dark:text-slate-300 mt-1">
-                    {myQueueEstimate.status === "active" ? (
-                      <span className="text-blue-600 dark:text-blue-400 font-bold">กำลังลงดันเจี้ยนอยู่ในขณะนี้!</span>
-                    ) : myQueueEstimate.status === "done" ? (
-                      <span className="text-green-600 dark:text-emerald-400 font-bold">ลงดันเจี้ยนเสร็จสิ้นเรียบร้อยแล้ว</span>
-                    ) : myQueueEstimate.status === "skipped" ? (
-                      <span className="text-amber-600 dark:text-amber-400 font-bold">คิวของคุณถูกข้ามเนื่องจากไม่อยู่ขณะเรียกคิว (กรุณาแจ้งแอดมินหรือหัวตี้เพื่อนำกลับเข้าคิว)</span>
-                    ) : myQueueEstimate.queuesAhead === 0 ? (
-                      <span className="text-emerald-600 dark:text-emerald-400 font-bold">
-                        {myQueueEstimate.track === "priest"
-                          ? `ถึงคิวของคุณแล้ว! คุณอยู่ใน โควตาพระ · รอบที่ ${myQueueEstimate.assignedRound} (ทีมแบก ${myQueueEstimate.assignedTeam})`
-                          : `ถึงคิวของคุณแล้ว! คุณอยู่ใน รอบที่ ${myQueueEstimate.assignedRound} · ทีมแบก ${myQueueEstimate.assignedTeam}`}
-                      </span>
-                    ) : (
-                      <>
-                        คุณอยู่{" "}
-                        <span className="font-bold text-[#0b3d63] dark:text-[#82A0F5]">
-                          {myQueueEstimate.track === "priest"
-                            ? `โควตาพระ · รอบที่ ${myQueueEstimate.assignedRound} (ทีมแบก ${myQueueEstimate.assignedTeam})`
-                            : `รอบที่ ${myQueueEstimate.assignedRound} · ทีมแบก ${myQueueEstimate.assignedTeam}`}
-                        </span>
-                        {" · "}
-                        เหลืออีก <span className="font-bold text-amber-600 dark:text-amber-400">{myQueueEstimate.queuesAhead} รอบ</span> จะถึงคุณ
-                        {myQueueEstimate.track === "others" && (
-                          <span className="text-[10px] text-slate-400 dark:text-[#8B93A7] block mt-0.5">
-                            *คิวอาชีพอื่นคำนวณแยกอิสระ ไม่นับรวมพระ
-                          </span>
-                        )}
-                      </>
-                    )}
-                  </p>
-                </div>
-
-                {myQueueEstimate.status === "waiting" && (
-                  <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-                    <div className="bg-white dark:bg-[#232733] border border-slate-200 dark:border-[#2D3342] rounded-xl px-3.5 py-2 text-center flex-1 sm:flex-initial min-w-[110px]">
-                      <span className="block text-[10px] font-bold text-slate-400 dark:text-[#8B93A7] uppercase tracking-wider">
-                        อีกกี่รอบถึงเรา
-                      </span>
-                      <span className="font-extrabold text-sm text-amber-600 dark:text-amber-400">
-                        {myQueueEstimate.queuesAhead === 0 ? "รอบแรก" : `อีก ${myQueueEstimate.queuesAhead} รอบ`}
-                      </span>
-                    </div>
-
-                    <div className="bg-white dark:bg-[#232733] border border-slate-200 dark:border-[#2D3342] rounded-xl px-3.5 py-2 text-center flex-1 sm:flex-initial min-w-[120px]">
-                      <span className="block text-[10px] font-bold text-slate-400 dark:text-[#8B93A7] uppercase tracking-wider">
-                        เวลารอประมาณ
-                      </span>
-                      <span className="font-extrabold text-sm text-[#0b3d63] dark:text-white">
-                        {myQueueEstimate.queuesAhead === 0 ? "พร้อมลงทันที" : `~${myQueueEstimate.waitMinutesMin}-${myQueueEstimate.waitMinutesMax} นาที`}
-                      </span>
-                    </div>
-
-                    <div className="bg-white dark:bg-[#232733] border border-slate-200 dark:border-[#2D3342] rounded-xl px-3.5 py-2 text-center flex-1 sm:flex-initial min-w-[130px]">
-                      <span className="block text-[10px] font-bold text-slate-400 dark:text-[#8B93A7] uppercase tracking-wider">
-                        เวลาประมาณการ
-                      </span>
-                      <span className="font-extrabold text-sm text-[#3B66D1] dark:text-[#82A0F5]">
-                        {myQueueEstimate.queuesAhead === 0 ? "รอบถัดไป" : myQueueEstimate.estimatedStartTimeText}
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          ) : (
-            <div className="bg-slate-50 dark:bg-[#272C38]/40 border border-dashed border-slate-200 dark:border-[#2D3342] rounded-xl p-3 text-center text-xs text-slate-500 dark:text-[#8B93A7]">
-              {user?.gameUsername ? (
-                <span>ตัวละครของคุณ <span className="font-bold">{user.gameUsername}</span> ยังไม่ได้อยู่ในคิวจอง สามารถกรอกแบบฟอร์มด้านบนเพื่อจองคิว หรือเลือกชื่อตัวละครเพื่อดูเวลาคิว</span>
-              ) : (
-                <span>เข้าสู่ระบบด้วย Discord หรือเลือกชื่อตัวละครด้านบน เพื่อดูเวลาคาดการณ์ที่จะถึงคิวของคุณ</span>
-              )}
-            </div>
-          )}
-        </div>
-
         {/* ── Queue Preview ───────────────────────────────────── */}
         <div className="bg-white dark:bg-[#232733] rounded-2xl shadow-sm border border-slate-200 dark:border-[#2D3342] overflow-hidden">
           <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-100 dark:border-[#2D3342]">
@@ -821,8 +619,7 @@ export default function BookingPage() {
                 const renderQueue = (q: DungeonQueue, idx: number, isDone: boolean) => {
                   const statusBadge = STATUS_BADGE[q.status] ?? STATUS_BADGE.waiting;
                   const jobColor = JOB_COLORS[q.job] ?? "#888";
-                  const isMe = (user?.gameUsername && user.gameUsername === q.name) || (inspectedName && inspectedName.toLowerCase() === q.name.toLowerCase());
-                  const qEst = estimates.estimatesById[q.id] || estimates.estimatesByName[q.name.toLowerCase()];
+                  const isMe = !!user?.gameUsername && user.gameUsername.trim().toLowerCase() === q.name.trim().toLowerCase();
                   const isSkipped = q.status === "skipped";
 
                   return (
@@ -839,8 +636,8 @@ export default function BookingPage() {
                       } ${isDone ? "opacity-60" : ""}`}
                     >
                       {/* Number */}
-                      <span className={`font-bold text-sm w-6 shrink-0 ${isMe ? "text-blue-600 dark:text-white" : "text-slate-400 dark:text-[#6B7280]"}`}>
-                        {idx}
+                      <span className={`font-bold text-sm w-7 shrink-0 ${isMe ? "text-blue-600 dark:text-white" : "text-slate-400 dark:text-[#6B7280]"}`}>
+                        {idx}.
                       </span>
 
                       {/* Main info */}
@@ -875,64 +672,11 @@ export default function BookingPage() {
                             1 รอบ
                           </span>
 
-                          {/* Carry Round & Team Badge — no slot number */}
-                          {qEst && qEst.assignedRound > 0 && !isDone && !isSkipped && (
-                            <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-[#0b3d63]/10 dark:bg-[#3B66D1]/20 text-[#0b3d63] dark:text-[#82A0F5] border border-[#0b3d63]/20 dark:border-[#4D73CD]/30">
-                              {qEst.track === "priest"
-                                ? `โควตาพระ · รอบที่ ${qEst.assignedRound} (ทีม ${qEst.assignedTeam})`
-                                : `รอบที่ ${qEst.assignedRound} · ทีม ${qEst.assignedTeam}`}
-                            </span>
-                          )}
-
                           {/* Status badge */}
                           <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${statusBadge.cls}`}>
                             {statusBadge.label}
                           </span>
                         </div>
-
-                        {/* Estimated Time for Waiting queue */}
-                        {qEst && qEst.status === "waiting" && (
-                          <div className="flex items-center gap-2 mt-1.5 flex-wrap text-xs">
-                            {qEst.queuesAhead === 0 ? (
-                              <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800/40 flex items-center gap-1">
-                                <Play size={11} className="fill-current" /> รอบแรก (ทีมแบก {qEst.assignedTeam} · พร้อมลงทันที)
-                              </span>
-                            ) : (
-                              <>
-                                <span className="text-[11px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-800/40 flex items-center gap-1">
-                                  <Clock size={11} />
-                                  อีก {qEst.queuesAhead} รอบ (~{qEst.waitMinutesMin}-{qEst.waitMinutesMax} นาที)
-                                </span>
-                                <span className="text-[11px] font-bold text-blue-600 dark:text-[#82A0F5] flex items-center gap-1">
-                                  <Clock size={11} /> คาดว่าได้ลง {qEst.estimatedStartTimeText}
-                                </span>
-                              </>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Real-time elapsed + ETA for active players */}
-                        {q.status === "active" && q.startTime && !isDone && (
-                          (() => {
-                            const elapsed = Math.floor((now - q.startTime) / 1000);
-                            const elapsedMin = Math.floor(elapsed / 60);
-                            const elapsedSec = elapsed % 60;
-                            const etaMaxSec = 12 * 60 - elapsed;
-                            const etaStr = etaMaxSec > 0
-                              ? `เหลืออีกประมาณ ${Math.floor(etaMaxSec / 60)} นาที ${etaMaxSec % 60} วินาที`
-                              : "ครบเวลาแล้ว";
-                            return (
-                              <div className="flex items-center gap-2 mt-1.5 flex-wrap text-xs">
-                                <span className="text-[11px] font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 rounded-md border border-blue-200 dark:border-blue-800/40 flex items-center gap-1">
-                                  <Clock size={11} /> กำลังลง {elapsedMin} นาที {String(elapsedSec).padStart(2, "0")} วินาที
-                                </span>
-                                <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400">
-                                  {etaStr}
-                                </span>
-                              </div>
-                            );
-                          })()
-                        )}
 
                         {isSkipped && (
                           <div className="flex items-center gap-2 mt-1.5 text-xs text-amber-600 dark:text-amber-400 font-medium">
@@ -951,7 +695,7 @@ export default function BookingPage() {
                         )}
                         <span className="text-xs text-slate-400 dark:text-[#6B7280] flex items-center gap-1">
                           <CheckCircle size={10} />
-                          {formatTimestamp(q.timestamp)}
+                          {formatTimestamp(q.bookedAt || q.timestamp)}
                         </span>
                       </div>
                     </div>

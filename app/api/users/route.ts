@@ -1,6 +1,6 @@
 export const dynamic = "force-dynamic";
 import { getDb, COLL_USER } from "@/lib/firebase-admin";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdmin, invalidateUserRoleCache } from "@/lib/auth";
 import { ok, err, handleServerError, logAction } from "@/lib/server-utils";
 import { userRoleUpdateSchema, userDeleteSchema, validateBody } from "@/lib/validations";
 
@@ -37,15 +37,53 @@ export async function PUT(req: Request) {
     }
 
     const { discordId, role } = validation.data;
+
+    // 1. Prevent self-role mutation (prevents accidental self-lockout and self-privilege escalation)
+    if (auth.user.discordId === discordId) {
+      return err("ไม่สามารถเปลี่ยนบทบาทของตนเองได้", 400);
+    }
+
     const db = getDb();
-    await db.collection(COLL_USER).doc(discordId).update({ role });
+    const userRef = db.collection(COLL_USER).doc(discordId);
+    const userDoc = await userRef.get();
+    if (!userDoc.exists) {
+      return err("ไม่พบผู้ใช้งานนี้ในระบบ", 404);
+    }
+
+    const targetUser = userDoc.data() || {};
+    const currentTargetRole = targetUser.role || "member";
+    const isCallerOwner = auth.user.role === "owner";
+
+    // 2. Admin cannot manage Owner or peer Admin:
+    if (!isCallerOwner) {
+      if (role === "owner") {
+        return err("แอดมินไม่สามารถแต่งตั้งบทบาท Owner ได้ (เฉพาะ Owner เท่านั้น)", 403);
+      }
+      if (currentTargetRole === "owner") {
+        return err("แอดมินไม่สามารถแก้ไขบทบาทของผู้ใช้งานระดับ Owner ได้", 403);
+      }
+      if (currentTargetRole === "admin") {
+        return err("แอดมินไม่สามารถแก้ไขบทบาทของ Admin คนอื่นได้ (เฉพาะ Owner เท่านั้น)", 403);
+      }
+    }
+
+    // 3. If caller is Owner and is demoting an Owner, ensure guild has at least 1 remaining Owner
+    if (isCallerOwner && currentTargetRole === "owner" && role !== "owner") {
+      const ownersSnap = await db.collection(COLL_USER).where("role", "==", "owner").get();
+      if (ownersSnap.size <= 1) {
+        return err("ไม่สามารถลดบทบาท Owner คนสุดท้ายของระบบได้", 400);
+      }
+    }
+
+    await userRef.update({ role });
+    invalidateUserRoleCache(discordId);
 
     logAction({
       module: "AUTH",
       action: "UPDATE_ROLE",
       actor: auth.user.gameUsername || auth.user.discordUsername || "Admin",
       target: discordId,
-      detail: `เปลี่ยนบทบาทของ ${discordId} เป็น ${role}`,
+      detail: `เปลี่ยนบทบาทของ ${targetUser.gameUsername || targetUser.discordUsername || discordId} (${discordId}) จาก ${currentTargetRole} เป็น ${role}`,
     });
 
     return ok({ success: true });
@@ -67,19 +105,42 @@ export async function DELETE(req: Request) {
 
     const { discordId } = validation.data;
 
-    // Prevent admin from deleting themselves
+    // 1. Prevent deleting self (prevents locking own account)
     if (auth.user.discordId === discordId) {
       return err("ไม่สามารถลบบัญชีของตนเองได้", 400);
     }
 
     const db = getDb();
-    const userDoc = await db.collection(COLL_USER).doc(discordId).get();
+    const userRef = db.collection(COLL_USER).doc(discordId);
+    const userDoc = await userRef.get();
     if (!userDoc.exists) {
       return err("ไม่พบผู้ใช้งานนี้ในระบบ", 404);
     }
 
-    const targetUser = userDoc.data();
-    await db.collection(COLL_USER).doc(discordId).delete();
+    const targetUser = userDoc.data() || {};
+    const targetRole = targetUser.role || "member";
+    const isCallerOwner = auth.user.role === "owner";
+
+    // 2. Admin cannot delete Owner or peer Admin:
+    if (!isCallerOwner) {
+      if (targetRole === "owner") {
+        return err("แอดมินไม่สามารถลบผู้ใช้งานระดับ Owner ได้", 403);
+      }
+      if (targetRole === "admin") {
+        return err("แอดมินไม่สามารถลบผู้ใช้งานระดับ Admin ได้ (เฉพาะ Owner เท่านั้น)", 403);
+      }
+    }
+
+    // 3. If target is an Owner, ensure not the last Owner
+    if (targetRole === "owner") {
+      const ownersSnap = await db.collection(COLL_USER).where("role", "==", "owner").get();
+      if (ownersSnap.size <= 1) {
+        return err("ไม่สามารถลบ Owner คนสุดท้ายของระบบได้", 400);
+      }
+    }
+
+    await userRef.delete();
+    invalidateUserRoleCache(discordId);
 
     logAction({
       module: "AUTH",

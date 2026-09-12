@@ -22,13 +22,16 @@ export const JOB_COLORS: Record<string, string> = {
 export const JOB_LIST = Object.keys(JOB_COLORS);
 
 // ── Booking time check (Bangkok timezone) ────────────────────
-export function isBookingOpen(schedule?: {
-  openDate?: string;
-  openTime?: string;
-  closeTime?: string;
-  carryTeamsCount?: number;
-  isClosed?: boolean;
-} | null): { open: boolean; reason?: string } {
+export function isBookingOpen(
+  schedule?: {
+    openDate?: string;
+    openTime?: string;
+    closeTime?: string;
+    carryTeamsCount?: number;
+    isClosed?: boolean;
+  } | null,
+  now?: Date
+): { open: boolean; reason?: string } {
   // No schedule configured yet (or none of openDate/openTime/closeTime
   // set) means the admin hasn't restricted booking at all — default to
   // OPEN, not closed. This matches how the rest of the schedule form
@@ -51,29 +54,22 @@ export function isBookingOpen(schedule?: {
     return { open: true };
   }
 
-  const nowBkk = new Date(
-    new Date().toLocaleString("en-US", { timeZone: "Asia/Bangkok" })
-  );
+  const nowBkk = now
+    ? new Date(now.toLocaleString("en-US", { timeZone: "Asia/Bangkok" }))
+    : new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Bangkok" }));
   const todayStr = nowBkk.toLocaleDateString("en-CA"); // YYYY-MM-DD
   const targetDate = schedule.openDate.trim();
 
-  if (todayStr !== targetDate) {
-    const parts = targetDate.split("-");
-    if (parts.length === 3) {
-      const [y, m, d] = parts;
-      return {
-        open: false,
-        reason: `⏰ ยังไม่ถึงวันเปิดจอง (เปิดวันที่ ${d}/${m}/${y})`,
-      };
-    }
-    return {
-      open: false,
-      reason: `⏰ ยังไม่ถึงวันเปิดจอง`,
-    };
-  }
+  const parts = targetDate.split("-");
+  const dateReason = parts.length === 3
+    ? `⏰ ยังไม่ถึงวันเปิดจอง (เปิดวันที่ ${parts[2]}/${parts[1]}/${parts[0]})`
+    : `⏰ ยังไม่ถึงวันเปิดจอง`;
 
-  // If time is not restricted but date is set, open all day
+  // If time is not restricted but date is set, open all day on target date
   if (!schedule.openTime || !schedule.closeTime) {
+    if (todayStr !== targetDate) {
+      return { open: false, reason: dateReason };
+    }
     return { open: true };
   }
 
@@ -82,15 +78,42 @@ export function isBookingOpen(schedule?: {
   const nowMins   = nowBkk.getHours() * 60 + nowBkk.getMinutes();
   const openMins  = (isNaN(oh) ? 0 : oh) * 60 + (isNaN(om) ? 0 : om);
   const closeMins = (isNaN(ch) ? 23 : ch) * 60 + (isNaN(cm) ? 59 : cm);
+  const timeReason = `⏰ ยังไม่ถึงเวลาเปิดจอง (เปิด ${schedule.openTime} – ${schedule.closeTime} น.)`;
 
-  if (nowMins < openMins || nowMins > closeMins) {
-    return {
-      open: false,
-      reason: `⏰ ยังไม่ถึงเวลาเปิดจอง (เปิด ${schedule.openTime} – ${schedule.closeTime} น.)`,
-    };
+  if (openMins <= closeMins) {
+    // Normal window (e.g. 09:00 - 22:00)
+    if (todayStr !== targetDate) {
+      return { open: false, reason: dateReason };
+    }
+    if (nowMins < openMins || nowMins > closeMins) {
+      return { open: false, reason: timeReason };
+    }
+    return { open: true };
+  } else {
+    // Midnight crossing window (e.g. 22:00 - 02:00)
+    const [ty, tm, td] = parts.map(Number);
+    const nextDayDate = new Date(Date.UTC(ty, tm - 1, td + 1));
+    const nextDayStr = nextDayDate.toISOString().split("T")[0];
+
+    if (todayStr === targetDate) {
+      // Day 1 (starts at openMins)
+      if (nowMins < openMins) {
+        return { open: false, reason: timeReason };
+      }
+      return { open: true };
+    }
+
+    if (todayStr === nextDayStr) {
+      // Day 2 (ends at closeMins)
+      if (nowMins <= closeMins) {
+        return { open: true };
+      }
+      return { open: false, reason: timeReason };
+    }
+
+    // Outside both Day 1 and Day 2
+    return { open: false, reason: dateReason };
   }
-
-  return { open: true };
 }
 
 // ── Timestamp helpers ─────────────────────────────────────────

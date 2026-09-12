@@ -108,7 +108,7 @@ export async function GET(req: Request) {
 
       if (doc.exists) {
         const data = doc.data() as GuildUser;
-        const userRole = isConfiguredAdmin ? "admin" : (data.role || "member");
+        const userRole = data.role === "owner" ? "owner" : isConfiguredAdmin ? "admin" : (data.role || "member");
 
         isProfileComplete = !!data.gameUsername && !!data.class && data.power !== undefined;
         payload = {

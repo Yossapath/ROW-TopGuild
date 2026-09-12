@@ -5,6 +5,7 @@ import { ok, err, handleServerError, logAction } from "@/lib/server-utils";
 import { dungeonsRef } from "@/lib/firebase-admin";
 import { requireAuth, requireAdmin } from "@/lib/auth";
 import { dungeonQueuePatchSchema, validateBody } from "@/lib/validations";
+import { invalidateCurrentQueuesCache } from "@/lib/dungeon/queue-cache";
 
 type Params = { params: { id: string } };
 
@@ -54,6 +55,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       power?: number;
       dungeon?: string;
       timestamp?: number;
+      bookedAt?: number;
+      queuedAt?: number;
     };
 
     if (action === "updateRounds") {
@@ -81,9 +84,15 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       update.status = "active";
       update.startTime = Date.now();
     } else if (action === "skip") {
-      update.timestamp = Date.now();
+      update.queuedAt = Date.now();
+      if (!data.bookedAt && data.timestamp) {
+        update.bookedAt = data.timestamp;
+      }
     } else if (action === "unskip") {
-      update.timestamp = Date.now();
+      update.queuedAt = Date.now();
+      if (!data.bookedAt && data.timestamp) {
+        update.bookedAt = data.timestamp;
+      }
       const allDone = totalRounds === 1 ? newRound1 : newRound1 && newRound2;
       update.status = allDone ? "done" : "waiting";
     } else if (action === "updateRounds") {
@@ -136,8 +145,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       }
     }
 
-    if (action === "skip") {
-      // Also update queuedAt for queue items to move them to the bottom
+    if (action === "skip" || action === "unskip") {
+      // Also update queuedAt for queue items to move them to the bottom of waiting queue
       const qItemsSnap = await dungeonsRef().collection("dungeon_queue_items")
         .where("bookingId", "==", id)
         .where("status", "==", "WAITING")
@@ -148,6 +157,9 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     }
 
     await batch.commit();
+
+    // Invalidate in-memory cache so updates immediately propagate to all polling users
+    invalidateCurrentQueuesCache();
 
     // ── Audit log ──────────────────────────────────────────────
     let logDetail = "";
@@ -205,12 +217,21 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
       return err("Permission denied", 403);
     }
 
+    // Query associated queue items to verify assignment and prepare deletion
+    const qItemsSnap = await dungeonsRef().collection("dungeon_queue_items").where("bookingId", "==", id).get();
+    const isAssignedToTeam = qItemsSnap.docs.some((doc) => {
+      const itemData = doc.data();
+      return itemData.status === "ASSIGNED" || Boolean(itemData.assignedTeamId);
+    });
+
+    // Guard: Regular members cannot cancel queues that are already active or assigned to a team
+    if (!isAdmin && (qData.status === "active" || isAssignedToTeam)) {
+      return err("ไม่สามารถยกเลิกคิวที่กำลังลงดันเจี้ยนหรือถูกจัดเข้าทีมแล้วได้ กรุณาติดต่อแอดมินเพื่อนำออกจากทีมก่อน", 400);
+    }
+
     const db = dungeonsRef().firestore;
     const batch = db.batch();
     batch.delete(docRef);
-    
-    // Also delete associated queue_items and remove from any teams
-    const qItemsSnap = await dungeonsRef().collection("dungeon_queue_items").where("bookingId", "==", id).get();
     
     // Only query and update teams if any deleted queue item was actually assigned to a team
     const assignedTeamIds = new Set<string>();
@@ -243,6 +264,9 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
     }
     
     await batch.commit();
+
+    // Invalidate in-memory cache so deleted queue immediately disappears for all users
+    invalidateCurrentQueuesCache();
 
     // Save audit log to database
     logAction({

@@ -55,6 +55,14 @@ export interface BookingEligibilityResult {
   reason?: string;
 }
 
+export const getBookingTimestamp = (docData: any): number => {
+  return typeof docData?.bookedAt === "number"
+    ? docData.bookedAt
+    : typeof docData?.timestamp === "number"
+    ? docData.timestamp
+    : 0;
+};
+
 /**
  * Checks all booking rules for a given player.
  * @param playerName - ชื่อตัวละครในเกม
@@ -93,8 +101,8 @@ export async function checkBookingEligibility(
 
   // ── Rule 1: วันละ 1 รอบ ต่อคน ─────────────────────────────────
   const hasBookedToday = playerSnap.docs.some((doc) => {
-    const ts = doc.data().timestamp;
-    return typeof ts === "number" && ts >= today.start && ts <= today.end;
+    const ts = getBookingTimestamp(doc.data());
+    return ts >= today.start && ts <= today.end;
   });
 
   if (hasBookedToday) {
@@ -108,8 +116,8 @@ export async function checkBookingEligibility(
   let roundsThisWeek = 0;
   for (const doc of playerSnap.docs) {
     const data = doc.data();
-    const ts = data.timestamp;
-    if (typeof ts === "number" && ts >= week.start && ts <= week.end) {
+    const ts = getBookingTimestamp(data);
+    if (ts >= week.start && ts <= week.end) {
       roundsThisWeek += Number(data.rounds) || 1;
     }
   }
@@ -125,7 +133,10 @@ export async function checkBookingEligibility(
   const uniquePlayersToday = new Set<string>();
   for (const doc of dailyTotalSnap.docs) {
     const data = doc.data();
-    if (data.name) uniquePlayersToday.add(data.name as string);
+    const ts = getBookingTimestamp(data);
+    if (ts >= today.start && ts <= today.end && data.name) {
+      uniquePlayersToday.add(data.name as string);
+    }
   }
   if (!uniquePlayersToday.has(playerName) && uniquePlayersToday.size >= 30) {
     return {
@@ -176,15 +187,15 @@ export async function getUserBookingQuota(
   ]);
 
   const hasBookedToday = playerSnap.docs.some((doc) => {
-    const ts = doc.data().timestamp;
-    return typeof ts === "number" && ts >= today.start && ts <= today.end;
+    const ts = getBookingTimestamp(doc.data());
+    return ts >= today.start && ts <= today.end;
   });
 
   let roundsThisWeek = 0;
   for (const doc of playerSnap.docs) {
     const data = doc.data();
-    const ts = data.timestamp;
-    if (typeof ts === "number" && ts >= week.start && ts <= week.end) {
+    const ts = getBookingTimestamp(data);
+    if (ts >= week.start && ts <= week.end) {
       roundsThisWeek += Number(data.rounds) || 1;
     }
   }
@@ -192,7 +203,10 @@ export async function getUserBookingQuota(
   const uniquePlayersToday = new Set<string>();
   for (const doc of dailyTotalSnap.docs) {
     const data = doc.data();
-    if (data.name) uniquePlayersToday.add(data.name as string);
+    const ts = getBookingTimestamp(data);
+    if (ts >= today.start && ts <= today.end && data.name) {
+      uniquePlayersToday.add(data.name as string);
+    }
   }
 
   const todayRemaining = hasBookedToday ? 0 : 1;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import {
   CheckSquare,
   CheckCircle2,
@@ -12,6 +12,7 @@ import {
   Users,
   Calendar,
   CheckCircle,
+  RotateCcw,
 } from "lucide-react";
 import { useAuthStore } from "@/stores/useAuthStore";
 import type { LeaveRecord } from "@/types";
@@ -116,6 +117,7 @@ export default function AttendancePage() {
   const [copied, setCopied] = useState(false);
   const [msg, setMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
   const [loadingRoster, setLoadingRoster] = useState(true);
+  const initialStatusMapRef = useRef<Map<string, Status>>(new Map());
 
   useEffect(() => {
     // todayStr in Thai time (+7h)
@@ -148,12 +150,35 @@ export default function AttendancePage() {
   const [attendanceRecords, setAttendanceRecords] = useState<any[]>([]);
   const [offlineNames, setOfflineNames] = useState<{ name: string; job: string }[]>([]);
 
+  const loadAttendanceForWeek = useCallback(async (offset: number) => {
+    const mon = getMondayOfWeek(offset);
+    const monStr = mon.toISOString().split("T")[0];
+    const dates = getWeekDates(offset);
+    const sunStr = dates["อาทิตย์"];
+    try {
+      const res = await fetch(`/api/attendance?startDate=${monStr}&endDate=${sunStr}`);
+      if (res.ok) {
+        const json = await res.json();
+        const data = json.data ?? json;
+        if (Array.isArray(data)) {
+          setAttendanceRecords(data);
+        }
+      }
+    } catch {
+      // silently fail
+    }
+  }, []);
+
+  useEffect(() => {
+    loadAttendanceForWeek(weekOffset);
+  }, [weekOffset, loadAttendanceForWeek]);
+
   useEffect(() => {
     async function fetchData() {
       setLoadingRoster(true);
       try {
         const cachedRoster = queryClient.getQueryData<any>(["roster"]);
-        const [rData, lRes, aRes, tRes] = await Promise.all([
+        const [rData, lRes, tRes] = await Promise.all([
           cachedRoster
             ? Promise.resolve(cachedRoster)
             : fetch("/api/roster")
@@ -165,19 +190,15 @@ export default function AttendancePage() {
                 })
                 .catch(() => ({})),
           fetch("/api/leave?limit=50"),
-          fetch("/api/attendance"),
           fetch("/api/teams"),
         ]);
         const lJson = lRes.ok ? await lRes.json() : { data: [] };
-        const aJson = aRes.ok ? await aRes.json() : { data: [] };
         const tJson = tRes.ok ? await tRes.json() : {};
         const lData = lJson.data ?? lJson;
-        const aData = aJson.data ?? aJson;
 
         const rosterData = typeof rData === "object" && !Array.isArray(rData) ? rData : {};
         setRoster(rosterData);
         setLeaveRecords(Array.isArray(lData) ? lData : []);
-        setAttendanceRecords(Array.isArray(aData) ? aData : []);
 
         // Extract offline members: teams.offlineIds are member IDs (names)
         const offlineIds: string[] = tJson.offlineIds ?? [];
@@ -232,17 +253,19 @@ export default function AttendancePage() {
       }
     }
 
-    setRows(
-      baseRows.map((r) => {
-        if (attMap.has(r.name)) {
-          return { ...r, status: attMap.get(r.name)! };
-        }
-        if (leaveNames.has(r.name)) {
-          return { ...r, status: "ลา" as Status };
-        }
-        return { ...r, status: null };
-      })
-    );
+    const initialMap = new Map<string, Status>();
+    const mappedRows = baseRows.map((r) => {
+      let status: Status = null;
+      if (attMap.has(r.name)) {
+        status = attMap.get(r.name)!;
+      } else if (leaveNames.has(r.name)) {
+        status = "ลา" as Status;
+      }
+      initialMap.set(r.name, status);
+      return { ...r, status };
+    });
+    initialStatusMapRef.current = initialMap;
+    setRows(mappedRows);
   }, [selectedDate, roster, leaveRecords, attendanceRecords]);
 
   const handleDayBtn = (day: WarDay) => {
@@ -305,21 +328,90 @@ export default function AttendancePage() {
     setSaving(true);
     setMsg(null);
     try {
+      // Dirty-checking: only submit records that genuinely changed to prevent ghost deletes
+      const changedRecords = rows
+        .filter((r) => {
+          const initial = initialStatusMapRef.current.get(r.name) ?? null;
+          return r.status !== initial;
+        })
+        .map((r) => ({
+          name: r.name,
+          present: r.status === "มา",
+          status: r.status,
+          clear: r.status === null,
+        }));
+
+      if (changedRecords.length === 0) {
+        setMsg({ type: "ok", text: "ไม่มีการเปลี่ยนแปลงที่ต้องบันทึก" });
+        setSaving(false);
+        return;
+      }
+
       const res = await fetch("/api/attendance", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           date: selectedDate,
-          records: rows.map((r) => ({
-            name: r.name,
-            present: r.status === "มา",
-            status: r.status,
-          })),
+          action: "save",
+          records: changedRecords,
         }),
       });
       const json = await res.json();
       if (!json.ok) throw new Error(json.error ?? "ไม่สามารถบันทึกได้");
       setMsg({ type: "ok", text: "บันทึกเช็คชื่อสำเร็จ" });
+
+      // Update initial status map with newly saved values
+      changedRecords.forEach((rec) => {
+        initialStatusMapRef.current.set(rec.name, rec.status);
+      });
+
+      await loadAttendanceForWeek(weekOffset);
+    } catch (e: unknown) {
+      setMsg({ type: "err", text: e instanceof Error ? e.message : "เกิดข้อผิดพลาด" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleReset = async () => {
+    if (!selectedDate || !isAdmin) return;
+    if (!confirm(`คุณต้องการล้างข้อมูลการเช็คชื่อทั้งหมดของวันที่ ${formatDateTH(selectedDate)} หรือไม่?`)) return;
+    setSaving(true);
+    setMsg(null);
+    try {
+      const recordsToClear = rows
+        .filter((r) => r.status !== null)
+        .map((r) => ({
+          name: r.name,
+          status: null,
+          clear: true,
+        }));
+
+      if (recordsToClear.length === 0) {
+        setMsg({ type: "ok", text: "ไม่มีข้อมูลเช็คชื่อที่ต้องล้าง" });
+        setSaving(false);
+        return;
+      }
+
+      const res = await fetch("/api/attendance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          date: selectedDate,
+          action: "reset",
+          records: recordsToClear,
+        }),
+      });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error ?? "ไม่สามารถล้างข้อมูลได้");
+      setMsg({ type: "ok", text: "ล้างข้อมูลเช็คชื่อสำเร็จ" });
+
+      recordsToClear.forEach((rec) => {
+        initialStatusMapRef.current.set(rec.name, null);
+      });
+      setRows((prev) => prev.map((r) => ({ ...r, status: null })));
+
+      await loadAttendanceForWeek(weekOffset);
     } catch (e: unknown) {
       setMsg({ type: "err", text: e instanceof Error ? e.message : "เกิดข้อผิดพลาด" });
     } finally {
@@ -354,7 +446,6 @@ export default function AttendancePage() {
   return (
     <div
       className="bg-[#f0f6fc] dark:bg-[#1C1F27] min-h-screen p-4 lg:py-8 lg:px-12 xl:px-24 2xl:px-32"
-      style={{ zoom: 0.85 }}
     >
       {/* Header Card */}
       <div className="bg-white dark:bg-[#232733] rounded-2xl shadow-sm border border-slate-200 dark:border-[#2D3342] p-5 mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -455,7 +546,7 @@ export default function AttendancePage() {
       </div>
 
       {/* Main Grid */}
-      <div className="flex gap-5 items-start">
+      <div className="flex flex-col lg:flex-row gap-5 items-start">
         {/* Left — Table */}
         <div className="flex-1 min-w-0 bg-white dark:bg-[#232733] rounded-2xl shadow-sm border border-slate-200 dark:border-[#2D3342] overflow-hidden">
           <div className="px-5 py-4 border-b border-slate-100 dark:border-[#2D3342] flex flex-wrap items-center justify-between gap-3">
@@ -580,6 +671,14 @@ export default function AttendancePage() {
                   <><CheckSquare className="w-4 h-4" />บันทึกเช็คชื่อ</>
                 )}
               </button>
+              <button
+                onClick={handleReset}
+                disabled={saving}
+                className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 hover:bg-red-100 dark:hover:bg-red-900/40 transition-all disabled:opacity-50"
+              >
+                <RotateCcw className="w-4 h-4" />
+                ล้างข้อมูลวันนี้
+              </button>
               {msg && (
                 <span className={`text-sm font-semibold ${msg.type === "ok" ? "text-green-600 dark:text-green-400" : "text-red-500 dark:text-red-400"}`}>
                   {msg.text}
@@ -590,7 +689,7 @@ export default function AttendancePage() {
         </div>
 
         {/* Right — Summary + Lists */}
-        <div className="flex flex-col gap-3 w-56 flex-shrink-0">
+        <div className="flex flex-col gap-3 w-full lg:w-56 flex-shrink-0">
 
           {/* Stats */}
           <div className="bg-white dark:bg-[#232733] rounded-2xl shadow-sm border border-slate-200 dark:border-[#2D3342] p-4">

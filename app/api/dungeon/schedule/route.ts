@@ -64,6 +64,9 @@ export async function PUT(req: Request) {
 
     await scheduleRef().set(updateData, { merge: true });
 
+    const { invalidateCurrentQueuesCache } = await import("@/lib/dungeon/queue-cache");
+    invalidateCurrentQueuesCache();
+
     return ok({ message: "อัปเดตการตั้งค่าสำเร็จ", data: updateData });
   } catch (e: unknown) {
     return handleServerError(e, "Failed to update schedule");

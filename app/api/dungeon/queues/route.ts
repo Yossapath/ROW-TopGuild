@@ -3,9 +3,10 @@ import { dungeonsRef, scheduleRef } from "@/lib/firebase-admin";
 import { ok, err, handleServerError, logAction } from "@/lib/server-utils";
 import { isBookingOpen } from "@/lib/utils";
 import { dungeonQueueBookingSchema, validateBody } from "@/lib/validations";
-import { requireAuth } from "@/lib/auth";
-import { checkBookingEligibility } from "@/lib/dungeon/booking-rules";
+import { requireAuth, requireAdmin } from "@/lib/auth";
+import { checkBookingEligibility, getTodayRange } from "@/lib/dungeon/booking-rules";
 import { trackFirestoreRead } from "@/lib/firestore-logger";
+import { getOrSetCurrentQueuesCache, invalidateCurrentQueuesCache } from "@/lib/dungeon/queue-cache";
 
 export async function GET(req: Request) {
   try {
@@ -13,7 +14,30 @@ export async function GET(req: Request) {
     const type = searchParams.get("type") || "current";
     const limitParam = Math.min(Math.max(1, Number(searchParams.get("limit")) || 50), 100);
 
-    // 1. History: โหลดเฉพาะคิวที่เสร็จแล้ว (done) บน On-Demand / Pagination
+    // 1. All: สำหรับหน้า Audit Log ของแอดมิน (Admin/Owner เท่านั้น)
+    if (type === "all") {
+      const auth = await requireAdmin();
+      if (auth.errorResponse) return auth.errorResponse;
+
+      let query = dungeonsRef().collection("queues").orderBy("timestamp", "desc");
+      const before = Number(searchParams.get("before"));
+      if (!isNaN(before) && before > 0) {
+        query = query.startAfter(before);
+      }
+      const snap = await trackFirestoreRead(
+        "GET /api/dungeon/queues?type=all",
+        "queues query (all)",
+        () => query.limit(limitParam).get()
+      );
+      const queues = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      return ok(queues);
+    }
+
+    // สำหรับบอร์ดสดและประวัติ (current, history) ต้องผ่านการยืนยันตัวตน (Member, Admin, Owner)
+    const auth = await requireAuth();
+    if (auth.errorResponse) return auth.errorResponse;
+
+    // 2. History: โหลดเฉพาะคิวที่เสร็จแล้ว (done) บน On-Demand / Pagination
     if (type === "history") {
       const snap = await trackFirestoreRead(
         "GET /api/dungeon/queues?type=history",
@@ -31,37 +55,23 @@ export async function GET(req: Request) {
       return ok(queues);
     }
 
-    // 2. All: สำหรับหน้า Audit Log ของแอดมิน (จำกัด limit เพื่อป้องกัน unbounded read)
-    if (type === "all") {
-      let query = dungeonsRef().collection("queues").orderBy("timestamp", "desc");
-      const before = Number(searchParams.get("before"));
-      if (!isNaN(before) && before > 0) {
-        query = query.startAfter(before);
-      }
-      const snap = await trackFirestoreRead(
-        "GET /api/dungeon/queues?type=all",
-        "queues query (all)",
-        () => query.limit(limitParam).get()
-      );
-      const queues = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-      return ok(queues);
-    }
-
     // 3. Current (Default): ดึงเฉพาะคิวที่ยังต้องแสดงในบอร์ดสด (waiting, active, skipped)
-    // ไม่ดึงประวัติ done ในรอบ polling ปกติ เพื่อลด Firestore reads อย่างมีนัยสำคัญ
-    const snap = await trackFirestoreRead(
-      "GET /api/dungeon/queues",
-      "queues query (current)",
-      () =>
-        dungeonsRef()
-          .collection("queues")
-          .where("status", "in", ["waiting", "active", "skipped"])
-          .get()
-    );
+    // มี In-Memory Server Cache (TTL ~7s) พร้อม Stampede & Race Condition Protection
+    const queues = await getOrSetCurrentQueuesCache(async () => {
+      const snap = await trackFirestoreRead(
+        "GET /api/dungeon/queues",
+        "queues query (current)",
+        () =>
+          dungeonsRef()
+            .collection("queues")
+            .where("status", "in", ["waiting", "active", "skipped"])
+            .get()
+      );
 
-    const queues = snap.docs
-      .map((doc) => ({ id: doc.id, ...doc.data() }))
-      .sort((a: any, b: any) => (a.timestamp || 0) - (b.timestamp || 0));
+      return snap.docs
+        .map((doc) => ({ id: doc.id, ...doc.data() }))
+        .sort((a: any, b: any) => ((a.queuedAt ?? a.timestamp) || 0) - ((b.queuedAt ?? b.timestamp) || 0));
+    });
 
     return ok(queues);
   } catch (e: unknown) {
@@ -127,17 +137,30 @@ export async function POST(req: Request) {
       rounds: validData.rounds,
       round1: false,
       round2: false,
+      bookedAt: timestamp,
+      queuedAt: timestamp,
       timestamp,
     };
 
     const bookingRef = dungeonsRef().collection("queues").doc();
     const queueItemsRef = dungeonsRef().collection("dungeon_queue_items");
 
+    const today = getTodayRange();
+
     try {
       await db.runTransaction(async (t) => {
-        const activeQueues = await t.get(
-          dungeonsRef().collection("queues").where("name", "==", validData.name)
-        );
+        const queuesCollection = dungeonsRef().collection("queues");
+
+        const [activeQueues, dailyQueues] = await Promise.all([
+          t.get(queuesCollection.where("name", "==", validData.name)),
+          !isAdminOrOwner
+            ? t.get(
+                queuesCollection
+                  .where("timestamp", ">=", today.start)
+                  .where("timestamp", "<=", today.end)
+              )
+            : Promise.resolve(null),
+        ]);
 
         const isDuplicate = activeQueues.docs.some((d) => {
           const status = d.data().status;
@@ -145,6 +168,17 @@ export async function POST(req: Request) {
         });
         if (isDuplicate) {
           throw new Error("DUPLICATE_QUEUE_NAME");
+        }
+
+        if (dailyQueues) {
+          const uniquePlayersToday = new Set<string>();
+          for (const d of dailyQueues.docs) {
+            const data = d.data();
+            if (data.name) uniquePlayersToday.add(data.name as string);
+          }
+          if (!uniquePlayersToday.has(validData.name) && uniquePlayersToday.size >= 30) {
+            throw new Error("DAILY_LIMIT_EXCEEDED");
+          }
         }
 
         // Create Main Booking Doc
@@ -168,11 +202,19 @@ export async function POST(req: Request) {
         }
       });
     } catch (txErr: unknown) {
-      if (txErr instanceof Error && txErr.message === "DUPLICATE_QUEUE_NAME") {
-        return err("ชื่อนี้อยู่ในคิวแล้ว (สถานะรอ หรือ กำลังลง)");
+      if (txErr instanceof Error) {
+        if (txErr.message === "DUPLICATE_QUEUE_NAME") {
+          return err("ชื่อนี้อยู่ในคิวแล้ว (สถานะรอ หรือ กำลังลง)");
+        }
+        if (txErr.message === "DAILY_LIMIT_EXCEEDED") {
+          return err("วันนี้มีผู้เล่นจองครบ 30 คนแล้ว — ระบบปิดรับจองสำหรับวันนี้", 403);
+        }
       }
       throw txErr;
     }
+
+    // Invalidate in-memory cache so fresh queue is immediately visible to all callers
+    invalidateCurrentQueuesCache();
 
     // Save audit log to database
     logAction({

@@ -1,7 +1,8 @@
 export const dynamic = "force-dynamic";
-import { leaveRef, teamsRef } from "@/lib/firebase-admin";
+import { getDb, leaveRef, teamsRef } from "@/lib/firebase-admin";
+import { removeMemberFromTeamsTransaction } from "@/lib/team-sync";
 import { requireAuth, requireAdmin } from "@/lib/auth";
-import { ok, err, handleServerError, logAction } from "@/lib/server-utils";
+import { ok, err, notFound, handleServerError, logAction } from "@/lib/server-utils";
 import { leaveSubmitSchema, leaveDeleteSchema, validateBody } from "@/lib/validations";
 import { trackFirestoreRead } from "@/lib/firestore-logger";
 
@@ -64,31 +65,11 @@ export async function POST(req: Request) {
 
     const docRef = await leaveRef().collection("records").add(newLeave);
 
-    // Auto-remove from GVG Teams
+    // Auto-remove from GVG Teams via atomic transaction to prevent Lost Updates
     try {
+      const db = getDb();
       const tRef = teamsRef();
-      const tDoc = await tRef.get();
-      if (tDoc.exists) {
-        let tData = tDoc.data() as any;
-        let changed = false;
-        if (tData.columns) {
-          for (const colId of Object.keys(tData.columns)) {
-            if (colId === "unassigned") continue;
-            const col = tData.columns[colId];
-            if (col && col.memberIds && Array.isArray(col.memberIds)) {
-              for (let i = 0; i < col.memberIds.length; i++) {
-                if (col.memberIds[i] === name) {
-                  col.memberIds[i] = null;
-                  changed = true;
-                }
-              }
-            }
-          }
-        }
-        if (changed) {
-          await tRef.set(tData);
-        }
-      }
+      await removeMemberFromTeamsTransaction(db, tRef, name);
     } catch (e) {
       console.error("Error auto-removing from teams:", e);
     }
@@ -123,6 +104,9 @@ export async function DELETE(req: Request) {
     const { id } = validation.data;
 
     const snap = await leaveRef().collection("records").doc(id).get();
+    if (!snap.exists) {
+      return notFound("ไม่พบรายการแจ้งลานี้");
+    }
     const lData = snap.data() as any;
 
     await leaveRef().collection("records").doc(id).delete();

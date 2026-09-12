@@ -157,9 +157,23 @@ export default function DungeonPage() {
   const [submitting, setSubmitting] = useState(false);
   const [formMsg, setFormMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
-  // User/Selected character Quota
-  const targetQuotaName = formName.trim() || (user?.gameUsername ?? "");
-  const { data: quotaData } = useQuery({
+  // User/Selected character Quota with 400ms debounce
+  const [debouncedFormName, setDebouncedFormName] = useState(formName.trim());
+
+  useEffect(() => {
+    const trimmed = formName.trim();
+    if (!trimmed) {
+      setDebouncedFormName("");
+      return;
+    }
+    const timer = setTimeout(() => {
+      setDebouncedFormName(trimmed);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [formName]);
+
+  const targetQuotaName = debouncedFormName || (user?.gameUsername ?? "");
+  const { data: quotaData, isFetching: isQuotaLoading } = useQuery({
     queryKey: ["dungeon_quota", targetQuotaName],
     queryFn: async () => {
       if (!targetQuotaName) return null;
@@ -170,6 +184,13 @@ export default function DungeonPage() {
     enabled: !!targetQuotaName,
     staleTime: 10_000,
   });
+
+  const currentExpectedName = formName.trim() || (user?.gameUsername ?? "");
+  const isQuotaMatchingCurrentInput = Boolean(
+    quotaData &&
+    currentExpectedName &&
+    quotaData.playerName.toLowerCase() === currentExpectedName.toLowerCase()
+  );
 
   // Clipboard toast
   const [copied, setCopied] = useState(false);
@@ -332,7 +353,7 @@ export default function DungeonPage() {
 
   // ────────────────────────────────────────────────────────────
   return (
-    <div style={{ zoom: 0.85 }} className="min-h-screen bg-[#f0f6fc] dark:bg-[#1C1F27] p-4 lg:py-8 lg:px-12 xl:px-24 2xl:px-32">
+    <div className="min-h-screen bg-[#f0f6fc] dark:bg-[#1C1F27] p-4 lg:py-8 lg:px-12 xl:px-24 2xl:px-32">
 
       {/* Header Card */}
       <div className="bg-white dark:bg-[#232733] rounded-2xl shadow-sm border border-slate-200 dark:border-[#2D3342] p-5 mb-5 flex items-center gap-3">
@@ -410,6 +431,7 @@ export default function DungeonPage() {
                           className="px-3 py-2 text-sm cursor-pointer hover:bg-slate-100 dark:hover:bg-[#323847] text-slate-800 dark:text-white flex items-center justify-between"
                           onClick={() => {
                             setFormName(m.name);
+                            setDebouncedFormName(m.name);
                             setFormJob(m.job);
                           }}
                         >
@@ -437,7 +459,7 @@ export default function DungeonPage() {
               </div>
 
               {/* User Quota Indicator */}
-              {quotaData && (
+              {isQuotaMatchingCurrentInput && quotaData ? (
                 <div className="bg-slate-50 dark:bg-[#1E212B] border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-xs flex flex-col gap-1.5 shadow-sm">
                   <div className="flex justify-between items-center">
                     <span className="text-slate-500 dark:text-slate-400 font-medium">สิทธิ์การจองของ <strong>{quotaData.playerName}</strong>:</span>
@@ -467,7 +489,12 @@ export default function DungeonPage() {
                     <p className="text-[10px] text-amber-600 dark:text-amber-400 italic">⚠️ {quotaData.reason}</p>
                   )}
                 </div>
-              )}
+              ) : currentExpectedName && (isQuotaLoading || formName.trim() !== debouncedFormName) ? (
+                <div className="bg-slate-50 dark:bg-[#1E212B] border border-slate-200/60 dark:border-slate-800 rounded-xl p-2.5 text-xs text-slate-400 dark:text-slate-500 italic flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-[#3B66D1] animate-pulse" />
+                  กำลังตรวจสอบสิทธิ์ของ {currentExpectedName}...
+                </div>
+              ) : null}
 
               {/* Job */}
               <div>

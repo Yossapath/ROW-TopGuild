@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { Shield, Users, Loader2, GripVertical, Lock, Unlock, X, ChevronLeft, ChevronRight, LayoutGrid, Wand2, ChevronDown, Plus, Trash2, Edit2, Check, CheckCircle2, Search, Download } from "lucide-react";
+import { Shield, Users, Loader2, GripVertical, Lock, Unlock, X, ChevronLeft, ChevronRight, LayoutGrid, Wand2, ChevronDown, Plus, Trash2, Edit2, Check, CheckCircle2, Search, Download, AlertCircle, RefreshCw } from "lucide-react";
 import axios from "axios";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { JOB_COLORS, JOB_LIST } from "@/lib/utils";
@@ -63,6 +63,9 @@ export default function TeamsPage() {
   const [isMounted, setIsMounted] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [saveErrorMsg, setSaveErrorMsg] = useState("");
+  const [serverVersion, setServerVersion] = useState<number>(0);
+  const [hasConflict, setHasConflict] = useState<boolean>(false);
+  const [conflictMessage, setConflictMessage] = useState<string>("");
   const initialLoadRef = useRef(true);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -142,6 +145,14 @@ export default function TeamsPage() {
       const savedTeams = teamsRes.data;
       const membersMap: Record<string, Member> = {};
       if (leaveRes.data) setLeaveRecords(leaveRes.data.data || leaveRes.data || []);
+
+      if (savedTeams && typeof savedTeams.version === "number") {
+        setServerVersion(savedTeams.version);
+      } else {
+        setServerVersion(0);
+      }
+      setHasConflict(false);
+      setConflictMessage("");
 
       if (rosterPayload.ok && rosterPayload.data) {
         Object.entries(rosterPayload.data).forEach(([jobName, members]: [string, any]) => {
@@ -239,11 +250,13 @@ export default function TeamsPage() {
 
   const handleSave = useCallback(async (currentData: DataState) => {
     if (!isAdmin) return;
+    if (hasConflict) return; // Prevent overwriting when conflict is unhandled
     setSaveStatus("saving");
     try {
       const mainZones = currentData.zones.filter(z => z.type === "main");
       const subZones = currentData.zones.filter(z => z.type === "sub");
       const payload = {
+        version: serverVersion,
         members: currentData.members,
         columns: currentData.columns,
         zones: currentData.zones,
@@ -270,17 +283,30 @@ export default function TeamsPage() {
           }
         ]
       };
-      await axios.put("/api/teams", payload);
+      const res = await axios.put("/api/teams", payload);
+      const nextVer = res.data?.version ?? res.data?.data?.version ?? (serverVersion + 1);
+      setServerVersion(nextVer);
       setSaveStatus("saved");
       setSaveErrorMsg("");
+      setHasConflict(false);
+      setConflictMessage("");
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
       saveTimeoutRef.current = setTimeout(() => setSaveStatus("idle"), 3000);
     } catch (err: any) {
       console.error("Save error:", err.response?.data || err);
-      setSaveStatus("error");
-      setSaveErrorMsg(err.response?.data?.error || err.message || "Unknown error");
+      const isConflict = err.response?.status === 409 || err.response?.data?.conflict;
+      if (isConflict) {
+        setSaveStatus("error");
+        setHasConflict(true);
+        const conflictMsg = err.response?.data?.error || "ข้อมูลทีมในระบบมีการเปลี่ยนแปลงจาก Admin ท่านอื่น หรือมีสมาชิกแจ้งลา กรุณารีเฟรชข้อมูลล่าสุดก่อนทำการแก้ไข";
+        setSaveErrorMsg(conflictMsg);
+        setConflictMessage(conflictMsg);
+      } else {
+        setSaveStatus("error");
+        setSaveErrorMsg(err.response?.data?.error || err.message || "Unknown error");
+      }
     }
-  }, [isAdmin]);
+  }, [isAdmin, serverVersion, hasConflict]);
 
   // Auto-save trigger
   useEffect(() => {
@@ -745,10 +771,27 @@ export default function TeamsPage() {
               {isExporting ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />} 
               {isExporting ? "กำลังออกเอกสาร..." : "Export PDF"}
             </button>
-            <button onClick={() => setIsAutoModalOpen(true)} className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 sm:px-4 py-2 bg-white dark:bg-[#272C38] text-[#0b3d63] dark:text-white border border-[#0b3d63] dark:border-[#4D73CD] rounded-xl font-bold hover:bg-blue-50 dark:hover:bg-sky-950/30 transition-colors text-xs sm:text-sm shadow-sm"><Wand2 size={16} /> ออโต้จัดทีม</button>
           </div>
         )}
       </div>
+
+      {hasConflict && (
+        <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 rounded-2xl p-4 mb-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm shadow-sm">
+          <div className="flex items-center gap-2.5 text-amber-800 dark:text-amber-300">
+            <AlertCircle className="w-5 h-5 flex-shrink-0 text-amber-600" />
+            <span className="font-semibold">{conflictMessage || "ข้อมูลทีมในระบบมีการเปลี่ยนแปลงจาก Admin ท่านอื่น หรือมีสมาชิกแจ้งลา ระบบระงับการบันทึกทับชั่วคราวเพื่อป้องกันข้อมูลสูญหาย"}</span>
+          </div>
+          <button
+            onClick={() => {
+              fetchData();
+              setHasConflict(false);
+            }}
+            className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl text-xs sm:text-sm flex-shrink-0 transition-all shadow-sm flex items-center gap-1.5"
+          >
+            <RefreshCw size={14} /> รีเฟรชเพื่อโหลดข้อมูลล่าสุด
+          </button>
+        </div>
+      )}
 
       <DragDropContext onDragEnd={onDragEnd}>
         <div className="flex flex-col lg:flex-row gap-4 items-start">

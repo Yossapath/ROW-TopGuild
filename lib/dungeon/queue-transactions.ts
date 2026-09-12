@@ -82,6 +82,15 @@ export const autoAssignTeamTransaction = async (
       return { updatedTeam: team, assignedCount: 0, reason };
     }
 
+    // 3.5 Read parent booking docs for all assigned items (READS MUST PRECEDE WRITES)
+    const queuesRef = dRef.collection("queues");
+    const assignedBookingIds = Array.from(
+      new Set(updatedItems.map((item) => item.bookingId).filter(Boolean))
+    );
+    const bookingSnaps = await Promise.all(
+      assignedBookingIds.map((bid) => t.get(queuesRef.doc(bid)))
+    );
+
     // 4. Write Updates back to DB. All transaction reads are complete.
     if (teamNeedsCreate) {
       t.set(teamRef, { ...updatedTeam, status: "AVAILABLE" });
@@ -98,6 +107,20 @@ export const autoAssignTeamTransaction = async (
         status: item.status,
         assignedTeamId: item.assignedTeamId,
       });
+    }
+
+    // Atomically sync parent booking queue status to "active"
+    const now = Date.now();
+    for (const bSnap of bookingSnaps) {
+      if (bSnap.exists) {
+        const bData = bSnap.data();
+        if (bData && bData.status !== "done") {
+          t.update(bSnap.ref, {
+            status: "active",
+            startTime: bData.startTime || now,
+          });
+        }
+      }
     }
 
     return { updatedTeam, assignedCount: updatedItems.length };
@@ -238,7 +261,8 @@ export const teamControlTransaction = async (
 
           const totalRounds = qData?.rounds || 1;
           const allDone = totalRounds === 1 ? r1 : (r1 && r2);
-          bookingUpdate.status = allDone ? "done" : "active";
+          bookingUpdate.status = allDone ? "done" : "waiting";
+          bookingUpdate.startTime = null;
           t.update(queuesRef.doc(bookingId), bookingUpdate);
         }
       }
@@ -267,13 +291,7 @@ export const ejectMemberTransaction = async (
 
   return await db.runTransaction(async (t) => {
     const teamRef = dRef.collection("dungeon_teams").doc(teamId);
-    const itemRef = dRef.collection("dungeon_queue_items").doc(queueItemId);
-
-    // ── ALL READS FIRST ──
-    const [teamSnap, itemSnap] = await Promise.all([
-      t.get(teamRef),
-      t.get(itemRef),
-    ]);
+    const teamSnap = await t.get(teamRef);
 
     if (!teamSnap.exists) {
       throw new Error(`Team ${teamId} does not exist`);
@@ -286,6 +304,23 @@ export const ejectMemberTransaction = async (
     if (memberIndex === -1) {
       // Member not in team, maybe already ejected. Just return current team.
       return { team };
+    }
+
+    const member = team.activeMembers[memberIndex];
+    const actualQueueItemId = member.queueItemId || queueItemId;
+    const itemRef = dRef.collection("dungeon_queue_items").doc(actualQueueItemId);
+
+    const itemSnap = await t.get(itemRef);
+
+    let bookingRef: any = null;
+    let bookingSnap: any = null;
+
+    if (itemSnap.exists) {
+      const itemData = itemSnap.data() as DungeonQueueItem;
+      if (itemData?.bookingId) {
+        bookingRef = dRef.collection("queues").doc(itemData.bookingId);
+        bookingSnap = await t.get(bookingRef);
+      }
     }
 
     // ── WRITES AFTER ALL READS ──
@@ -301,6 +336,17 @@ export const ejectMemberTransaction = async (
         assignedTeamId: null,
         queuedAt: Date.now(),
       });
+    }
+
+    // Sync parent booking queue document (clear active status back to waiting)
+    if (bookingRef && bookingSnap && bookingSnap.exists) {
+      const bData = bookingSnap.data();
+      if (bData && bData.status !== "done") {
+        t.update(bookingRef, {
+          status: "waiting",
+          startTime: null,
+        });
+      }
     }
 
     return { team: { ...team, activeMembers: updatedMembers } as DungeonTeamResource };
@@ -351,6 +397,11 @@ export const manualAssignTeamTransaction = async (
       return { team };
     }
 
+    // Read parent booking doc (must happen before writes)
+    const queuesRef = dRef.collection("queues");
+    const bookingRef = item.bookingId ? queuesRef.doc(item.bookingId) : null;
+    const bookingSnap = bookingRef ? await t.get(bookingRef) : null;
+
     // Check for Priest requirement: handled by auto-assign engine.
     // Manual assign (admin action) allows any player without restriction.
     const updatedMembers = [...team.activeMembers, {
@@ -370,6 +421,17 @@ export const manualAssignTeamTransaction = async (
       status: "ASSIGNED",
       assignedTeamId: teamId,
     });
+
+    // Atomically sync parent booking status to "active"
+    if (bookingRef && bookingSnap && bookingSnap.exists) {
+      const bData = bookingSnap.data();
+      if (bData && bData.status !== "done") {
+        t.update(bookingRef, {
+          status: "active",
+          startTime: bData.startTime || Date.now(),
+        });
+      }
+    }
 
     return { team: { ...team, activeMembers: updatedMembers } as DungeonTeamResource };
   });

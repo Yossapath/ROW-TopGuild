@@ -20,6 +20,7 @@ export default function UsersPage() {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
   const isAdmin = user?.role === "admin" || user?.role === "owner";
+  const isOwner = user?.role === "owner";
 
   const { data: users = [], isLoading, isError } = useQuery<UserData[]>({
     queryKey: ["users"],
@@ -41,8 +42,8 @@ export default function UsersPage() {
       queryClient.invalidateQueries({ queryKey: ["users"] });
       alert("อัปเดต Role สำเร็จ!");
     },
-    onError: () => {
-      alert("เกิดข้อผิดพลาดในการอัปเดต Role");
+    onError: (err: any) => {
+      alert(err?.response?.data?.error || "เกิดข้อผิดพลาดในการอัปเดต Role");
     },
   });
 
@@ -69,14 +70,14 @@ export default function UsersPage() {
 
   if (!isAdmin) {
     return (
-      <div className="space-y-6 bg-[#f0f6fc] min-h-screen p-4 lg:py-8 lg:px-12 xl:px-24 2xl:px-32 relative" style={{ zoom: 0.85 }}>
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 mb-5 flex items-center gap-3">
+      <div className="space-y-6 bg-[#f0f6fc] dark:bg-[#1C1F27] min-h-screen p-4 lg:py-8 lg:px-12 xl:px-24 2xl:px-32 relative">
+        <div className="bg-white dark:bg-[#232733] rounded-2xl shadow-sm border border-slate-200 dark:border-[#2D3342] p-5 mb-5 flex items-center gap-3">
           <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 bg-red-600 text-white">
             <UserCog className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-red-600">Access Denied</h1>
-            <p className="text-slate-500 text-sm font-medium mt-0.5">คุณไม่มีสิทธิ์เข้าถึงหน้านี้ (เฉพาะ Admin เท่านั้น)</p>
+            <h1 className="text-xl font-bold text-red-600 dark:text-red-400">Access Denied</h1>
+            <p className="text-slate-500 dark:text-[#8B93A7] text-sm font-medium mt-0.5">คุณไม่มีสิทธิ์เข้าถึงหน้านี้ (เฉพาะ Admin เท่านั้น)</p>
           </div>
         </div>
       </div>
@@ -104,7 +105,7 @@ export default function UsersPage() {
   });
 
   return (
-    <div className="space-y-6 bg-[#f0f6fc] dark:bg-[#1C1F27] min-h-screen p-4 lg:py-8 lg:px-12 xl:px-24 2xl:px-32 relative" style={{ zoom: 0.85 }}>
+    <div className="space-y-6 bg-[#f0f6fc] dark:bg-[#1C1F27] min-h-screen p-4 lg:py-8 lg:px-12 xl:px-24 2xl:px-32 relative">
       {/* Header Card */}
       <div className="bg-white dark:bg-[#232733] rounded-2xl shadow-sm border border-slate-200 dark:border-[#2D3342] p-5 mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
@@ -187,23 +188,46 @@ export default function UsersPage() {
                       </td>
                       <td className="py-3 px-4 text-center">
                         <div className="flex justify-center items-center">
-                          <select
-                            value={u.role || "member"}
-                            onChange={(e) => {
-                              if (window.confirm(`ต้องการเปลี่ยนยศของ ${u.discordUsername || 'ผู้ใช้'} เป็น ${e.target.value} ใช่หรือไม่?`)) {
-                                updateRoleMutation.mutate({ discordId: u.discordId, role: e.target.value });
-                              }
-                            }}
-                            disabled={updateRoleMutation.isPending}
-                            className={`px-3 py-1.5 rounded-lg font-bold text-sm border-2 outline-none cursor-pointer transition-colors ${
-                              u.role === 'admin' 
-                                ? 'bg-theme-warning/10 text-theme-warning border-theme-warning/30 hover:border-theme-warning' 
-                                : 'bg-slate-100 text-slate-600 border-slate-200 hover:border-slate-300 dark:bg-[#272C38] dark:text-white dark:border-[#2D3342]'
-                            }`}
-                          >
-                            <option value="admin">Admin</option>
-                            <option value="member">Member</option>
-                          </select>
+                          {u.discordId === user?.discordId ? (
+                            <span className={`px-3 py-1 rounded-lg font-bold text-xs border ${
+                              u.role === 'owner'
+                                ? 'bg-purple-100 text-purple-700 border-purple-300 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800'
+                                : u.role === 'admin'
+                                ? 'bg-theme-warning/10 text-theme-warning border-theme-warning/30'
+                                : 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-[#272C38] dark:text-white dark:border-[#2D3342]'
+                            }`}>
+                              {u.role === 'owner' ? 'Owner' : u.role === 'admin' ? 'Admin' : 'Member'}
+                            </span>
+                          ) : !isOwner && (u.role === 'owner' || u.role === 'admin') ? (
+                            <span className={`px-3 py-1 rounded-lg font-bold text-xs border ${
+                              u.role === 'owner'
+                                ? 'bg-purple-100 text-purple-700 border-purple-300 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800'
+                                : 'bg-theme-warning/10 text-theme-warning border-theme-warning/30'
+                            }`}>
+                              {u.role === 'owner' ? 'Owner' : 'Admin'}
+                            </span>
+                          ) : (
+                            <select
+                              value={u.role || "member"}
+                              onChange={(e) => {
+                                if (window.confirm(`ต้องการเปลี่ยนยศของ ${u.discordUsername || 'ผู้ใช้'} เป็น ${e.target.value} ใช่หรือไม่?`)) {
+                                  updateRoleMutation.mutate({ discordId: u.discordId, role: e.target.value });
+                                }
+                              }}
+                              disabled={updateRoleMutation.isPending}
+                              className={`px-3 py-1.5 rounded-lg font-bold text-sm border-2 outline-none cursor-pointer transition-colors ${
+                                u.role === 'owner'
+                                  ? 'bg-purple-100 text-purple-700 border-purple-300 hover:border-purple-500 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800'
+                                  : u.role === 'admin' 
+                                  ? 'bg-theme-warning/10 text-theme-warning border-theme-warning/30 hover:border-theme-warning' 
+                                  : 'bg-slate-100 text-slate-600 border-slate-200 hover:border-slate-300 dark:bg-[#272C38] dark:text-white dark:border-[#2D3342]'
+                              }`}
+                            >
+                              {isOwner && <option value="owner">Owner</option>}
+                              <option value="admin">Admin</option>
+                              <option value="member">Member</option>
+                            </select>
+                          )}
                         </div>
                       </td>
                       <td className="py-3 px-4 text-center">
@@ -211,6 +235,10 @@ export default function UsersPage() {
                           u.discordId === user?.discordId ? (
                             <span className="text-xs font-semibold text-slate-400 dark:text-[#8B93A7] bg-slate-100 dark:bg-[#272C38] px-2.5 py-1 rounded-md">
                               คุณเอง
+                            </span>
+                          ) : !isOwner && (u.role === 'owner' || u.role === 'admin') ? (
+                            <span className="text-xs text-slate-400 dark:text-[#6B7280]">
+                              -
                             </span>
                           ) : (
                             <button

@@ -5,12 +5,7 @@ import { useAuthStore } from "@/stores/useAuthStore";
 import axios from "axios";
 import { useRouter } from "next/navigation";
 import * as Dialog from "@radix-ui/react-dialog";
-
-const JOB_CLASSES = [
-  "Lord Knight", "Paladin", "High Wizard", "Sniper", 
-  "Priest", "Champion", "Assassin Cross", "Merchant", 
-  "Gunslinger", "Druid"
-];
+import { JOB_LIST } from "@/lib/utils";
 
 export default function CompleteProfilePopup() {
   const { user, setUser } = useAuthStore();
@@ -56,7 +51,7 @@ export default function CompleteProfilePopup() {
     <Dialog.Root open={!!isOpen}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
-        <Dialog.Content className="fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border border-slate-200 dark:border-[#2D3342] bg-white dark:bg-[#232733] p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-2xl">
+        <Dialog.Content className="fixed left-[50%] top-[50%] z-50 grid w-[92%] sm:w-full max-w-lg max-h-[90vh] overflow-y-auto translate-x-[-50%] translate-y-[-50%] gap-4 border border-slate-200 dark:border-[#2D3342] bg-white dark:bg-[#232733] p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] rounded-2xl">
           <div className="flex flex-col space-y-1.5 text-center sm:text-left">
             <Dialog.Title className="text-lg font-semibold leading-none tracking-tight text-slate-800 dark:text-white">
               เติมเต็มข้อมูลโปรไฟล์ให้สมบูรณ์
@@ -104,7 +99,7 @@ export default function CompleteProfilePopup() {
                 className="flex h-10 w-full rounded-xl border border-gray-300 dark:border-[#2D3342] bg-white dark:bg-[#272C38] px-3 py-2 text-sm text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#4D73CD] cursor-pointer"
               >
                 <option value="" disabled>เลือกสายอาชีพ</option>
-                {JOB_CLASSES.map((job) => (
+                {JOB_LIST.map((job) => (
                   <option key={job} value={job}>{job}</option>
                 ))}
               </select>

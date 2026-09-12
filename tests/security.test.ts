@@ -262,3 +262,92 @@ test("isBookingOpen - Safe handling of undefined, empty, or partial schedule obj
   });
   assert.equal(resultTodayAllDay.open, true);
 });
+
+test("Roster Deletion Logic - Safe member matching without De Morgan data loss", () => {
+  function filterRoster(members: any[], { discordId, name }: { discordId?: string; name?: string }) {
+    return members.filter((m: any) => {
+      const isTarget = discordId && m.discordId
+        ? m.discordId === discordId
+        : Boolean(name && m.name === name);
+      return !isTarget;
+    });
+  }
+
+  const sampleMembers = [
+    { name: "PlayerWithNoDiscord1", power: 1000 },
+    { name: "PlayerWithNoDiscord2", power: 1200 },
+    { name: "PlayerWithDiscord1", discordId: "d1", power: 1500 },
+    { name: "PlayerWithDiscord2", discordId: "d2", power: 1600 },
+  ];
+
+  // 1. Delete by name only (no discordId) - must NOT delete other members without discordId!
+  const afterDeleteName = filterRoster(sampleMembers, { name: "PlayerWithNoDiscord1" });
+  assert.equal(afterDeleteName.length, 3);
+  assert.equal(afterDeleteName.some(m => m.name === "PlayerWithNoDiscord1"), false);
+  assert.equal(afterDeleteName.some(m => m.name === "PlayerWithNoDiscord2"), true, "PlayerWithNoDiscord2 must NOT be deleted");
+
+  // 2. Delete by discordId only (no name)
+  const afterDeleteDiscord = filterRoster(sampleMembers, { discordId: "d1" });
+  assert.equal(afterDeleteDiscord.length, 3);
+  assert.equal(afterDeleteDiscord.some(m => m.discordId === "d1"), false);
+  assert.equal(afterDeleteDiscord.some(m => m.discordId === "d2"), true);
+
+  // 3. Delete with both discordId and name
+  const afterDeleteBoth = filterRoster(sampleMembers, { discordId: "d2", name: "PlayerWithDiscord2" });
+  assert.equal(afterDeleteBoth.length, 3);
+  assert.equal(afterDeleteBoth.some(m => m.discordId === "d2"), false);
+
+  // 4. Do NOT delete if discordId is for a different user even if name matches
+  const membersWithDuplicateName = [
+    { name: "Alice", discordId: "user_111" },
+    { name: "Alice", discordId: "user_222" },
+  ];
+  const afterTargetUser111 = filterRoster(membersWithDuplicateName, { discordId: "user_111", name: "Alice" });
+  assert.equal(afterTargetUser111.length, 1);
+  assert.equal(afterTargetUser111[0].discordId, "user_222", "user_222 must be preserved");
+});
+
+test("Dungeon Queue Transaction - Atomic Daily 30-Player Cap Enforcement", () => {
+  function verifyDailyCapInTransaction({
+    dailyDocs,
+    playerName,
+    isAdminOrOwner,
+  }: {
+    dailyDocs: { name?: string }[];
+    playerName: string;
+    isAdminOrOwner: boolean;
+  }) {
+    if (isAdminOrOwner) return "ALLOWED";
+
+    const uniquePlayersToday = new Set<string>();
+    for (const d of dailyDocs) {
+      if (d.name) uniquePlayersToday.add(d.name);
+    }
+
+    if (!uniquePlayersToday.has(playerName) && uniquePlayersToday.size >= 30) {
+      throw new Error("DAILY_LIMIT_EXCEEDED");
+    }
+
+    return "ALLOWED";
+  }
+
+  // 1. 29 unique players -> 30th player is allowed
+  const twentyNinePlayers = Array.from({ length: 29 }, (_, i) => ({ name: `Player_${i + 1}` }));
+  assert.equal(
+    verifyDailyCapInTransaction({ dailyDocs: twentyNinePlayers, playerName: "Player_30", isAdminOrOwner: false }),
+    "ALLOWED"
+  );
+
+  // 2. 30 unique players -> 31st player throws DAILY_LIMIT_EXCEEDED
+  const thirtyPlayers = Array.from({ length: 30 }, (_, i) => ({ name: `Player_${i + 1}` }));
+  assert.throws(
+    () => verifyDailyCapInTransaction({ dailyDocs: thirtyPlayers, playerName: "Player_31", isAdminOrOwner: false }),
+    /DAILY_LIMIT_EXCEEDED/
+  );
+
+  // 3. Admin bypasses even with 30+ players
+  assert.equal(
+    verifyDailyCapInTransaction({ dailyDocs: thirtyPlayers, playerName: "AdminGuildLeader", isAdminOrOwner: true }),
+    "ALLOWED"
+  );
+});

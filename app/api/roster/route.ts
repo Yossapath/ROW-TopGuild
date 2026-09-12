@@ -56,36 +56,57 @@ export async function DELETE(req: Request) {
     }
     
     const db = getDb();
-    const batch = db.batch();
-    let hasWrites = false;
-    
-    // Remove from roster
-    if (job) {
-      const doc = await rosterRef().get();
-      if (doc.exists) {
-        let rosterData = doc.data() as any;
-        if (rosterData.data) rosterData = rosterData.data;
-        
-        if (rosterData[job]) {
-          const originalLen = rosterData[job].length;
-          rosterData[job] = rosterData[job].filter((m: any) => m.discordId !== discordId && m.name !== name);
-          if (rosterData[job].length !== originalLen) {
-            batch.set(rosterRef(), rosterData);
-            hasWrites = true;
+    const rRef = rosterRef();
+    const userDocRef = discordId ? db.collection(COLL_USER).doc(discordId) : null;
+
+    // Atomically remove from roster and user collection in a single transaction
+    await db.runTransaction(async (t) => {
+      const [rDoc, uDoc] = await Promise.all([
+        t.get(rRef),
+        userDocRef ? t.get(userDocRef) : Promise.resolve(null),
+      ]);
+
+      if (rDoc.exists) {
+        let rosterData = rDoc.data() as any;
+        const isLegacyWrapper = Boolean(rosterData.data);
+        if (isLegacyWrapper) rosterData = rosterData.data;
+
+        const jobsToCheck = job && rosterData[job] ? [job] : Object.keys(rosterData);
+        const modifiedJobs: string[] = [];
+
+        for (const j of jobsToCheck) {
+          if (Array.isArray(rosterData[j])) {
+            const originalLen = rosterData[j].length;
+            rosterData[j] = rosterData[j].filter((m: any) => {
+              const isTarget = discordId && m.discordId
+                ? m.discordId === discordId
+                : Boolean(name && m.name === name);
+              return !isTarget;
+            });
+            if (rosterData[j].length !== originalLen) {
+              modifiedJobs.push(j);
+            }
+          }
+        }
+
+        if (modifiedJobs.length > 0) {
+          // Targeted write: Only patch the specific job field(s) from which the member was removed
+          if (isLegacyWrapper) {
+            t.set(rRef, { data: rosterData }, { merge: true });
+          } else {
+            const patch: Record<string, any> = {};
+            for (const j of modifiedJobs) {
+              patch[j] = rosterData[j];
+            }
+            t.set(rRef, patch, { merge: true });
           }
         }
       }
-    }
-    
-    // Remove user doc
-    if (discordId) {
-      batch.delete(db.collection(COLL_USER).doc(discordId));
-      hasWrites = true;
-    }
 
-    if (hasWrites) {
-      await batch.commit();
-    }
+      if (uDoc && uDoc.exists && userDocRef) {
+        t.delete(userDocRef);
+      }
+    });
 
     return ok({ message: "Deleted" });
   } catch (e: unknown) {

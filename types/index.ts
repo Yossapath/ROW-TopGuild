@@ -79,6 +79,8 @@ export interface DungeonQueue {
   round1?: boolean;
   round2?: boolean;
   timestamp: number;
+  bookedAt?: number;
+  queuedAt?: number;
   startTime?: number; // set when status transitions to "active" via startRun
 }
 

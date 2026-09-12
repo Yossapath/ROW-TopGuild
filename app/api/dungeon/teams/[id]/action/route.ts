@@ -4,6 +4,7 @@ import { teamControlTransaction, autoAssignTeamTransaction, ejectMemberTransacti
 import type { DungeonTeamResource } from "@/types";
 import { createInitialTeam } from "@/lib/dungeon/queue-state";
 import { dungeonsRef } from "@/lib/firebase-admin";
+import { invalidateCurrentQueuesCache } from "@/lib/dungeon/queue-cache";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +30,7 @@ export async function POST(
         return err("Missing player identifier to eject", 400);
       }
       const { team } = await ejectMemberTransaction(teamId, targetId);
+      invalidateCurrentQueuesCache();
       logAction({
         module: "DUNGEON_TEAM",
         action: "EJECT_PLAYER",
@@ -41,6 +43,7 @@ export async function POST(
 
     if (action === "manual-assign" && queueItemId) {
       const { team } = await manualAssignTeamTransaction(teamId, queueItemId);
+      invalidateCurrentQueuesCache();
       logAction({
         module: "DUNGEON_TEAM",
         action: "MANUAL_ASSIGN",
@@ -94,6 +97,9 @@ export async function POST(
 
     if (action === "assign") {
       const result = await autoAssignTeamTransaction(teamId);
+      if (result.assignedCount > 0) {
+        invalidateCurrentQueuesCache();
+      }
       logAction({
         module: "DUNGEON_TEAM",
         action: "ASSIGN_TEAM",
@@ -111,6 +117,7 @@ export async function POST(
 
     if (action === "complete") {
       const { team: updatedTeam } = await teamControlTransaction(teamId, "complete");
+      invalidateCurrentQueuesCache();
 
       logAction({
         module: "DUNGEON_TEAM",

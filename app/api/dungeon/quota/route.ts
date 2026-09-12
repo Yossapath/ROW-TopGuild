@@ -1,4 +1,4 @@
-﻿export const dynamic = "force-dynamic";
+export const dynamic = "force-dynamic";
 
 import { requireAuth } from "@/lib/auth";
 import { dungeonsRef } from "@/lib/firebase-admin";
@@ -14,15 +14,30 @@ export async function GET(req: Request) {
     const requestedName = searchParams.get("name")?.trim();
 
     const isAdminOrOwner = auth.user.role === "admin" || auth.user.role === "owner";
-    const targetName = requestedName || auth.user.gameUsername;
 
-    if (!targetName) {
-      return err("ไม่พบชื่อตัวละคร", 400);
+    // 1. Regular members MUST have a registered gameUsername:
+    // Unregistered members cannot query any player quota
+    if (!isAdminOrOwner) {
+      if (!auth.user.gameUsername || auth.user.gameUsername.trim() === "") {
+        return err("กรุณาตั้งชื่อตัวละครในเกมก่อนตรวจสอบสิทธิ์การจอง", 403);
+      }
+
+      const ownName = auth.user.gameUsername.trim().toLowerCase();
+
+      // If member supplied a name parameter, it MUST match their own character name (case-insensitive)
+      if (requestedName && requestedName.toLowerCase() !== ownName) {
+        return err("คุณสามารถดูสิทธิ์การจองของตัวเองเท่านั้น", 403);
+      }
     }
 
-    // Regular users can only inspect their own character quota
-    if (!isAdminOrOwner && auth.user.gameUsername && targetName !== auth.user.gameUsername) {
-      return err("คุณสามารถดูสิทธิ์การจองของตัวเองเท่านั้น", 403);
+    // 2. Resolve target name:
+    // For non-admin members, always enforce own gameUsername regardless of query param
+    const targetName = isAdminOrOwner
+      ? (requestedName || auth.user.gameUsername?.trim() || "")
+      : auth.user.gameUsername!.trim();
+
+    if (!targetName) {
+      return err("ไม่พบชื่อตัวละครที่ต้องการตรวจสอบ", 400);
     }
 
     const queuesRef = dungeonsRef().collection("queues");

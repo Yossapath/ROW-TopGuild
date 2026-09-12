@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { JOB_COLORS, JOB_LIST } from "@/lib/utils";
 import { Search, X, Shield, Users, Check } from "lucide-react";
@@ -14,6 +14,7 @@ export default function RosterPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedJobs, setSelectedJobs] = useState<string[]>([]);
   const [editingMember, setEditingMember] = useState<any>(null);
+  const [isSaving, setIsSaving] = useState(false);
   
   // Modal states
   const [editName, setEditName] = useState("");
@@ -28,17 +29,6 @@ export default function RosterPage() {
     queryFn: async () => (await axios.get("/api/roster")).data.data,
     staleTime: 60 * 1000,
     refetchOnWindowFocus: false,
-  });
-
-  const mutation = useMutation({
-    mutationFn: async (newRoster) => {
-      await axios.put("/api/roster", newRoster);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["roster"] });
-      setEditingMember(null);
-      setIsAddingNew(false);
-    },
   });
 
   const totalMembers = useMemo(() => {
@@ -103,20 +93,20 @@ export default function RosterPage() {
   const handleSave = async () => {
     if (!editName || !editJob || !editPower) return alert("กรุณากรอกข้อมูลให้ครบถ้วน");
     
-    if (isAddingNew) {
-      // Add new is still handled by full roster mutation (admin only)
-      const newRoster = JSON.parse(JSON.stringify(roster || {}));
-      if (!newRoster[editJob]) newRoster[editJob] = [];
-      newRoster[editJob].push({ 
-        name: editName, 
-        power: Number(editPower), 
-        role: editRole,
-        discordId: `manual_${Date.now()}` // Mock ID for manual adds
-      });
-      mutation.mutate(newRoster);
-    } else {
-      // Edit existing user via targeted API
-      try {
+    setIsSaving(true);
+    try {
+      if (isAddingNew) {
+        // Add new member via targeted atomic transaction to prevent concurrent overwrite
+        await axios.post("/api/roster/member", {
+          name: editName,
+          job: editJob,
+          power: editPower,
+          warRole: editRole,
+        });
+        queryClient.invalidateQueries({ queryKey: ["roster"] });
+        setIsAddingNew(false);
+      } else {
+        // Edit existing user via targeted API
         await axios.put("/api/roster/member", {
           targetDiscordId: editingMember.discordId || editingMember.name, // fallback
           originalName: editingMember.name,
@@ -128,9 +118,11 @@ export default function RosterPage() {
         });
         queryClient.invalidateQueries({ queryKey: ["roster"] });
         setEditingMember(null);
-      } catch (err: any) {
-        alert(err.response?.data?.error || "เกิดข้อผิดพลาดในการบันทึก");
       }
+    } catch (err: any) {
+      alert(err.response?.data?.error || err.message || "เกิดข้อผิดพลาดในการบันทึก");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -138,6 +130,7 @@ export default function RosterPage() {
     if (!editingMember) return;
     if (!confirm("ยืนยันการลบสมาชิกนี้? การลบนี้จะลบข้อมูลของ User คนนี้ออกจากระบบทั้งหมด")) return;
     
+    setIsSaving(true);
     try {
       await axios.delete("/api/roster", {
         data: {
@@ -151,13 +144,15 @@ export default function RosterPage() {
     } catch (err) {
       console.error(err);
       alert("เกิดข้อผิดพลาดในการลบสมาชิก");
+    } finally {
+      setIsSaving(false);
     }
   };
 
   if (isLoading) return <div className="flex h-screen items-center justify-center font-bold text-gray-500">กำลังโหลดรายชื่อ...</div>;
 
   return (
-    <div className="space-y-6 bg-[#f0f6fc] dark:bg-[#1C1F27] min-h-screen p-4 lg:py-6 lg:px-6 2xl:px-8 relative" style={{ zoom: 0.85 }}>
+    <div className="space-y-6 bg-[#f0f6fc] dark:bg-[#1C1F27] min-h-screen p-4 lg:py-6 lg:px-6 2xl:px-8 relative">
       
       {/* Header Card */}
       <div className="bg-white dark:bg-[#232733] rounded-2xl shadow-sm border border-slate-200 dark:border-[#2D3342] p-5 mb-5 flex flex-col lg:flex-row items-center justify-between gap-4">
@@ -287,7 +282,7 @@ export default function RosterPage() {
       </div>
 
       {/* Tables Grid (Auto-fit Cards with comfortable min-width and auto-fit height) */}
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-5 items-start">
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,320px),1fr))] gap-5 items-start">
         {displayJobs.map(job => {
           const rawMembers = roster?.[job] || [];
           
@@ -487,10 +482,10 @@ export default function RosterPage() {
                 </button>
                 <button 
                   onClick={handleSave}
-                  disabled={mutation.isPending}
+                  disabled={isSaving}
                   className="bg-[#3B66D1] hover:bg-[#4D73CD] text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm hover:shadow disabled:opacity-70"
                 >
-                  {mutation.isPending ? "กำลังบันทึก..." : "บันทึกสมาชิก"}
+                  {isSaving ? "กำลังบันทึก..." : "บันทึกสมาชิก"}
                 </button>
               </div>
             </div>
