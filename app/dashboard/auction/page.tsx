@@ -63,18 +63,20 @@ export default function AuctionPage() {
 
   return (
     <div className="w-full max-w-[1400px] mx-auto pb-20 p-4 sm:p-6 lg:p-8">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-6 gap-4">
-        <div>
-          <h1 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight flex items-center gap-2">
-            <Gavel className="text-sky-500" />
-            จองคิวประมูล
-          </h1>
-          <p className="text-sm text-slate-500 dark:text-[#8B93A7] mt-1">
-            ระบบจองคิวไอเทมประมูลของ Guild ({auctions.length} ไอเทมทั้งหมด)
-          </p>
+      <div className="bg-slate-800 dark:bg-[#1A1D27] rounded-xl p-4 sm:p-6 mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border border-slate-700 dark:border-[#2D3342]">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-blue-500 flex items-center justify-center text-white shrink-0 shadow-lg shadow-blue-500/20">
+            <Gavel size={28} />
+          </div>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">ระบบจองคิวประมูล</h1>
+            <p className="text-xs sm:text-sm text-slate-300 mt-1 flex flex-wrap items-center gap-1 sm:gap-2">
+              จองคิวไอเทมประมูลกิลด์ <span className="hidden sm:inline">·</span><span className="sm:hidden"><br/></span> ลำดับคิวเรียงตามเวลาที่กดจอง
+            </p>
+          </div>
         </div>
         
-        <div className="flex gap-2 w-full sm:w-auto">
+        <div className="flex gap-2 w-full sm:w-auto mt-2 sm:mt-0">
           <button 
             onClick={() => refetch()}
             className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-[#272C38] text-slate-700 dark:text-white rounded-xl font-bold text-sm hover:bg-slate-200 dark:hover:bg-[#2A2F3E] transition-colors"
