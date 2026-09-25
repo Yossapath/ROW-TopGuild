@@ -1,14 +1,22 @@
 ﻿export const dynamic = 'force-dynamic';
-import { getDb, rosterRef } from '@/lib/firebase-admin';
+import { getDb, rosterRef, COLL_USER } from '@/lib/firebase-admin';
 import { ok, err } from '@/lib/server-utils';
 
 export async function GET(req: Request) {
   try {
+    const db = getDb();
+    const usersSnap = await db.collection(COLL_USER).get();
+    const validDiscordIds = new Set();
+    usersSnap.forEach(doc => {
+        validDiscordIds.add(doc.id);
+    });
+
     const snap = await rosterRef().get();
     const data = snap.data();
     let rosterData = data?.data || data;
     let changed = false;
 
+    // 1. Map classes
     if (rosterData['Clown']) {
       if (!rosterData['Bard']) rosterData['Bard'] = [];
       rosterData['Bard'] = [...rosterData['Bard'], ...rosterData['Clown']];
@@ -24,21 +32,30 @@ export async function GET(req: Request) {
       changed = true;
     }
 
+    // 2. Remove duplicates and orphaned members
     let allNames = new Set();
     let duplicates = [];
+    let removedOrphans = [];
+
     for (const job of Object.keys(rosterData)) {
       if (Array.isArray(rosterData[job])) {
-        const uniqueMembers = [];
+        const validMembers = [];
         for (const m of rosterData[job]) {
+          // Check if orphaned
+          if (!m.discordId || !validDiscordIds.has(m.discordId)) {
+             removedOrphans.push(m.name);
+             continue; // Skip, don't add to valid
+          }
+          
           if (!allNames.has(m.name)) {
             allNames.add(m.name);
-            uniqueMembers.push(m);
+            validMembers.push(m);
           } else {
             duplicates.push(m.name);
           }
         }
-        if (uniqueMembers.length !== rosterData[job].length) {
-          rosterData[job] = uniqueMembers;
+        if (validMembers.length !== rosterData[job].length) {
+          rosterData[job] = validMembers;
           changed = true;
         }
       }
@@ -48,7 +65,7 @@ export async function GET(req: Request) {
       await rosterRef().set(data?.data ? { data: rosterData } : rosterData);
     }
 
-    return ok({ changed, duplicates });
+    return ok({ changed, duplicates, removedOrphans, message: "Roster cleaned successfully!" });
   } catch (error: any) {
     return err(error.message, 500);
   }

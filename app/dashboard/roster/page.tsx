@@ -200,7 +200,7 @@ export default function RosterPage() {
              else if (lowerClass === "high priest") normalizedClass = "Priest";
              else if (lowerClass === "night walker") normalizedClass = "Gunslinger";
              else if (lowerClass === "merchant" || lowerClass === "whitesmith") normalizedClass = "Merchant";
-             else if (lowerClass === "danc" || lowerClass === "dancer" || lowerClass === "ยิปซี") normalizedClass = "Dancer";
+             else if (lowerClass === "danc" || lowerClass === "dancer" || lowerClass === "ยิปซี" || lowerClass === "gypsy") normalizedClass = "Dancer";
              else if (lowerClass === "bard" || lowerClass === "clown" || lowerClass === "คราว") normalizedClass = "Bard";
              else if (lowerClass === "biosmith" || lowerClass === "biochemist" || lowerClass === "creator") normalizedClass = "Biosmith";
              else {
