@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 import { getDb, COLL_USER, rosterRef, teamsRef } from "@/lib/firebase-admin";
 import { requireAuth, requireAdmin } from "@/lib/auth";
-import { ok, err, forbidden, handleServerError } from "@/lib/server-utils";
+import { ok, err, forbidden, handleServerError, logAction } from "@/lib/server-utils";
 import { rosterMemberUpdateSchema, rosterMemberAddSchema, validateBody } from "@/lib/validations";
 import { updateMemberNameInTeamsData } from "@/lib/team-sync";
 
@@ -54,6 +54,14 @@ export async function POST(req: Request) {
       } else {
         t.set(rRef, { [job]: rosterData[job] }, { merge: true });
       }
+    });
+
+    logAction({
+      module: "ROSTER",
+      action: "ADD_MEMBER",
+      actor: auth.user.gameUsername || auth.user.discordUsername || "Admin",
+      target: name,
+      detail: `เพิ่มสมาชิกใหม่ชื่อ ${name} (อาชีพ: ${job})`,
     });
 
     return ok({ success: true, member: { name, job, power, warRole, discordId: finalDiscordId } });
@@ -158,6 +166,14 @@ export async function PUT(req: Request) {
           t.set(tRef, { ...updatedData, version: nextVersion, updatedAt: Date.now() }, { merge: true });
         }
       }
+    });
+
+    logAction({
+      module: "ROSTER",
+      action: "UPDATE_MEMBER",
+      actor: user.gameUsername || user.discordUsername || "Admin",
+      target: name,
+      detail: `อัปเดตข้อมูลของ ${name} (เป้าหมาย: ${targetDiscordId || originalName || name})`,
     });
 
     return ok({ success: true });

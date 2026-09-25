@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 import { rosterRef, getDb, COLL_USER } from "@/lib/firebase-admin";
 import { requireAuth, requireAdmin } from "@/lib/auth";
-import { ok, err, handleServerError } from "@/lib/server-utils";
+import { ok, err, handleServerError, logAction } from "@/lib/server-utils";
 import { trackFirestoreRead } from "@/lib/firestore-logger";
 
 export async function GET() {
@@ -106,6 +106,14 @@ export async function DELETE(req: Request) {
       if (uDoc && uDoc.exists && userDocRef) {
         t.delete(userDocRef);
       }
+    });
+
+    logAction({
+      module: "ROSTER",
+      action: "DELETE_MEMBER",
+      actor: auth.user.gameUsername || auth.user.discordUsername || "Admin",
+      target: name || discordId || "Unknown",
+      detail: `ลบสมาชิกชื่อ ${name || discordId} ออกจากระบบ`,
     });
 
     return ok({ message: "Deleted" });
