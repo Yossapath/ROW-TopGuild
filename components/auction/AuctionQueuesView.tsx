@@ -24,7 +24,8 @@ export function AuctionQueuesView({ auctions }: Props) {
       if (!selectedAuctionId) return [];
       const res = await fetch(`/api/auctions/${selectedAuctionId}/reserve`);
       if (!res.ok) throw new Error("Failed to fetch queue");
-      return res.json();
+      const json = await res.json();
+      return json.data || [];
     },
     enabled: !!selectedAuctionId,
   });
