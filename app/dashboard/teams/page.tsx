@@ -11,7 +11,7 @@ import { allocateTeams, AllocatorResult } from "@/lib/team-allocator";
 import html2canvas from "html2canvas";
 import GVGExportLayout from "@/components/GVGExportLayout";
 
-type Member = { id: string; name: string; job: string; power: number };
+type Member = { id: string; name: string; job: string; power: number; gvgField?: "main" | "sub" };
 type Column = { id: string; title: string; memberIds: (string | null)[]; type: "main" | "sub" | "unassigned"; locked: boolean };
 type Zone = { id: string; name: string; type: "main" | "sub"; teamOrder: string[] };
 type DataState = {
@@ -56,7 +56,7 @@ function migrateToZones(savedData: any, cols: Record<string, Column>): Zone[] {
 
 export default function TeamsPage() {
   const { user } = useAuthStore();
-  const isAdmin = user?.role === "admin" || user?.role === "owner";
+  const isAdmin = user?.role === "admin" || user?.role === "owner" || user?.role === "dev";
 
   const [data, setData] = useState<DataState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -265,7 +265,7 @@ export default function TeamsPage() {
               // Parse power safely (remove commas, handle NaN)
               let parsedPower = typeof m.power === 'string' ? Number(m.power.replace(/,/g, '')) : Number(m.power);
               if (isNaN(parsedPower)) parsedPower = 0;
-              membersMap[m.name] = { id: m.name, name: m.name, job: jobName, power: parsedPower }; 
+              membersMap[m.name] = { id: m.name, name: m.name, job: jobName, power: parsedPower, gvgField: m.gvgField || "main" }; 
             });
           }
         });
@@ -600,7 +600,7 @@ export default function TeamsPage() {
   const handlePullTop60 = () => {
     if (!data) return;
     const all = Object.values(data.members)
-      .filter(m => !data.offlineIds.includes(m.id))
+      .filter(m => !data.offlineIds.includes(m.id)).filter(m => m.gvgField !== "sub")
       .sort((a, b) => b.power - a.power);
     const priests = all.filter(m => m.job === "Priest").slice(0, 12);
     const priestCount = priests.length;
@@ -822,11 +822,16 @@ export default function TeamsPage() {
 
   const filteredUnassignedIds = (data.columns["unassigned"]?.memberIds as string[] || []).filter(id => {
     if (!id || !data.members[id]) return false;
-    if (unassignedFilterJobs.length > 0 && !unassignedFilterJobs.includes(data.members[id]?.job)) return false;
-    if (unassignedSearch && !data.members[id]?.name?.toLowerCase().includes(unassignedSearch.toLowerCase())) return false;
-    if (unassignedPowerFilter !== "" && (data.members[id]?.power || 0) < unassignedPowerFilter) return false;
+    const m = data.members[id];
+    // Filter by gvgField matching activeTab (unless activeTab is leave)
+    if (activeTab === "main" && m.gvgField === "sub") return false;
+    if (activeTab === "sub" && m.gvgField !== "sub") return false;
+
+    if (unassignedFilterJobs.length > 0 && !unassignedFilterJobs.includes(m.job)) return false;
+    if (unassignedSearch && !m.name?.toLowerCase().includes(unassignedSearch.toLowerCase())) return false;
+    if (unassignedPowerFilter !== "" && (m.power || 0) < unassignedPowerFilter) return false;
     return true;
-  });
+  }).sort((a, b) => (data.members[b]?.power || 0) - (data.members[a]?.power || 0));
 
   const AutoMatchModal = () => {
     // Modal implementation omitted for brevity

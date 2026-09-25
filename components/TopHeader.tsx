@@ -40,6 +40,7 @@ export default function TopHeader({
   const [editName, setEditName] = useState("");
   const [editJob, setEditJob] = useState("");
   const [editPower, setEditPower] = useState("");
+  const [editGvgField, setEditGvgField] = useState("main");
   const [isSaving, setIsSaving] = useState(false);
 
   const title = ROUTE_TITLES[pathname] || "Dashboard";
@@ -66,6 +67,7 @@ export default function TopHeader({
     setEditName(user?.gameUsername || "");
     setEditJob(user?.class || JOB_LIST[0]);
     setEditPower(user?.power?.toString() || "");
+    setEditGvgField(user?.gvgField || "main");
     setIsSettingsOpen(true);
   };
 
@@ -80,7 +82,8 @@ export default function TopHeader({
         originalJob: user?.class,
         name: editName,
         job: editJob,
-        power: editPower
+        power: editPower,
+        gvgField: editGvgField
       });
       // Update local user state
       if (user) {
@@ -244,6 +247,18 @@ export default function TopHeader({
                   className="w-full bg-theme-bg border border-theme-border rounded-xl px-4 py-3 text-theme-text font-medium focus:ring-2 focus:ring-theme-primary focus:border-theme-primary outline-none transition-all"
                   placeholder="เช่น 150000"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-theme-text mb-1.5">สิทธิ์สนาม GVG</label>
+                <select 
+                  value={editGvgField}
+                  onChange={e => setEditGvgField(e.target.value)}
+                  className="w-full bg-theme-bg border border-theme-border rounded-xl px-4 py-3 text-theme-text font-medium focus:ring-2 focus:ring-theme-primary focus:border-theme-primary outline-none transition-all appearance-none cursor-pointer"
+                >
+                  <option value="main">สนามหลัก (Main Field)</option>
+                  <option value="sub">สนามรอง (Sub Field)</option>
+                </select>
               </div>
 
               <div className="pt-4 flex justify-end gap-3">

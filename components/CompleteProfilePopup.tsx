@@ -14,6 +14,7 @@ export default function CompleteProfilePopup() {
   const [gameUsername, setGameUsername] = useState("");
   const [userClass, setUserClass] = useState("");
   const [power, setPower] = useState("");
+  const [gvgField, setGvgField] = useState("main");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -33,7 +34,8 @@ export default function CompleteProfilePopup() {
       const res = await axios.post("/api/auth/complete-profile", {
         gameUsername,
         class: userClass,
-        power: Number(power)
+        power: Number(power),
+        gvgField
       });
 
       if (res.data.ok) {
@@ -116,6 +118,18 @@ export default function CompleteProfilePopup() {
                 className="flex h-10 w-full rounded-xl border border-gray-300 dark:border-[#2D3342] bg-white dark:bg-[#272C38] px-3 py-2 text-sm text-slate-800 dark:text-white placeholder:text-gray-400 dark:placeholder:text-[#6B7280] focus:outline-none focus:ring-2 focus:ring-[#4D73CD]"
                 placeholder="เช่น 150000"
               />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium leading-none text-gray-700 dark:text-gray-200">สิทธิ์สนาม GVG</label>
+              <select 
+                value={gvgField}
+                onChange={(e) => setGvgField(e.target.value)}
+                className="flex h-10 w-full rounded-xl border border-gray-300 dark:border-[#2D3342] bg-white dark:bg-[#272C38] px-3 py-2 text-sm text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#4D73CD] cursor-pointer"
+              >
+                <option value="main">สนามหลัก (Main Field)</option>
+                <option value="sub">สนามรอง (Sub Field)</option>
+              </select>
             </div>
 
             <div className="pt-4 flex justify-end">

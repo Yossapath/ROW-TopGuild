@@ -4,7 +4,7 @@
 // ============================================================
 
 // ── User / Auth ──────────────────────────────────────────────
-export type UserRole = "admin" | "owner" | "member";
+export type UserRole = "admin" | "owner" | "dev" | "member";
 
 export interface GuildUser {
   discordId: string;
@@ -14,6 +14,7 @@ export interface GuildUser {
   class?: string;
   power?: number;
   createdAt?: number;
+  gvgField?: "main" | "sub";
 }
 
 export interface AuthPayload {
@@ -24,6 +25,7 @@ export interface AuthPayload {
   class?: string;
   power?: number;
   isProfileComplete: boolean;
+  gvgField?: "main" | "sub";
 }
 
 // ── Roster ───────────────────────────────────────────────────
@@ -192,6 +194,7 @@ export interface DungeonTeamResource {
   completedRounds: number;
   carriers?: string[];
 }
+
 // ── Auction Queue ────────────────────────────────────────────
 
 export type AuctionCategory = "gear" | "card" | "pet" | "relic";

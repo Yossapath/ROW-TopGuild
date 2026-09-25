@@ -72,6 +72,7 @@ export const rosterMemberUpdateSchema = z.object({
     .transform((v) => Number(v))
     .refine((v) => Number.isFinite(v) && v >= 0 && v <= Number.MAX_SAFE_INTEGER, "พลังรบไม่ถูกต้อง"),
   warRole: z.string().trim().max(100).optional(),
+  gvgField: z.enum(["main", "sub"]).optional().default("main"),
 });
 
 // ── Leave Request Schema ─────────────────────────────────────
@@ -153,6 +154,7 @@ export const completeProfileSchema = z.object({
   power: z.union([z.number().nonnegative(), z.string().regex(/^\d+$/)])
     .transform((v) => Number(v))
     .refine((v) => Number.isFinite(v) && v >= 0 && v <= Number.MAX_SAFE_INTEGER, "พลังรบไม่ถูกต้อง"),
+  gvgField: z.enum(["main", "sub"]).optional().default("main"),
 });
 
 // ── Validation Helper ────────────────────────────────────────
