@@ -7,11 +7,12 @@ import { JOB_LIST, JOB_COLORS } from "@/lib/utils";
 import { Search, X, Users, Upload, FileSpreadsheet, Check } from "lucide-react";
 import { useAuthStore } from "@/stores/useAuthStore";
 import * as XLSX from "xlsx";
+import { MemberProfileModal } from "@/components/MemberProfileModal";
 
 export default function RosterPage() {
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
-  const isAdmin = user?.role === "admin" || user?.role === "owner";
+  const isAdmin = user?.role === "admin" || user?.role === "owner" || user?.role === "dev";
   
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedJobs, setSelectedJobs] = useState<string[]>([]);
@@ -19,6 +20,7 @@ export default function RosterPage() {
   
   // Alert Modal States
   const [showModal, setShowModal] = useState(false);
+  const [viewingProfile, setViewingProfile] = useState<any>(null);
   const [notFoundNames, setNotFoundNames] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -66,23 +68,19 @@ export default function RosterPage() {
     
     setIsSaving(true);
     try {
-      let newRoster = { ...roster };
-      
-      if (editingMember.job && newRoster[editingMember.job]) {
-        newRoster[editingMember.job] = newRoster[editingMember.job].filter((m: any) => m.name !== editingMember.name);
-      }
-      
-      if (!newRoster[editJob]) newRoster[editJob] = [];
-      newRoster[editJob].push({
-        ...editingMember,
+      await axios.put("/api/roster/member", {
+        targetDiscordId: editingMember.discordId || null,
+        originalName: editingMember.name,
+        originalJob: editingMember.job,
         name: editName,
         job: editJob,
         title: editTitle,
         power: Number(editPower) || 0,
-        activity: Number(editActivity) || 0
+        activity: Number(editActivity) || 0,
+        warRole: editingMember.role || "อิสระ (ให้ระบบจัดให้)",
+        gvgField: editingMember.gvgField || "main"
       });
       
-      await axios.put("/api/roster", newRoster);
       queryClient.invalidateQueries({ queryKey: ["roster"] });
       setEditingMember(null);
     } catch (err: any) {
@@ -440,7 +438,12 @@ export default function RosterPage() {
                       {isCurrentUser ? <span className="bg-amber-400 text-amber-900 px-2 py-0.5 rounded-full text-xs font-bold shadow-sm">1</span> : index + 1}
                     </td>
                     <td className="py-3 px-4 font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                      {member.name}
+                      <button 
+                        onClick={() => setViewingProfile(member)}
+                        className="hover:text-[#0b3d63] dark:hover:text-[#82A0F5] hover:underline underline-offset-2 transition-colors text-left"
+                      >
+                        {member.name}
+                      </button>
                       {isCurrentUser && <span className="text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300 px-1.5 py-0.5 rounded border border-amber-200 dark:border-amber-700">คุณ</span>}
                     </td>
                     <td className="py-3 px-4">
@@ -606,6 +609,13 @@ export default function RosterPage() {
             </div>
           </div>
         </div>
+      )}
+      
+      {viewingProfile && (
+        <MemberProfileModal 
+          member={viewingProfile} 
+          onClose={() => setViewingProfile(null)} 
+        />
       )}
     </div>
   );

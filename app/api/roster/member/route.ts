@@ -74,7 +74,7 @@ export async function PUT(req: Request) {
       return err(validation.error, 400);
     }
 
-    const { targetDiscordId, originalName, originalJob, name, job, power, warRole } = validation.data;
+    const { targetDiscordId, originalName, originalJob, name, job, power, warRole, title, activity, gvgField } = validation.data;
 
     // Check permission: Admin or Self
     if (user.role !== "admin" && user.role !== "owner" && user.discordId !== targetDiscordId) {
@@ -82,14 +82,14 @@ export async function PUT(req: Request) {
     }
 
     const db = getDb();
-    const userDocRef = db.collection(COLL_USER).doc(targetDiscordId);
+    const userDocRef = targetDiscordId ? db.collection(COLL_USER).doc(targetDiscordId) : null;
     const rRef = rosterRef();
     const tRef = teamsRef();
 
     // Update user document and roster in a single atomic transaction
     await db.runTransaction(async (t) => {
       const [userDoc, rDoc, tDoc] = await Promise.all([
-        t.get(userDocRef),
+        userDocRef ? t.get(userDocRef) : Promise.resolve(null),
         t.get(rRef),
         t.get(tRef),
       ]);
@@ -98,7 +98,9 @@ export async function PUT(req: Request) {
       if (rosterData.data) rosterData = rosterData.data; // Handle legacy wrapper
 
       // Find existing member by targetDiscordId or originalName/originalJob
-      let memberObj: any = { discordId: targetDiscordId, name, power: Number(power) };
+      let memberObj: any = { discordId: targetDiscordId || null, name, power: Number(power), gvgField };
+      if (title !== undefined) memberObj.title = title;
+      if (activity !== undefined) memberObj.activity = activity;
       
       // Retain existing role if not admin
       let existingWarRole = "อิสระ (ให้ระบบจัดให้)";
@@ -107,25 +109,27 @@ export async function PUT(req: Request) {
 
       for (const j of Object.keys(rosterData)) {
         if (Array.isArray(rosterData[j])) {
-          const idx = rosterData[j].findIndex((m: any) => m.discordId === targetDiscordId || (originalName && m.name === originalName));
+          const idx = rosterData[j].findIndex((m: any) => (targetDiscordId && m.discordId === targetDiscordId) || (originalName && m.name === originalName));
           if (idx !== -1) {
             existingWarRole = rosterData[j][idx].role || existingWarRole;
             previousJob = j;
             actualOriginalName = rosterData[j][idx].name;
+            if (!memberObj.discordId) memberObj.discordId = rosterData[j][idx].discordId;
             rosterData[j].splice(idx, 1);
             break;
           }
         }
       }
 
-      memberObj.role = (user.role === "admin" || user.role === "owner") && warRole ? warRole : existingWarRole;
+      memberObj.role = (user.role === "admin" || user.role === "owner" || user.role === "dev") && warRole ? warRole : existingWarRole;
 
       if (!rosterData[job]) rosterData[job] = [];
       rosterData[job].push(memberObj);
 
-      if (userDoc.exists) {
+      if (userDoc && userDoc.exists && userDocRef) {
         const updateData: any = { gameUsername: name, class: job, power: Number(power) };
-        if ((user.role === "admin" || user.role === "owner") && warRole) {
+        if (gvgField !== undefined) updateData.gvgField = gvgField;
+        if ((user.role === "admin" || user.role === "owner" || user.role === "dev") && warRole) {
           updateData.warRole = warRole;
         }
         t.update(userDocRef, updateData);

@@ -63,7 +63,7 @@ export const rosterMemberAddSchema = z.object({
 });
 
 export const rosterMemberUpdateSchema = z.object({
-  targetDiscordId: z.string().trim().min(1).max(50),
+  targetDiscordId: z.string().trim().max(50).optional().nullable(),
   originalName: z.string().trim().max(100).optional(),
   originalJob: z.string().trim().max(50).optional(),
   name: z.string().trim().min(1, "กรุณาระบุชื่อ").max(100),
@@ -72,6 +72,8 @@ export const rosterMemberUpdateSchema = z.object({
     .transform((v) => Number(v))
     .refine((v) => Number.isFinite(v) && v >= 0 && v <= Number.MAX_SAFE_INTEGER, "พลังรบไม่ถูกต้อง"),
   warRole: z.string().trim().max(100).optional(),
+  title: z.string().trim().max(100).optional(),
+  activity: z.union([z.number().nonnegative(), z.string().regex(/^\d+$/)]).optional().transform((v) => v ? Number(v) : undefined),
   gvgField: z.enum(["main", "sub"]).optional().default("main"),
 });
 
