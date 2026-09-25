@@ -2,11 +2,16 @@ import { getDb, auctionsRef, auctionReservationsRef } from "@/lib/firebase-admin
 import { AuctionItem, AuctionStatus, AuctionCategory } from "@/types";
 
 export async function getAuctions(): Promise<AuctionItem[]> {
-  const snapshot = await auctionsRef().orderBy("createdAt", "desc").get();
-  return snapshot.docs.map(doc => ({
+  const snapshot = await auctionsRef().get();
+  let items = snapshot.docs.map(doc => ({
     id: doc.id,
     ...doc.data()
   })) as AuctionItem[];
+  
+  // Sort alphabetically by itemName
+  items.sort((a, b) => a.itemName.localeCompare(b.itemName, 'th'));
+  
+  return items;
 }
 
 export async function getAuction(id: string): Promise<AuctionItem | null> {

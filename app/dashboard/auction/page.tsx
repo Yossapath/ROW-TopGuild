@@ -7,6 +7,7 @@ import { Gavel, RefreshCw, PackageOpen, LayoutGrid, Sword, Layers, Plus } from "
 import { AuctionItem, AuctionCategory } from "@/types";
 import { AuctionItemCard } from "@/components/auction/AuctionItemCard";
 import { AddAuctionModal } from "@/components/auction/AddAuctionModal";
+import { AuctionQueuesView } from "@/components/auction/AuctionQueuesView";
 
 const CATEGORIES: { id: AuctionCategory | "all" | "my"; label: string; icon: any }[] = [
   { id: "all", label: "ทั้งหมด", icon: LayoutGrid },
@@ -22,6 +23,7 @@ export default function AuctionPage() {
   const isAdmin = user?.role === "admin" || user?.role === "owner";
   
   const [activeTab, setActiveTab] = useState<AuctionCategory | "all" | "my">("all");
+  const [viewMode, setViewMode] = useState<"reserve" | "queues">("reserve");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   // Fetch all auctions
@@ -110,6 +112,22 @@ export default function AuctionPage() {
         </div>
       </div>
 
+      <div className="flex bg-slate-100 dark:bg-[#272C38] p-1 rounded-xl w-full sm:w-fit mb-6">
+        <button 
+          onClick={() => setViewMode("reserve")}
+          className={`flex-1 sm:flex-none px-6 py-2 rounded-lg text-sm font-bold transition-all ${viewMode === "reserve" ? "bg-white dark:bg-[#3B66D1] text-[#0b3d63] dark:text-white shadow-sm" : "text-slate-500 dark:text-[#8B93A7] hover:text-slate-700 dark:hover:text-slate-300"}`}
+        >
+          🛒 จองคิว
+        </button>
+        <button 
+          onClick={() => setViewMode("queues")}
+          className={`flex-1 sm:flex-none px-6 py-2 rounded-lg text-sm font-bold transition-all ${viewMode === "queues" ? "bg-white dark:bg-[#3B66D1] text-[#0b3d63] dark:text-white shadow-sm" : "text-slate-500 dark:text-[#8B93A7] hover:text-slate-700 dark:hover:text-slate-300"}`}
+        >
+          📋 ดูคิว
+        </button>
+      </div>
+
+      {viewMode === "reserve" && (<>
       <div className="flex overflow-x-auto hide-scrollbar gap-2 mb-6 pb-1">
         {CATEGORIES.map(cat => {
           const Icon = cat.icon;
@@ -163,6 +181,11 @@ export default function AuctionPage() {
           )}
         </div>
       </div>
+      </>)}
+
+      {viewMode === "queues" && (
+        <AuctionQueuesView auctions={auctions} />
+      )}
 
       {isAddModalOpen && (
         <AddAuctionModal onClose={() => setIsAddModalOpen(false)} />

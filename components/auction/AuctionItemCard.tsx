@@ -15,23 +15,9 @@ interface Props {
 export function AuctionItemCard({ auction, isAdmin, myReservations }: Props) {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
-  const [isExpanded, setIsExpanded] = useState(false);
-
+  
   const myReservation = myReservations.find(r => r.auctionId === auction.id && r.status === "waiting");
   const isMyReservation = !!myReservation;
-
-  const { data: queueRes, isLoading: loadingQueue } = useQuery({
-    queryKey: ["auction-queue", auction.id],
-    queryFn: async () => {
-      const res = await fetch(`/api/auctions/${auction.id}/reserve`);
-      if (!res.ok) throw new Error("Failed to load queue");
-      return res.json() as Promise<{ data: AuctionReservation[] }>;
-    },
-    enabled: isExpanded,
-  });
-
-  const queue = queueRes?.data || [];
-
   const joinMutation = useMutation({
     mutationFn: async () => {
       if (!user?.gameUsername || !user?.class) throw new Error("Please complete your profile first");
@@ -103,7 +89,7 @@ export function AuctionItemCard({ auction, isAdmin, myReservations }: Props) {
         {/* Item Info */}
         <div className="flex items-center gap-4 min-w-0">
           <div className="w-12 h-12 rounded-lg bg-slate-100 dark:bg-[#2D3342] border border-slate-200 dark:border-slate-700 flex items-center justify-center shrink-0 overflow-hidden">
-            <span className="text-xl">📦</span>
+            {auction.imageUrl ? <img src={auction.imageUrl} alt={auction.itemName} className="w-full h-full object-cover" /> : <span className="text-xl">📦</span>}
           </div>
           <div className="min-w-0">
             <h3 className="font-bold text-slate-800 dark:text-white truncate">{auction.itemName}</h3>
@@ -145,12 +131,6 @@ export function AuctionItemCard({ auction, isAdmin, myReservations }: Props) {
 
         {/* Actions */}
         <div className="flex items-center justify-end gap-2 mt-2 sm:mt-0">
-          <button
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="flex items-center justify-center w-8 h-8 rounded-lg bg-slate-100 dark:bg-[#2D3342] hover:bg-slate-200 dark:hover:bg-[#3B4358] text-slate-600 dark:text-slate-300 transition-colors"
-          >
-            {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-          </button>
           
           {auction.status === "open" && !isMyReservation && (
             <button
@@ -204,66 +184,6 @@ export function AuctionItemCard({ auction, isAdmin, myReservations }: Props) {
         </div>
       </div>
 
-      {/* Expanded Queue View */}
-      {isExpanded && (
-        <div className="bg-slate-50 dark:bg-[#1A1D27] border-t border-slate-100 dark:border-[#2D3342] px-6 py-4">
-          <h4 className="text-sm font-bold text-slate-700 dark:text-white mb-3 flex items-center gap-2">
-            <Users size={14} /> คิวการจอง ({queue.length})
-          </h4>
-          
-          {loadingQueue ? (
-            <div className="flex justify-center py-4"><RefreshCw className="animate-spin text-slate-400" size={16} /></div>
-          ) : queue.length === 0 ? (
-            <div className="text-center py-6 text-sm text-slate-400">ยังไม่มีคนจองคิวไอเทมนี้</div>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {queue.map((res, index) => (
-                <div key={res.id} className="flex items-center justify-between bg-white dark:bg-[#232733] border border-slate-200 dark:border-[#2D3342] rounded-xl px-4 py-3">
-                  <div className="flex items-center gap-4">
-                    <div className="w-6 h-6 rounded-md bg-slate-100 dark:bg-[#2D3342] flex items-center justify-center text-xs font-bold text-slate-500 dark:text-slate-300">
-                      #{index + 1}
-                    </div>
-                    <div>
-                      <div className="font-bold text-sm text-slate-800 dark:text-white">
-                        {res.characterName}
-                        {user?.discordId === res.userId && <span className="ml-2 text-[10px] bg-sky-100 text-sky-600 px-1.5 py-0.5 rounded">You</span>}
-                      </div>
-                      <div className="text-[10px] text-slate-500 dark:text-[#8B93A7]">{res.job}</div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-4">
-                    <div className="text-xs text-slate-400 flex items-center gap-1 hidden sm:flex">
-                      <Clock size={12} />
-                      {new Date(res.joinedAt).toLocaleTimeString('th-TH')}
-                    </div>
-                    
-                    {isAdmin && (
-                      <div className="flex items-center gap-2">
-                        <button 
-                          onClick={() => cancelMutation.mutate(res.id)}
-                          className="px-2 py-1 text-[10px] font-bold text-red-500 bg-red-50 dark:bg-red-500/10 rounded hover:bg-red-100 dark:hover:bg-red-500/20"
-                        >
-                          เตะออก
-                        </button>
-                        {auction.status === "open" && index === 0 && (
-                          <button 
-                            onClick={() => awardMutation.mutate({ resId: res.id, charName: res.characterName, userId: res.userId })}
-                            disabled={awardMutation.isPending}
-                            className="px-2 py-1 text-[10px] font-bold text-green-600 bg-green-50 dark:bg-green-500/10 rounded hover:bg-green-100 dark:hover:bg-green-500/20 flex items-center gap-1"
-                          >
-                            <Check size={10} /> แจกของ
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
+      </div>
   );
 }
