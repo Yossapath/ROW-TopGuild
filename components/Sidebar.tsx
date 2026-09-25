@@ -35,7 +35,7 @@ export default function Sidebar({ isExpanded }: { isExpanded: boolean }) {
     >
       <div className={`p-5 flex flex-col justify-center min-h-[64px] border-b border-white/10 dark:border-white/10 ${isExpanded ? "items-start" : "items-center"}`}>
         <div className="flex items-center space-x-2">
-          {isExpanded && <h2 className="font-extrabold text-xl tracking-tight text-white uppercase whitespace-nowrap">HUH?</h2>}
+          {isExpanded && <h2 className="font-extrabold text-xl tracking-tight text-white uppercase whitespace-nowrap">TOPGUILD OS</h2>}
         </div>
       </div>
 
