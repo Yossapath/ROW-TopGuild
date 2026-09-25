@@ -167,3 +167,50 @@ export async function awardAuction(
     return { success: true };
   });
 }
+
+export async function addManualReservation(
+  auctionId: string,
+  userId: string,
+  characterName: string,
+  job: string
+): Promise<AuctionReservation> {
+  const db = getDb();
+  return await db.runTransaction(async (t) => {
+    const existingSnapshot = await t.get(
+      auctionReservationsRef().where("auctionId", "==", auctionId)
+    );
+    
+    if (existingSnapshot.docs.some(d => d.data().userId === userId && d.data().status === "waiting")) {
+      throw new Error("User already in queue");
+    }
+
+    const queueCount = existingSnapshot.docs.filter(
+      d => d.data().status === "waiting"
+    ).length;
+
+    const resRef = auctionReservationsRef().doc();
+    const now = Date.now();
+
+    const reservation: AuctionReservation = {
+      id: resRef.id,
+      auctionId,
+      userId,
+      characterName,
+      job,
+      queueNumber: queueCount + 1,
+      status: "waiting",
+      joinedAt: now,
+      updatedAt: now,
+    };
+
+    t.set(resRef, reservation);
+
+    const aucRef = auctionsRef().doc(auctionId);
+    t.update(aucRef, {
+      queueCount: queueCount + 1,
+      updatedAt: now,
+    });
+
+    return reservation;
+  });
+}

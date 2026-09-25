@@ -67,7 +67,7 @@ export default function AuctionPage() {
         <div>
           <h1 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight flex items-center gap-2">
             <Gavel className="text-sky-500" />
-            Guild Auction
+            �ͧ��ǻ�����
           </h1>
           <p className="text-sm text-slate-500 dark:text-[#8B93A7] mt-1">
             ระบบจองคิวไอเทมประมูลของ Guild ({auctions.length} ไอเทมทั้งหมด)

@@ -13,6 +13,7 @@ const ROUTE_TITLES: Record<string, string> = {
   "/dashboard/teams": "จัดทีม GVG",
   "/dashboard/dungeon": "ดันเจี้ยน",
   "/dashboard/attendance": "เช็คชื่อวอ",
+  "/dashboard/auction": "จองคิวประมูล",
   "/dashboard/leave": "แจ้งลา",
   "/dashboard/users": "User Management",
   "/dashboard/log": "Activity Log",
