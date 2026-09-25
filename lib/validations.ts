@@ -168,3 +168,27 @@ export function validateBody<T>(
   }
   return { success: true, data: result.data };
 }
+
+// ── Auction Queue Schemas ─────────────────────────────────────
+export const auctionItemCreateSchema = z.object({
+  itemName: z.string().trim().min(1, "กรุณาระบุชื่อไอเทม").max(100),
+  category: z.enum(["gear", "card", "pet", "relic"]),
+  description: z.string().trim().max(500).optional(),
+});
+
+export const auctionItemUpdateSchema = z.object({
+  itemName: z.string().trim().min(1, "กรุณาระบุชื่อไอเทม").max(100).optional(),
+  category: z.enum(["gear", "card", "pet", "relic"]).optional(),
+  description: z.string().trim().max(500).optional(),
+  status: z.enum(["open", "closed", "awarded"]).optional(),
+});
+
+export const auctionReserveSchema = z.object({
+  characterName: z.string().trim().min(1, "กรุณาระบุชื่อตัวละคร").max(100),
+  job: z.string().trim().min(1, "กรุณาระบุอาชีพ").max(50),
+});
+
+export const auctionAwardSchema = z.object({
+  userId: z.string().trim().min(1, "กรุณาระบุผู้ใช้งาน"),
+  characterName: z.string().trim().min(1, "กรุณาระบุชื่อตัวละคร"),
+});

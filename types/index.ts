@@ -192,3 +192,39 @@ export interface DungeonTeamResource {
   completedRounds: number;
   carriers?: string[];
 }
+// ── Auction Queue ────────────────────────────────────────────
+
+export type AuctionCategory = "gear" | "card" | "pet" | "relic";
+
+export type AuctionStatus = "open" | "closed" | "awarded";
+
+export type ReservationStatus = "waiting" | "won" | "cancelled" | "removed";
+
+export interface AuctionItem {
+  id: string;
+  itemName: string;
+  category: AuctionCategory;
+  description?: string;
+  imageUrl?: string;
+  status: AuctionStatus;
+  queueCount: number;
+  createdAt: number;
+  createdBy: string;
+  updatedAt: number;
+  winnerId?: string;
+  winnerName?: string;
+  awardedAt?: number;
+  awardedBy?: string;
+}
+
+export interface AuctionReservation {
+  id: string;
+  auctionId: string;
+  userId: string;
+  characterName: string;
+  job: string;
+  queueNumber: number;
+  status: ReservationStatus;
+  joinedAt: number;
+  updatedAt: number;
+}

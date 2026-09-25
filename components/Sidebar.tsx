@@ -10,13 +10,15 @@ import {
   CalendarOff, 
   ScrollText, 
   UserCog,
-  Settings
+  Settings,
+  Gavel
 } from "lucide-react";
 
 const MENUS = [
   { name: "รายชื่อสมาชิก", path: "/dashboard/roster", icon: Users },
   { name: "จัดทีม GVG", path: "/dashboard/teams", icon: Shield },
   { name: "ดันเจี้ยน", path: "/dashboard/dungeon", icon: Swords },
+  { name: "ประมูลกิลด์", path: "/dashboard/auction", icon: Gavel },
   { name: "เช็คชื่อวอ", path: "/dashboard/attendance", icon: CheckSquare },
   { name: "แจ้งลา", path: "/dashboard/leave", icon: CalendarOff },
   { name: "จัดการผู้ใช้", path: "/dashboard/users", icon: UserCog },

@@ -80,3 +80,7 @@ export const logsRef       = () => getDb().collection(COLL_SYSTEM).doc("logs");
 // Dungeon refs
 export const dungeonsRef   = () => getDb().collection(COLL_DUN).doc("dungeons");
 export const scheduleRef   = () => getDb().collection(COLL_DUN).doc("dungeon_schedule");
+
+// Auction refs
+export const auctionsRef = () => getDb().collection("auctions");
+export const auctionReservationsRef = () => getDb().collection("auctionReservations");
