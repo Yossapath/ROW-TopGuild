@@ -108,15 +108,16 @@ export async function cancelReservation(
 
     const auctionId = reservation.auctionId;
 
+    // Recount waiting queue (single field query — no composite index needed)
+    const queueSnapshot = await t.get(
+      auctionReservationsRef().where("auctionId", "==", auctionId)
+    );
+
     t.update(resDoc.ref, { 
       status: isAdmin && reservation.userId !== userId ? "removed" : "cancelled", 
       updatedAt: Date.now() 
     });
 
-    // Recount waiting queue (single field query — no composite index needed)
-    const queueSnapshot = await t.get(
-      auctionReservationsRef().where("auctionId", "==", auctionId)
-    );
     const newCount = Math.max(0,
       queueSnapshot.docs.filter(d => d.data().status === "waiting" && d.id !== reservationId).length
     );

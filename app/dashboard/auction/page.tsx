@@ -14,7 +14,7 @@ const CATEGORIES: { id: AuctionCategory | "all" | "my"; label: string; icon: any
   { id: "card", label: "Card", icon: Layers },
   { id: "pet", label: "Pet", icon: PackageOpen },
   { id: "relic", label: "Relic", icon: Gavel },
-  { id: "my", label: "ประมูลของฉัน", icon: Gavel }, // Special tab
+  { id: "my", label: "รายการจอง", icon: Gavel }, // Special tab
 ];
 
 export default function AuctionPage() {
