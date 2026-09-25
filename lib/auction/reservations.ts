@@ -2,23 +2,32 @@ import { getDb, auctionsRef, auctionReservationsRef } from "@/lib/firebase-admin
 import { AuctionReservation, ReservationStatus } from "@/types";
 
 export async function getAuctionQueue(auctionId: string): Promise<AuctionReservation[]> {
+  // Use single-field where only to avoid composite index requirement.
+  // Sort in memory instead.
   const snapshot = await auctionReservationsRef()
     .where("auctionId", "==", auctionId)
-    .where("status", "==", "waiting")
-    .orderBy("joinedAt", "asc")
     .get();
     
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as AuctionReservation[];
+  const docs = snapshot.docs
+    .map(doc => ({ id: doc.id, ...doc.data() }) as AuctionReservation)
+    .filter(r => r.status === "waiting")
+    .sort((a, b) => a.joinedAt - b.joinedAt);
+
+  return docs;
 }
 
 export async function getMyReservations(userId: string): Promise<AuctionReservation[]> {
+  // Use single-field where only to avoid composite index requirement.
   const snapshot = await auctionReservationsRef()
     .where("userId", "==", userId)
-    .where("status", "in", ["waiting", "won"])
-    .orderBy("joinedAt", "desc")
     .get();
     
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as AuctionReservation[];
+  const docs = snapshot.docs
+    .map(doc => ({ id: doc.id, ...doc.data() }) as AuctionReservation)
+    .filter(r => r.status === "waiting" || r.status === "won")
+    .sort((a, b) => b.joinedAt - a.joinedAt);
+
+  return docs;
 }
 
 export async function reserveAuction(
@@ -36,24 +45,22 @@ export async function reserveAuction(
     const auction = auctionDoc.data();
     if (auction?.status !== "open") return { success: false, error: "Auction is not open" };
 
-    // Check if already reserved
+    // Check if already reserved — query by auctionId only (no composite index needed)
     const existingSnapshot = await t.get(
       auctionReservationsRef()
         .where("auctionId", "==", auctionId)
-        .where("userId", "==", userId)
-        .where("status", "==", "waiting")
     );
-    if (!existingSnapshot.empty) {
+    const alreadyReserved = existingSnapshot.docs.some(
+      d => d.data().userId === userId && d.data().status === "waiting"
+    );
+    if (alreadyReserved) {
       return { success: false, error: "You are already in this queue" };
     }
 
-    // Get current queue count (we can count the waiting ones to be accurate)
-    const queueSnapshot = await t.get(
-      auctionReservationsRef()
-        .where("auctionId", "==", auctionId)
-        .where("status", "==", "waiting")
-    );
-    const queueCount = queueSnapshot.size;
+    // Count current waiting queue
+    const queueCount = existingSnapshot.docs.filter(
+      d => d.data().status === "waiting"
+    ).length;
     const queueNumber = queueCount + 1;
 
     const resRef = auctionReservationsRef().doc();
@@ -106,14 +113,13 @@ export async function cancelReservation(
       updatedAt: Date.now() 
     });
 
-    // Update queue count
+    // Recount waiting queue (single field query — no composite index needed)
     const queueSnapshot = await t.get(
-      auctionReservationsRef()
-        .where("auctionId", "==", auctionId)
-        .where("status", "==", "waiting")
+      auctionReservationsRef().where("auctionId", "==", auctionId)
     );
-    // Note: this size includes the one we are cancelling, so -1
-    const newCount = Math.max(0, queueSnapshot.size - 1);
+    const newCount = Math.max(0,
+      queueSnapshot.docs.filter(d => d.data().status === "waiting" && d.id !== reservationId).length
+    );
     
     t.update(auctionsRef().doc(auctionId), { 
       queueCount: newCount,
