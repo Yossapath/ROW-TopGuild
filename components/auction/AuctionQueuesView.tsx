@@ -46,7 +46,8 @@ export function AuctionQueuesView({ auctions }: Props) {
     },
     enabled: isAdmin,
   });
-  const roster = rosterRes?.data || [];
+  const rosterData = rosterRes?.data || {};
+  const roster = Object.entries(rosterData).flatMap(([job, members]) => Array.isArray(members) ? members.map((m: any) => ({ ...m, job })) : []);
 
   const reorderMutation = useMutation({
     mutationFn: async (orderedIds: string[]) => {
@@ -71,8 +72,8 @@ export function AuctionQueuesView({ auctions }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
           userId: member.discordId,
-          characterName: member.gameUsername,
-          job: member.class || "Novice"
+          characterName: member.name,
+          job: member.job || "Novice"
         })
       });
       if (!res.ok) {
@@ -222,7 +223,7 @@ export function AuctionQueuesView({ auctions }: Props) {
                     <option value="">-- เลือกรายชื่อสมาชิก --</option>
                     {roster.map((r: any) => (
                       <option key={r.discordId} value={r.discordId}>
-                        {r.gameUsername} ({r.class || "Novice"})
+                        {r.name} ({r.job || "Novice"})
                       </option>
                     ))}
                   </select>
