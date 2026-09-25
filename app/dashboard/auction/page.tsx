@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "@/stores/useAuthStore";
-import { Gavel, RefreshCw, PackageOpen, LayoutGrid, Sword, Layers, Plus } from "lucide-react";
+import { Gavel, RefreshCw, PackageOpen, LayoutGrid, Sword, Layers, Plus, Search } from "lucide-react";
 import { AuctionItem, AuctionCategory } from "@/types";
 import { AuctionItemCard } from "@/components/auction/AuctionItemCard";
 import { AddAuctionModal } from "@/components/auction/AddAuctionModal";
@@ -25,6 +25,7 @@ export default function AuctionPage() {
   const [activeTab, setActiveTab] = useState<AuctionCategory | "all" | "my">("all");
   const [viewMode, setViewMode] = useState<"reserve" | "queues">("reserve");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Fetch all auctions
   const { data: auctionsRes, isLoading: loadingAuctions, refetch } = useQuery({
@@ -51,12 +52,12 @@ export default function AuctionPage() {
   const myReservations = myRes?.data || [];
 
   // Filter logic
-  let displayedAuctions = auctions;
+  let displayedAuctions = auctions.filter(a => a.itemName.toLowerCase().includes(searchQuery.toLowerCase()));
   if (activeTab === "my") {
     const myAuctionIds = myReservations.map(r => r.auctionId);
-    displayedAuctions = auctions.filter(a => myAuctionIds.includes(a.id));
+    displayedAuctions = auctions.filter(a => myAuctionIds.includes(a.id) && a.itemName.toLowerCase().includes(searchQuery.toLowerCase()));
   } else if (activeTab !== "all") {
-    displayedAuctions = auctions.filter(a => a.category === activeTab);
+    displayedAuctions = auctions.filter(a => a.category === activeTab && a.itemName.toLowerCase().includes(searchQuery.toLowerCase()));
   }
 
   const isLoading = loadingAuctions || (activeTab === "my" && loadingMy);
@@ -151,6 +152,21 @@ export default function AuctionPage() {
       </div>
 
       <div className="bg-white dark:bg-[#232733] rounded-2xl border border-slate-200 dark:border-[#2D3342] overflow-hidden shadow-sm">
+        <div className="p-4 border-b border-slate-200 dark:border-[#2D3342] bg-white dark:bg-[#1A1D27]">
+          <div className="relative w-full sm:max-w-xs">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search size={16} className="text-slate-400" />
+            </div>
+            <input
+              type="text"
+              placeholder="ค้นหาชื่อไอเทม..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-slate-200 dark:border-[#2D3342] rounded-xl text-sm bg-slate-50 dark:bg-[#232733] text-slate-800 dark:text-white focus:ring-2 focus:ring-[#4D73CD] focus:outline-none"
+            />
+          </div>
+        </div>
+
         {/* Table Header */}
         <div className="hidden sm:grid grid-cols-[1fr_120px_120px_140px] gap-4 px-6 py-4 bg-slate-50 dark:bg-[#272C38]/60 border-b border-slate-200 dark:border-[#2D3342] text-xs font-bold text-slate-500 dark:text-[#8B93A7] uppercase tracking-wider">
           <div>ไอเทมประมูล</div>

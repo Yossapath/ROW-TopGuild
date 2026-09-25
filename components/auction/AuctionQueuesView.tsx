@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AuctionItem, AuctionReservation } from "@/types";
-import { Search, PackageOpen, Users, GripVertical, Check, Plus, Loader2 } from "lucide-react";
+import { Search, PackageOpen, Users, GripVertical, Check, Plus, Loader2, Menu, X as CloseIcon, Filter } from "lucide-react";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 
@@ -17,6 +17,8 @@ export function AuctionQueuesView({ auctions }: Props) {
 
   const [selectedAuctionId, setSelectedAuctionId] = useState<string>(auctions[0]?.id || "");
   const [searchQuery, setSearchQuery] = useState("");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [filterCategory, setFilterCategory] = useState<string>("all");
   const { user } = useAuthStore();
   const isAdmin = user?.role === "admin" || user?.role === "owner";
   const queryClient = useQueryClient();
@@ -128,7 +130,10 @@ export function AuctionQueuesView({ auctions }: Props) {
     }
   });
 
-  const filteredAuctions = auctions.filter(a => a.itemName.toLowerCase().includes(searchQuery.toLowerCase()));
+  const filteredAuctions = auctions.filter(a => 
+    a.itemName.toLowerCase().includes(searchQuery.toLowerCase()) &&
+    (filterCategory === "all" || a.category === filterCategory)
+  );
 
   const handleDragEnd = (result: DropResult) => {
     if (!result.destination || !queue) return;
@@ -147,30 +152,57 @@ export function AuctionQueuesView({ auctions }: Props) {
   if (!isMounted) return null;
 
   return (
-    <div className="flex flex-col lg:flex-row gap-6">
+    <div className="flex flex-col lg:flex-row gap-6 relative">
+      {/* Mobile Toggle Button */}
+      <div className="lg:hidden mb-4">
+        <button 
+          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+          className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-[#1A1D27] border border-slate-200 dark:border-[#2D3342] rounded-xl font-bold text-sm shadow-sm"
+        >
+          <Menu size={16} />
+          {isSidebarOpen ? "ซ่อนเมนูเลือกไอเทม" : "เปิดเมนูเลือกไอเทม"}
+        </button>
+      </div>
+
       {/* Sidebar */}
-      <div className="w-full lg:w-1/3 flex flex-col gap-4">
+      <div className={`w-full lg:w-1/3 flex-col gap-4 ${isSidebarOpen ? "flex" : "hidden lg:flex"}`}>
         <div className="bg-white dark:bg-[#1A1D27] p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-[#2D3342] flex flex-col gap-4 h-[600px]">
           <h3 className="font-bold text-slate-800 dark:text-white text-lg">เลือกไอเทม</h3>
           
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search size={16} className="text-slate-400" />
-            </div>
-            <input
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search size={16} className="text-slate-400" />
+              </div>
+              <input
               type="text"
               placeholder="ค้นหาไอเทม..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-[#232733] border border-slate-200 dark:border-[#2D3342] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3B66D1] text-slate-800 dark:text-white text-sm"
             />
+            </div>
+            <select
+              value={filterCategory}
+              onChange={(e) => setFilterCategory(e.target.value)}
+              className="px-3 py-2 border border-slate-200 dark:border-[#2D3342] rounded-xl text-sm bg-slate-50 dark:bg-[#232733] text-slate-800 dark:text-white focus:outline-none"
+            >
+              <option value="all">ทุกหมวด</option>
+              <option value="gear">Gear</option>
+              <option value="card">Card</option>
+              <option value="pet">Pet</option>
+              <option value="relic">Relic</option>
+            </select>
           </div>
 
           <div className="flex-1 overflow-y-auto space-y-1 pr-1">
             {filteredAuctions.map(auction => (
               <button
                 key={auction.id}
-                onClick={() => setSelectedAuctionId(auction.id)}
+                onClick={() => {
+                        setSelectedAuctionId(auction.id);
+                        if (window.innerWidth < 1024) setIsSidebarOpen(false);
+                      }}
                 className={`w-full text-left px-3 py-2.5 rounded-xl flex items-center justify-between transition-colors ${selectedAuctionId === auction.id ? "bg-[#3B66D1]/10 border border-[#3B66D1]/30" : "hover:bg-slate-50 dark:hover:bg-[#232733] border border-transparent"}`}
               >
                 <div className="flex items-center gap-3 min-w-0">
@@ -266,7 +298,8 @@ export function AuctionQueuesView({ auctions }: Props) {
                   </div>
                 ) : (
                   <DragDropContext onDragEnd={handleDragEnd}>
-                    <table className="w-full text-left border-collapse">
+                    <div className="overflow-x-auto w-full">
+                      <table className="w-full text-left border-collapse min-w-[600px]">
                       <thead className="bg-slate-50 dark:bg-[#232733] sticky top-0 z-10 border-b border-slate-200 dark:border-[#2D3342]">
                         <tr>
                           {isAdmin && <th className="w-10"></th>}
@@ -343,7 +376,8 @@ export function AuctionQueuesView({ auctions }: Props) {
                         )}
                       </Droppable>
                     </table>
-                  </DragDropContext>
+                  </div>
+                </DragDropContext>
                 )}
               </div>
             </>
