@@ -14,9 +14,6 @@ export function AddAuctionModal({ onClose }: Props) {
   const [itemName, setItemName] = useState("");
   const [category, setCategory] = useState<AuctionCategory>("gear");
   const [imageUrl, setImageUrl] = useState("");
-  const [imageUrl, setImageUrl] = useState("");
-  const [imageUrl, setImageUrl] = useState("");
-  const [imageUrl, setImageUrl] = useState("");
 
   const mutation = useMutation({
     mutationFn: async () => {
