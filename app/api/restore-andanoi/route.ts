@@ -1,4 +1,4 @@
-﻿export const dynamic = 'force-dynamic';
+export const dynamic = 'force-dynamic';
 import { getDb, rosterRef } from '@/lib/firebase-admin';
 import { ok, err } from '@/lib/server-utils';
 
@@ -8,8 +8,8 @@ export async function GET(req: Request) {
     
     // Check teams
     const snap = await db.collection('teams').get();
-    let andanoiDiscordId = null;
-    let andanoiData = null;
+    let andanoiDiscordId: string | null = null;
+    let andanoiData: any = null;
 
     snap.forEach(doc => {
        const d = doc.data();
