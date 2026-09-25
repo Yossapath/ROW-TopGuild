@@ -94,20 +94,23 @@ export default function AuctionPage() {
       </div>
 
       <div className="flex overflow-x-auto hide-scrollbar gap-2 mb-6 pb-1">
-        {CATEGORIES.map(cat => (
-          <button
-            key={cat.id}
-            onClick={() => setActiveTab(cat.id)}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm whitespace-nowrap transition-all flex-shrink-0 ${
-              activeTab === cat.id
-                ? "bg-[#0b3d63] dark:bg-[#3B66D1] text-white shadow-md"
-                : "bg-white dark:bg-[#232733] text-slate-600 dark:text-[#8B93A7] hover:bg-slate-50 dark:hover:bg-[#2A2F3E] border border-slate-200 dark:border-[#2D3342]"
-            }`}
-          >
-            <cat.icon size={16} />
-            {cat.label}
-          </button>
-        ))}
+        {CATEGORIES.map(cat => {
+          const Icon = cat.icon;
+          return (
+            <button
+              key={cat.id}
+              onClick={() => setActiveTab(cat.id)}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm whitespace-nowrap transition-all flex-shrink-0 ${
+                activeTab === cat.id
+                  ? "bg-[#0b3d63] dark:bg-[#3B66D1] text-white shadow-md"
+                  : "bg-white dark:bg-[#232733] text-slate-600 dark:text-[#8B93A7] hover:bg-slate-50 dark:hover:bg-[#2A2F3E] border border-slate-200 dark:border-[#2D3342]"
+              }`}
+            >
+              <Icon size={16} />
+              {cat.label}
+            </button>
+          );
+        })}
       </div>
 
       <div className="bg-white dark:bg-[#232733] rounded-2xl border border-slate-200 dark:border-[#2D3342] overflow-hidden shadow-sm">
