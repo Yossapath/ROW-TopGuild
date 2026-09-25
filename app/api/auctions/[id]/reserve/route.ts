@@ -12,7 +12,7 @@ export async function GET(
     if (auth.errorResponse) return auth.errorResponse;
 
     const queue = await getAuctionQueue(params.id);
-    return ok({ data: queue });
+    return ok(queue);
   } catch (error) {
     return handleServerError(error, "Failed to load queue");
   }

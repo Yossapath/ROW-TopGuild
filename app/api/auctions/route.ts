@@ -10,7 +10,7 @@ export async function GET() {
     if (auth.errorResponse) return auth.errorResponse;
 
     const auctions = await getAuctions();
-    return ok({ data: auctions });
+    return ok(auctions);
   } catch (error) {
     return handleServerError(error, "Failed to load auctions");
   }

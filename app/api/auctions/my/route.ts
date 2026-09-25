@@ -8,7 +8,7 @@ export async function GET() {
     if (auth.errorResponse) return auth.errorResponse;
 
     const myReservations = await getMyReservations(auth.user.discordId);
-    return ok({ data: myReservations });
+    return ok(myReservations);
   } catch (error) {
     return handleServerError(error, "Failed to load my reservations");
   }
