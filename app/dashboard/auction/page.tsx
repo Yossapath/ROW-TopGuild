@@ -81,7 +81,24 @@ export default function AuctionPage() {
             รีเฟรช
           </button>
           
-          {isAdmin && (
+          {isAdmin && auctions.length === 0 && (
+              <button
+                onClick={async () => {
+                  if (!confirm('Are you sure you want to seed 32 default items?')) return;
+                  const res = await fetch('/api/auctions/seed');
+                  if (res.ok) {
+                    alert('Success! Please wait 1-2 seconds and click Refresh.');
+                    refetch();
+                  } else {
+                    alert('Error');
+                  }
+                }}
+                className='flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-xl font-bold text-sm hover:bg-amber-600 transition-colors shadow-sm'
+              >
+                ?? Seed Default Items
+              </button>
+            )}
+            {isAdmin && (
             <button 
               onClick={() => setIsAddModalOpen(true)}
               className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-[#0b3d63] dark:bg-[#3B66D1] text-white rounded-xl font-bold text-sm hover:bg-[#093250] dark:hover:bg-[#4D73CD] transition-colors shadow-sm"
