@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AuctionItem, AuctionReservation } from "@/types";
 import { Search, PackageOpen, Users, GripVertical, Check, Plus, Loader2 } from "lucide-react";
@@ -12,6 +12,9 @@ interface Props {
 }
 
 export function AuctionQueuesView({ auctions }: Props) {
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => { setIsMounted(true); }, []);
+
   const [selectedAuctionId, setSelectedAuctionId] = useState<string>(auctions[0]?.id || "");
   const [searchQuery, setSearchQuery] = useState("");
   const { user } = useAuthStore();
@@ -120,6 +123,8 @@ export function AuctionQueuesView({ auctions }: Props) {
     // Send new order to server
     reorderMutation.mutate(items.map(item => item.id));
   };
+
+  if (!isMounted) return null;
 
   return (
     <div className="flex flex-col lg:flex-row gap-6">
