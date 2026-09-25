@@ -1,3 +1,4 @@
+﻿export const dynamic = 'force-dynamic';
 import { NextResponse } from "next/server";
 import { auctionsRef } from "@/lib/firebase-admin";
 
@@ -15,8 +16,8 @@ const CARDS = [
 ];
 
 const RELICS = [
-  { name: "ล้างผลาญ", file: "Blade_of_Destruction" },
-  { name: "พิทักษ์", file: "Radiant_Holy_Shield" }
+  { name: "เธฅเนเธฒเธเธเธฅเธฒเธ", file: "Blade_of_Destruction" },
+  { name: "เธเธดเธ—เธฑเธเธฉเน", file: "Radiant_Holy_Shield" }
 ];
 
 const STATS = ["INT+10", "AGI+10", "DEX+10", "STR+10", "VIT+10"];
@@ -90,3 +91,4 @@ export async function GET() {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
+

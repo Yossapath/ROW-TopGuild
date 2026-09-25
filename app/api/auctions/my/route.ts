@@ -1,3 +1,4 @@
+﻿export const dynamic = 'force-dynamic';
 import { requireAuth } from "@/lib/auth";
 import { err, ok, handleServerError } from "@/lib/server-utils";
 import { getMyReservations } from "@/lib/auction/reservations";
@@ -13,3 +14,4 @@ export async function GET() {
     return handleServerError(error, "Failed to load my reservations");
   }
 }
+
