@@ -13,13 +13,17 @@ export function AddAuctionModal({ onClose }: Props) {
   const queryClient = useQueryClient();
   const [itemName, setItemName] = useState("");
   const [category, setCategory] = useState<AuctionCategory>("gear");
+  const [imageUrl, setImageUrl] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
 
   const mutation = useMutation({
     mutationFn: async () => {
       const res = await fetch("/api/auctions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ itemName, category }),
+        body: JSON.stringify({ itemName, category, imageUrl }),
       });
       if (!res.ok) {
         const error = await res.json();
@@ -68,6 +72,19 @@ export function AddAuctionModal({ onClose }: Props) {
           
           <div>
             <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">
+                Image URL (Optional)
+              </label>
+              <input
+                type="text"
+                value={imageUrl}
+                onChange={(e) => setImageUrl(e.target.value)}
+                placeholder="https://... "
+                className="w-full px-4 py-2 mb-4 bg-slate-50 dark:bg-[#232733] border border-slate-200 dark:border-[#2D3342] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3B66D1] text-slate-800 dark:text-white"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">
               หมวดหมู่
             </label>
             <select
