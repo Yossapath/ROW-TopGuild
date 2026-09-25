@@ -153,7 +153,7 @@ export function updateMemberNameInTeamsData(
   const updatedColumns: Record<string, any> = {};
 
   for (const [colId, col] of Object.entries(tData.columns)) {
-    if (colId === "unassigned" || !col || typeof col !== "object" || !Array.isArray((col as any).memberIds)) {
+    if (!col || typeof col !== "object" || !Array.isArray((col as any).memberIds)) {
       updatedColumns[colId] = col;
       continue;
     }
