@@ -67,7 +67,7 @@ export default function AuctionPage() {
         <div>
           <h1 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight flex items-center gap-2">
             <Gavel className="text-sky-500" />
-            �ͧ��ǻ�����
+            จองคิวประมูล
           </h1>
           <p className="text-sm text-slate-500 dark:text-[#8B93A7] mt-1">
             ระบบจองคิวไอเทมประมูลของ Guild ({auctions.length} ไอเทมทั้งหมด)
@@ -117,13 +117,13 @@ export default function AuctionPage() {
           onClick={() => setViewMode("reserve")}
           className={`flex-1 sm:flex-none px-6 py-2 rounded-lg text-sm font-bold transition-all ${viewMode === "reserve" ? "bg-white dark:bg-[#3B66D1] text-[#0b3d63] dark:text-white shadow-sm" : "text-slate-500 dark:text-[#8B93A7] hover:text-slate-700 dark:hover:text-slate-300"}`}
         >
-          🛒 จองคิว
+          จองคิว
         </button>
         <button 
           onClick={() => setViewMode("queues")}
           className={`flex-1 sm:flex-none px-6 py-2 rounded-lg text-sm font-bold transition-all ${viewMode === "queues" ? "bg-white dark:bg-[#3B66D1] text-[#0b3d63] dark:text-white shadow-sm" : "text-slate-500 dark:text-[#8B93A7] hover:text-slate-700 dark:hover:text-slate-300"}`}
         >
-          📋 ดูคิว
+          ดูคิว
         </button>
       </div>
 
