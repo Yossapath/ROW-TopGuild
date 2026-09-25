@@ -39,10 +39,14 @@ function buildDefaultColumns(prefix: string, type: "main" | "sub", count: number
 function migrateToZones(savedData: any, cols: Record<string, Column>): Zone[] {
   if (savedData?.zones && Array.isArray(savedData.zones) && savedData.zones.length > 0) {
     const hasSub = (savedData.zones as Zone[]).some(z => z.type === "sub");
+    let resultZones = savedData.zones as Zone[];
     if (!hasSub) {
-      return [...(savedData.zones as Zone[]), { id: "zone-sub-1", name: "สนามรอง", type: "sub", teamOrder: [] }];
+      resultZones = [...resultZones, { id: "zone-sub-1", name: "สนามรอง", type: "sub", teamOrder: [] }];
     }
-    return savedData.zones as Zone[];
+    return resultZones.map(z => ({
+      ...z,
+      teamOrder: Array.isArray(z.teamOrder) ? z.teamOrder : Object.values(z.teamOrder || {})
+    }));
   }
   const zones: Zone[] = [];
   const z1 = savedData?.mainZone1Order ?? [];
@@ -279,6 +283,11 @@ export default function TeamsPage() {
       if (savedTeams && savedTeams.columns) {
         // New format
         Object.assign(cols, savedTeams.columns);
+        Object.values(cols).forEach(c => {
+          if (c.memberIds && !Array.isArray(c.memberIds)) {
+             c.memberIds = Object.values(c.memberIds);
+          }
+        });
         zones = migrateToZones(savedTeams, cols);
       } else if (savedTeams && savedTeams.data && Array.isArray(savedTeams.data)) {
         // Legacy API format
