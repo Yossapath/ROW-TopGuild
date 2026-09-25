@@ -63,6 +63,25 @@ export function AuctionQueuesView({ auctions }: Props) {
     }
   });
 
+  const awardMutation = useMutation({
+    mutationFn: async (reservation: any) => {
+      if (!confirm("ยืนยันว่าผู้ใช้นี้ได้รับของแล้ว?")) throw new Error("Cancelled");
+      const res = await fetch(`/api/auctions/${selectedAuctionId}/award?reservationId=${reservation.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          userId: reservation.userId,
+          characterName: reservation.characterName
+        })
+      });
+      if (!res.ok) throw new Error("Failed to award");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["auction_queue", selectedAuctionId] });
+      queryClient.invalidateQueries({ queryKey: ["auctions"] });
+    }
+  });
+
   const addManualMutation = useMutation({
     mutationFn: async (memberId: string) => {
       const member = roster.find((m: any) => m.discordId === memberId);
@@ -293,15 +312,25 @@ export function AuctionQueuesView({ auctions }: Props) {
                                     <td className="py-4 px-6 text-sm text-slate-600 dark:text-[#8B93A7]">{res.job}</td>
                                     <td className="py-4 px-6 text-sm text-right">
                                       {isAdmin ? (
-                                        <button 
-                                          onClick={() => cancelMutation.mutate(res.id)}
-                                          className="text-xs font-bold text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 px-2 py-1 rounded"
-                                        >
-                                          ลบทิ้ง
-                                        </button>
+                                        <div className="flex justify-end gap-2">
+                                          {res.status !== "won" && (
+                                            <button 
+                                              onClick={() => awardMutation.mutate(res)}
+                                              className="text-xs font-bold text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-2 py-1 rounded"
+                                            >
+                                              ได้รับของ
+                                            </button>
+                                          )}
+                                          <button 
+                                            onClick={() => cancelMutation.mutate(res.id)}
+                                            className="text-xs font-bold text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 px-2 py-1 rounded"
+                                          >
+                                            ลบทิ้ง
+                                          </button>
+                                        </div>
                                       ) : (
-                                        <span className="px-2 py-1 text-[10px] font-bold rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 uppercase tracking-wide">
-                                          {res.status}
+                                        <span className={`px-2 py-1 text-[10px] font-bold rounded-full uppercase tracking-wide ${res.status === "won" ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400"}`}>
+                                          {res.status === "won" ? "ได้รับของแล้ว" : res.status === "waiting" ? "รอคิว" : res.status}
                                         </span>
                                       )}
                                     </td>
